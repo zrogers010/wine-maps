@@ -7,6 +7,15 @@ export type AppellationId =
   | 'margaux'
   | 'moulis-en-medoc'
   | 'listrac-medoc'
+  | 'entre-deux-mers'
+  | 'entre-deux-mers-haut-benauge'
+  | 'cadillac'
+  | 'cotes-de-bordeaux-cadillac'
+  | 'loupiac'
+  | 'sainte-croix-du-mont'
+  | 'premieres-cotes-de-bordeaux'
+  | 'cotes-de-bordeaux-saint-macaire'
+  | 'graves-de-vayres'
 
 export type StudyLevel = 'Curious' | 'Advanced'
 

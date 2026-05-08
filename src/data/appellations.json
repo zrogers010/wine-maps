@@ -293,5 +293,316 @@
       "saint-julien": "Saint-Julien is generally more polished and classification-focused.",
       "haut-medoc": "Haut-Médoc provides the wider district context."
     }
+  },
+  {
+    "id": "entre-deux-mers",
+    "name": "Entre-deux-Mers",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Entre-Deux-Mers",
+    "bank": "Between the Garonne and Dordogne",
+    "aocType": "Regional appellation",
+    "primaryStyle": "Dry white",
+    "dominantGrapes": ["Sauvignon Blanc", "Sémillon"],
+    "importantGrapes": ["Muscadelle"],
+    "authorizedGrapesNote": "Use INAO for exact authorized varieties and proportions; study shorthand should not replace the cahier des charges.",
+    "officialRulesNote": "Entre-deux-Mers AOC is principally associated with dry white Bordeaux from the area between the Garonne and Dordogne.",
+    "commonPracticeNote": "Common examples are fresh, aromatic, Sauvignon Blanc-influenced dry whites, often blended with Sémillon and Muscadelle.",
+    "classificationContext": "Not part of the 1855 Médoc classification story; it is important for understanding everyday dry white Bordeaux.",
+    "terroir": {
+      "keySoils": ["limestone", "clay-limestone", "gravel", "alluvial soils"],
+      "climate": ["maritime", "between-rivers moderation", "Atlantic rainfall pressure"],
+      "learningPoint": "The between-rivers setting and mixed limestone/clay soils support crisp white Bordeaux styles as well as nearby sweet and red appellations."
+    },
+    "tastingProfile": {
+      "fruit": ["citrus", "green apple", "white peach"],
+      "nonFruit": ["grass", "fresh herbs", "wet stone"],
+      "structure": ["medium to medium-plus acidity", "light to medium body", "dry"],
+      "ageingPotential": "generally early-drinking"
+    },
+    "examNotes": [
+      "Key dry white Bordeaux appellation.",
+      "Located between the Garonne and Dordogne rivers.",
+      "Useful contrast with Médoc: white-led, not Cabernet/Merlot red-led."
+    ],
+    "neighborComparisons": {
+      "premieres-cotes-de-bordeaux": "Premières Côtes de Bordeaux sits nearer the Garonne-side slopes and has a different historical identity.",
+      "graves-de-vayres": "Graves de Vayres is a smaller nearby appellation with both red and white context."
+    }
+  },
+  {
+    "id": "entre-deux-mers-haut-benauge",
+    "name": "Entre-deux-Mers Haut-Benauge",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Entre-Deux-Mers",
+    "bank": "Between the Garonne and Dordogne",
+    "aocType": "Sub-appellation",
+    "primaryStyle": "Dry white",
+    "dominantGrapes": ["Sauvignon Blanc", "Sémillon"],
+    "importantGrapes": ["Muscadelle"],
+    "authorizedGrapesNote": "Confirm official grape and production rules with INAO before publication use.",
+    "officialRulesNote": "Haut-Benauge is represented in the INAO source as a denomination within Entre-deux-Mers.",
+    "commonPracticeNote": "Study it as a more specific Entre-deux-Mers dry white area rather than a separate fine-wine hierarchy like the Médoc communes.",
+    "terroir": {
+      "keySoils": ["clay-limestone", "limestone"],
+      "climate": ["maritime", "between-rivers influence"],
+      "learningPoint": "The more specific denomination helps show that Bordeaux white-wine geography can be nested, just like red-wine areas."
+    },
+    "tastingProfile": {
+      "fruit": ["lemon", "green apple", "pear"],
+      "nonFruit": ["herbs", "mineral notes"],
+      "structure": ["medium-plus acidity", "light to medium body", "dry"],
+      "ageingPotential": "generally early-drinking"
+    },
+    "examNotes": [
+      "Specific denomination within the Entre-deux-Mers source data.",
+      "Dry white Bordeaux context.",
+      "Useful for learning nested AOC geography."
+    ],
+    "neighborComparisons": {
+      "entre-deux-mers": "Entre-deux-Mers is the broader surrounding dry white appellation."
+    }
+  },
+  {
+    "id": "cadillac",
+    "name": "Cadillac",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Entre-Deux-Mers",
+    "bank": "Right bank of the Garonne",
+    "aocType": "Commune-area appellation",
+    "primaryStyle": "Sweet white",
+    "dominantGrapes": ["Sémillon"],
+    "importantGrapes": ["Sauvignon Blanc", "Muscadelle"],
+    "authorizedGrapesNote": "Use INAO for exact sweet-wine production rules and grape authorization.",
+    "officialRulesNote": "Cadillac AOC is associated with sweet white Bordeaux from the Garonne-side slopes.",
+    "commonPracticeNote": "Often botrytized or late-harvest influenced, with Sémillon providing texture and honeyed character.",
+    "terroir": {
+      "keySoils": ["clay-limestone", "limestone slopes", "gravel in places"],
+      "climate": ["maritime", "Garonne humidity", "autumn mist potential"],
+      "learningPoint": "Garonne-side humidity can support noble rot conditions, linking Cadillac conceptually to other sweet Bordeaux areas."
+    },
+    "tastingProfile": {
+      "fruit": ["apricot", "orange peel", "honeyed peach"],
+      "nonFruit": ["honey", "saffron", "botrytis spice"],
+      "structure": ["sweet", "medium-plus acidity", "medium to full body"],
+      "ageingPotential": "moderate to high, producer-dependent"
+    },
+    "examNotes": [
+      "Sweet white Bordeaux appellation in the Entre-Deux-Mers zone.",
+      "Learn beside Loupiac and Sainte-Croix-du-Mont.",
+      "Different role from dry white Entre-deux-Mers."
+    ],
+    "neighborComparisons": {
+      "loupiac": "Loupiac is another small sweet white appellation on the Garonne-side slopes.",
+      "sainte-croix-du-mont": "Sainte-Croix-du-Mont is also sweet white and geographically close."
+    }
+  },
+  {
+    "id": "cotes-de-bordeaux-cadillac",
+    "name": "Côtes de Bordeaux Cadillac",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Entre-Deux-Mers",
+    "bank": "Right bank of the Garonne",
+    "aocType": "Côtes de Bordeaux denomination",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Merlot"],
+    "importantGrapes": ["Cabernet Franc", "Cabernet Sauvignon"],
+    "authorizedGrapesNote": "Confirm official denomination rules with INAO; this app separates source denomination from general study shorthand.",
+    "officialRulesNote": "The INAO source represents this as the Cadillac denomination within Côtes de Bordeaux.",
+    "commonPracticeNote": "Typically Merlot-led red Bordeaux from slopes on the Garonne side of Entre-Deux-Mers.",
+    "terroir": {
+      "keySoils": ["clay-limestone", "limestone slopes"],
+      "climate": ["maritime", "Garonne influence"],
+      "learningPoint": "The same broad area can support dry reds under Côtes de Bordeaux and sweet whites under Cadillac/Loupiac-style appellations."
+    },
+    "tastingProfile": {
+      "fruit": ["plum", "black cherry", "redcurrant"],
+      "nonFruit": ["earth", "cedar", "dried herbs"],
+      "structure": ["medium tannin", "medium acidity", "medium body"],
+      "ageingPotential": "moderate"
+    },
+    "examNotes": [
+      "Merlot-led Côtes de Bordeaux context.",
+      "Useful contrast with sweet Cadillac AOC.",
+      "Part of the broader Bordeaux hillsides story."
+    ],
+    "neighborComparisons": {
+      "cadillac": "Cadillac itself is studied primarily as sweet white, while this denomination is dry red Côtes de Bordeaux context."
+    }
+  },
+  {
+    "id": "loupiac",
+    "name": "Loupiac",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Entre-Deux-Mers",
+    "bank": "Right bank of the Garonne",
+    "aocType": "Commune appellation",
+    "primaryStyle": "Sweet white",
+    "dominantGrapes": ["Sémillon"],
+    "importantGrapes": ["Sauvignon Blanc", "Muscadelle"],
+    "authorizedGrapesNote": "Use INAO for exact official sweet-wine rules.",
+    "officialRulesNote": "Loupiac AOC is a small sweet white Bordeaux appellation near Cadillac and Sainte-Croix-du-Mont.",
+    "commonPracticeNote": "Often honeyed, botrytis-influenced, and Sémillon-led.",
+    "terroir": {
+      "keySoils": ["limestone", "clay-limestone"],
+      "climate": ["Garonne humidity", "autumn mist potential", "maritime"],
+      "learningPoint": "Loupiac helps explain why the Garonne-side slopes of Entre-Deux-Mers are important for sweet white Bordeaux."
+    },
+    "tastingProfile": {
+      "fruit": ["apricot", "candied citrus", "quince"],
+      "nonFruit": ["honey", "ginger", "botrytis spice"],
+      "structure": ["sweet", "medium-plus acidity", "medium body"],
+      "ageingPotential": "moderate to high"
+    },
+    "examNotes": [
+      "Small sweet white appellation.",
+      "Study with Cadillac and Sainte-Croix-du-Mont.",
+      "Garonne-side location is key."
+    ],
+    "neighborComparisons": {
+      "cadillac": "Cadillac is larger and nearby, also sweet white in this context.",
+      "sainte-croix-du-mont": "Sainte-Croix-du-Mont is adjacent and similarly sweet-white focused."
+    }
+  },
+  {
+    "id": "sainte-croix-du-mont",
+    "name": "Sainte-Croix-du-Mont",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Entre-Deux-Mers",
+    "bank": "Right bank of the Garonne",
+    "aocType": "Commune appellation",
+    "primaryStyle": "Sweet white",
+    "dominantGrapes": ["Sémillon"],
+    "importantGrapes": ["Sauvignon Blanc", "Muscadelle"],
+    "authorizedGrapesNote": "Official rules should be tied to INAO before publication.",
+    "officialRulesNote": "Sainte-Croix-du-Mont AOC is a small sweet white Bordeaux appellation on the Garonne side.",
+    "commonPracticeNote": "Known for sweet white wines with honeyed, citrus, and botrytis-like notes depending on vintage and producer.",
+    "terroir": {
+      "keySoils": ["limestone", "fossil-rich limestone", "clay-limestone"],
+      "climate": ["Garonne influence", "autumn humidity", "maritime"],
+      "learningPoint": "Its small footprint makes it a useful map example of highly specific sweet-wine geography inside greater Bordeaux."
+    },
+    "tastingProfile": {
+      "fruit": ["apricot", "orange marmalade", "peach"],
+      "nonFruit": ["honey", "spice", "floral notes"],
+      "structure": ["sweet", "medium-plus acidity", "medium body"],
+      "ageingPotential": "moderate to high"
+    },
+    "examNotes": [
+      "Tiny sweet white appellation.",
+      "Often grouped in study with Cadillac and Loupiac.",
+      "Located on Garonne-side slopes."
+    ],
+    "neighborComparisons": {
+      "loupiac": "Loupiac is nearby and similarly sweet-white focused.",
+      "cadillac": "Cadillac is another sweet white appellation in the same broader zone."
+    }
+  },
+  {
+    "id": "premieres-cotes-de-bordeaux",
+    "name": "Premières Côtes de Bordeaux",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Entre-Deux-Mers",
+    "bank": "Right bank of the Garonne",
+    "aocType": "Hillside appellation",
+    "primaryStyle": "Sweet white",
+    "dominantGrapes": ["Sémillon"],
+    "importantGrapes": ["Sauvignon Blanc", "Muscadelle"],
+    "authorizedGrapesNote": "Use current INAO documents for official production scope and style rules.",
+    "officialRulesNote": "Premières Côtes de Bordeaux is represented by the INAO source along the Garonne-side hillsides.",
+    "commonPracticeNote": "Study as part of the Garonne-slope sweet white and hillside Bordeaux context.",
+    "terroir": {
+      "keySoils": ["clay-limestone", "limestone slopes", "gravel in places"],
+      "climate": ["Garonne influence", "maritime", "autumn humidity"],
+      "learningPoint": "The long Garonne-facing slope helps organize several Entre-Deux-Mers-side appellations on the map."
+    },
+    "tastingProfile": {
+      "fruit": ["stone fruit", "citrus peel", "pear"],
+      "nonFruit": ["honey", "floral notes", "spice"],
+      "structure": ["sweet to off-dry context", "medium-plus acidity", "medium body"],
+      "ageingPotential": "producer-dependent"
+    },
+    "examNotes": [
+      "Garonne-side hillside appellation.",
+      "Useful map anchor between Entre-deux-Mers and the small sweet white communes.",
+      "Check current INAO rules for publication-grade style claims."
+    ],
+    "neighborComparisons": {
+      "cadillac": "Cadillac is a smaller sweet white appellation within the same broad Garonne-side story."
+    }
+  },
+  {
+    "id": "cotes-de-bordeaux-saint-macaire",
+    "name": "Côtes de Bordeaux-Saint-Macaire",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Entre-Deux-Mers",
+    "bank": "Right bank of the Garonne",
+    "aocType": "Local appellation",
+    "primaryStyle": "White wine",
+    "dominantGrapes": ["Sémillon", "Sauvignon Blanc"],
+    "importantGrapes": ["Muscadelle"],
+    "authorizedGrapesNote": "Use INAO for exact permitted styles and grape rules.",
+    "officialRulesNote": "The INAO source includes Côtes de Bordeaux-Saint-Macaire as a distinct appellation.",
+    "commonPracticeNote": "A smaller, less commonly encountered Bordeaux appellation useful for understanding the southern Entre-Deux-Mers/Garonne edge.",
+    "terroir": {
+      "keySoils": ["limestone", "clay-limestone"],
+      "climate": ["Garonne influence", "maritime"],
+      "learningPoint": "Saint-Macaire helps show that Bordeaux geography includes many small local AOCs beyond the globally famous names."
+    },
+    "tastingProfile": {
+      "fruit": ["citrus", "pear", "stone fruit"],
+      "nonFruit": ["honeyed notes", "floral notes", "herbs"],
+      "structure": ["medium acidity", "light to medium body", "style-dependent sweetness"],
+      "ageingPotential": "generally moderate"
+    },
+    "examNotes": [
+      "Small Bordeaux appellation near the Garonne.",
+      "Less central than Entre-deux-Mers for most exams.",
+      "Good map context for local Bordeaux detail."
+    ],
+    "neighborComparisons": {
+      "premieres-cotes-de-bordeaux": "Both help define the Garonne-side edge of the Entre-Deux-Mers area."
+    }
+  },
+  {
+    "id": "graves-de-vayres",
+    "name": "Graves de Vayres",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Entre-Deux-Mers",
+    "bank": "Near the Dordogne",
+    "aocType": "Local appellation",
+    "primaryStyle": "Dry red and white",
+    "dominantGrapes": ["Merlot", "Sauvignon Blanc"],
+    "importantGrapes": ["Cabernet Franc", "Cabernet Sauvignon", "Sémillon"],
+    "authorizedGrapesNote": "Use INAO for exact style and grape rules; this metadata is study shorthand.",
+    "officialRulesNote": "Graves de Vayres is a small Bordeaux appellation represented in the INAO source near the Dordogne side.",
+    "commonPracticeNote": "Can be studied as a local mixed-style appellation rather than a major global category.",
+    "terroir": {
+      "keySoils": ["gravel", "clay", "sand"],
+      "climate": ["maritime", "Dordogne influence"],
+      "learningPoint": "The name points to gravelly local soils, but it is geographically separate from the larger Graves region south of Bordeaux."
+    },
+    "tastingProfile": {
+      "fruit": ["plum", "redcurrant", "citrus"],
+      "nonFruit": ["earth", "fresh herbs", "mineral notes"],
+      "structure": ["style-dependent", "medium acidity", "medium body"],
+      "ageingPotential": "generally moderate"
+    },
+    "examNotes": [
+      "Small local Bordeaux appellation.",
+      "Do not confuse with the larger Graves region.",
+      "Useful Dordogne-side context for Entre-Deux-Mers expansion."
+    ],
+    "neighborComparisons": {
+      "entre-deux-mers": "Entre-deux-Mers is broader and primarily dry white in classic study shorthand."
+    }
   }
 ]

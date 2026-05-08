@@ -11,6 +11,36 @@ import { MapView } from './MapView'
 
 const appellations = appellationData as AppellationMetadata[]
 
+const regionLegendGroups: Array<{ title: string; ids: AppellationId[] }> = [
+  {
+    title: 'Bordeaux / Médoc',
+    ids: [
+      'medoc',
+      'haut-medoc',
+      'saint-estephe',
+      'pauillac',
+      'saint-julien',
+      'margaux',
+      'moulis-en-medoc',
+      'listrac-medoc',
+    ],
+  },
+  {
+    title: 'Bordeaux / Entre-Deux-Mers',
+    ids: [
+      'entre-deux-mers',
+      'entre-deux-mers-haut-benauge',
+      'cadillac',
+      'cotes-de-bordeaux-cadillac',
+      'loupiac',
+      'sainte-croix-du-mont',
+      'premieres-cotes-de-bordeaux',
+      'cotes-de-bordeaux-saint-macaire',
+      'graves-de-vayres',
+    ],
+  },
+]
+
 const defaultLayers: LayerState = {
   aocBoundaries: true,
   vineyardParcels: false,
@@ -46,24 +76,36 @@ export function AppShell() {
         INAO/data.gouv.fr AOC viticole parcel delimitation extract. Online data
         are informational; official plans remain with town halls or INAO.
       </div>
-      <aside className="region-legend" aria-label="Médoc appellation legend">
-        <h2>Bordeaux / Médoc</h2>
-        <div className="region-legend-list">
-          {appellations.map((appellation) => (
-            <div
-              className="region-legend-row"
-              key={appellation.id}
-              onMouseEnter={() => setLegendHoveredId(appellation.id)}
-              onMouseLeave={() => setLegendHoveredId(null)}
-            >
-              <span
-                className="region-legend-swatch"
-                style={{ backgroundColor: APPELLATION_COLORS[appellation.id] }}
-              />
-              <span>{appellation.name}</span>
+      <aside className="region-legend" aria-label="Bordeaux appellation legend">
+        {regionLegendGroups.map((group) => (
+          <section className="region-legend-group" key={group.title}>
+            <h2>{group.title}</h2>
+            <div className="region-legend-list">
+              {group.ids.map((id) => {
+                const appellation = appellations.find((candidate) => candidate.id === id)
+
+                if (!appellation) {
+                  return null
+                }
+
+                return (
+                  <div
+                    className="region-legend-row"
+                    key={appellation.id}
+                    onMouseEnter={() => setLegendHoveredId(appellation.id)}
+                    onMouseLeave={() => setLegendHoveredId(null)}
+                  >
+                    <span
+                      className="region-legend-swatch"
+                      style={{ backgroundColor: APPELLATION_COLORS[appellation.id] }}
+                    />
+                    <span>{appellation.name}</span>
+                  </div>
+                )
+              })}
             </div>
-          ))}
-        </div>
+          </section>
+        ))}
       </aside>
     </div>
   )

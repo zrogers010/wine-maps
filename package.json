@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "data:build-bordeaux-exclusive": "node scripts/build-exclusive-bordeaux-display.mjs",
+    "data:build-cadillac-dissolve-trial": "node scripts/build-cadillac-dissolve-trial.mjs",
     "data:build-exclusive": "node scripts/build-exclusive-medoc-display.mjs",
     "data:extract-bordeaux": "node scripts/extract-inao-bordeaux.mjs && npm run data:build-bordeaux-exclusive",
     "data:extract-medoc": "node scripts/extract-inao-medoc.mjs && npm run data:build-exclusive",

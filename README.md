@@ -1,8 +1,8 @@
 # CruTerrain
 
-CruTerrain is currently a map-first Médoc AOC/AOP prototype. The app is kept
+CruTerrain is currently a map-first Bordeaux AOC/AOP prototype. The app is kept
 deliberately simple for now: a white basemap with detailed AOC viticole
-boundaries and labels.
+boundaries, labels, and separate region legends.
 
 > Important: the current detailed boundary layer is an extract from the INAO
 > parcel-delimitation dataset on data.gouv.fr. INAO states the online data are
@@ -13,8 +13,13 @@ boundaries and labels.
 
 - React, TypeScript, and Vite frontend.
 - MapLibre GL JS map rendering with local GeoJSON and JSON metadata.
-- Eight Médoc appellations: Médoc, Haut-Médoc, Saint-Estèphe, Pauillac,
-  Saint-Julien, Margaux, Moulis-en-Médoc, and Listrac-Médoc.
+- Bordeaux region groups currently on the same map:
+  - Médoc / Left Bank: Médoc, Haut-Médoc, Saint-Estèphe, Pauillac,
+    Saint-Julien, Margaux, Moulis-en-Médoc, and Listrac-Médoc.
+  - Entre-Deux-Mers: Entre-deux-Mers, Entre-deux-Mers Haut-Benauge,
+    Cadillac, Côtes de Bordeaux Cadillac, Loupiac, Sainte-Croix-du-Mont,
+    Premières Côtes de Bordeaux, Côtes de Bordeaux-Saint-Macaire, and Graves
+    de Vayres.
 - Full-screen white map using a light land/sea basemap.
 - Detailed INAO/data.gouv.fr AOC viticole boundary extract for the eight Médoc
   appellations.
@@ -27,14 +32,15 @@ regions. See `docs/REGION_TEMPLATE.md`.
 
 Primary detailed boundary source:
 
-- `src/data/medoc-inao-aoc-2026.geojson` is generated from
+- `src/data/bordeaux-inao-aoc-2026.geojson` is generated from
   [Délimitation Parcellaire des AOC Viticoles de l'INAO](https://www.data.gouv.fr/datasets/delimitation-parcellaire-des-aoc-viticoles-de-linao/),
   resource `2026-05-05-delim-parcellaire-aoc-shp.zip`.
-- `public/data/medoc-inao-aoc-2026.geojson` is the runtime copy loaded by
-  MapLibre, so the large boundary file is not bundled into JavaScript.
+- `public/data/bordeaux-display-exclusive-2026.geojson` is the runtime display
+  layer loaded by MapLibre, so the large boundary file is not bundled into
+  JavaScript.
 - The national SHP is Lambert-93 (`EPSG:2154`); the app extract is transformed
   to WGS84 (`EPSG:4326`) for MapLibre.
-- Run `node scripts/extract-inao-medoc.mjs` after downloading/extracting the
+- Run `npm run data:extract-bordeaux` after downloading/extracting the
   source ZIP into `data/raw/inao-aoc-viticoles-2026-05-05/`.
 
 Other useful data sources:
@@ -92,12 +98,15 @@ src/
     MapView.tsx
   data/
     appellations.json
+    bordeaux-inao-aoc-2026.geojson
     medoc-inao-aoc-2026.geojson
     medoc-placeholder.geojson
   docs/
     REGION_TEMPLATE.md
   scripts/
+    build-exclusive-bordeaux-display.mjs
     build-exclusive-medoc-display.mjs
+    extract-inao-bordeaux.mjs
     extract-inao-medoc.mjs
   types/
     wine.ts

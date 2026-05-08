@@ -14,8 +14,11 @@ The first supported geography is:
 - Commune layer: INAO source commune / INSEE feature grouping
 - Producer points: curated notable château locations
 
-Saint-Émilion and other Right Bank areas should be added as separate Bordeaux
-region groups, not as part of the Médoc map.
+The second supported geography is Bordeaux / Entre-Deux-Mers on the same map,
+with its own top-right legend group and distinct top-left card metadata.
+
+Saint-Émilion and other Right Bank areas should be added as additional Bordeaux
+region groups, not as part of the Médoc or Entre-Deux-Mers legends.
 
 ## Visual Style
 
@@ -35,6 +38,8 @@ region groups, not as part of the Médoc map.
 - Hovering the legend shades the whole appellation and shows the region card.
 - Legend hover should not invent a commune; it is appellation-level context.
 - The top-left card should stay compact and geography-focused.
+- Each major geography gets its own top-right legend section while staying on
+  the same map.
 
 ## Top-Left Card Format
 
@@ -62,6 +67,7 @@ Each region group should have:
 - A local metadata JSON file for appellation study content.
 - Optional curated producer/château points.
 - Stable app-facing IDs, separate from source data IDs.
+- A distinct legend group title and ordering.
 
 Use official or clearly sourced boundary data where possible. If placeholder
 data is needed, mark it clearly and avoid fake precision.

@@ -29,7 +29,9 @@
   z-index: 2;
   top: 14px;
   right: 14px;
-  width: min(250px, calc(100vw - 28px));
+  width: min(310px, calc(100vw - 28px));
+  max-height: calc(100vh - 28px);
+  overflow: auto;
   border: 1px solid rgba(70, 52, 37, 0.24);
   border-radius: 4px;
   padding: 13px 14px 14px;
@@ -38,11 +40,17 @@
   box-shadow: 0 14px 40px rgba(66, 48, 33, 0.14);
 }
 
+.region-legend-group + .region-legend-group {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(70, 52, 37, 0.18);
+}
+
 .region-legend h2 {
   margin: 0 0 10px;
   color: #2a1a13;
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;

@@ -9,6 +9,15 @@ export const APPELLATION_COLORS: Record<string, string> = {
   margaux: '#2fca72',
   'moulis-en-medoc': '#f2b84b',
   'listrac-medoc': '#e46f55',
+  'entre-deux-mers': '#f7d95b',
+  'entre-deux-mers-haut-benauge': '#f0a53a',
+  cadillac: '#c17bdc',
+  'cotes-de-bordeaux-cadillac': '#a56bd6',
+  loupiac: '#ff9f43',
+  'sainte-croix-du-mont': '#ffcf5c',
+  'premieres-cotes-de-bordeaux': '#e879b7',
+  'cotes-de-bordeaux-saint-macaire': '#c9b458',
+  'graves-de-vayres': '#7cc7e8',
 }
 
 export const GRAPE_COLORS: Record<string, string> = {
@@ -76,22 +85,7 @@ export function appellationFillColorExpression(
   return [
     'match',
     ['get', 'id'],
-    'medoc',
-    APPELLATION_COLORS.medoc,
-    'haut-medoc',
-    APPELLATION_COLORS['haut-medoc'],
-    'saint-estephe',
-    APPELLATION_COLORS['saint-estephe'],
-    'pauillac',
-    APPELLATION_COLORS.pauillac,
-    'saint-julien',
-    APPELLATION_COLORS['saint-julien'],
-    'margaux',
-    APPELLATION_COLORS.margaux,
-    'moulis-en-medoc',
-    APPELLATION_COLORS['moulis-en-medoc'],
-    'listrac-medoc',
-    APPELLATION_COLORS['listrac-medoc'],
+    ...Object.entries(APPELLATION_COLORS).flatMap(([id, color]) => [id, color]),
     '#8c6f4f',
   ] as unknown as ExpressionSpecification
 }

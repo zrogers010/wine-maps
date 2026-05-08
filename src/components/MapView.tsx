@@ -37,8 +37,10 @@ interface MapViewProps {
 }
 
 const appellationSourceId = 'appellations'
+const cadillacHullSourceId = 'cadillac-hull'
 const labelSourceId = 'appellation-label-points'
 const chateauSourceId = 'chateaux'
+const cadillacHullLayerId = 'cadillac-hull-fill'
 const fillLayerId = 'appellation-fill'
 const hoverAppellationShadeLayerId = 'hover-appellation-shade'
 const hoverCommuneShadeLayerId = 'hover-commune-shade'
@@ -74,6 +76,8 @@ export function MapView({
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<Map | null>(null)
   const hoveredFeatureIdRef = useRef<SourceFeatureId | null>(null)
+  const hoveredRegionKeyRef = useRef<string | null>(null)
+  const hoverLeaveTimeoutRef = useRef<number | null>(null)
   const [isReady, setIsReady] = useState(false)
   const [hoveredRegion, setHoveredRegion] = useState<HoveredRegion | null>(null)
   const [chateauxWithCommune, setChateauxWithCommune] = useState<ChateauWithCommune[]>(chateaux)
@@ -110,17 +114,30 @@ export function MapView({
     )
 
     map.on('load', async () => {
-      const medocGeoJson = await loadMedocGeoJson()
+      const [bordeauxGeoJson, cadillacHullGeoJson] = await Promise.all([
+        loadBordeauxGeoJson('/data/bordeaux-display-exclusive-2026.geojson'),
+        loadBordeauxGeoJson('/data/bordeaux-display-cadillac-dissolve-trial-2026.geojson'),
+      ])
 
       if (cancelled) {
         return
       }
 
-      setChateauxWithCommune(attachCommuneToChateaux(chateaux, medocGeoJson))
+      setChateauxWithCommune(attachCommuneToChateaux(chateaux, bordeauxGeoJson))
 
       map.addSource(appellationSourceId, {
         type: 'geojson',
-        data: medocGeoJson,
+        data: bordeauxGeoJson,
+      } satisfies GeoJSONSourceSpecification)
+
+      map.addSource(cadillacHullSourceId, {
+        type: 'geojson',
+        data: {
+          ...cadillacHullGeoJson,
+          features: cadillacHullGeoJson.features.filter(
+            (feature) => feature.properties?.id === 'cadillac',
+          ),
+        },
       } satisfies GeoJSONSourceSpecification)
 
       map.addSource('vineyards-placeholder', {
@@ -135,7 +152,7 @@ export function MapView({
 
       map.addSource(labelSourceId, {
         type: 'geojson',
-        data: createLabelPoints(appellations, medocGeoJson),
+        data: createLabelPoints(appellations, bordeauxGeoJson),
       })
 
       map.addSource(chateauSourceId, {
@@ -167,6 +184,16 @@ export function MapView({
       })
 
       map.addLayer({
+        id: cadillacHullLayerId,
+        type: 'fill',
+        source: cadillacHullSourceId,
+        paint: {
+          'fill-color': appellationFillColorExpression(false),
+          'fill-opacity': ['interpolate', ['linear'], ['zoom'], 10.8, 0.64, 12.2, 0],
+        },
+      })
+
+      map.addLayer({
         id: fillLayerId,
         type: 'fill',
         source: appellationSourceId,
@@ -176,14 +203,37 @@ export function MapView({
             'interpolate',
             ['linear'],
             ['zoom'],
-            11,
+            10.8,
             [
               'case',
               ['boolean', ['feature-state', 'selected'], false],
               0.7,
               ['boolean', ['feature-state', 'hover'], false],
               0.8,
-              ['match', ['get', 'id'], ['medoc', 'haut-medoc'], 0.36, 0.64],
+              ['==', ['get', 'id'], 'cadillac'],
+              0,
+              [
+                'match',
+                ['get', 'id'],
+                ['medoc', 'haut-medoc', 'entre-deux-mers'],
+                0.36,
+                0.64,
+              ],
+            ],
+            12.2,
+            [
+              'case',
+              ['boolean', ['feature-state', 'selected'], false],
+              0.7,
+              ['boolean', ['feature-state', 'hover'], false],
+              0.8,
+              [
+                'match',
+                ['get', 'id'],
+                ['medoc', 'haut-medoc', 'entre-deux-mers'],
+                0.36,
+                0.64,
+              ],
             ],
             13.5,
             [
@@ -192,7 +242,13 @@ export function MapView({
               0.56,
               ['boolean', ['feature-state', 'hover'], false],
               0.62,
-              ['match', ['get', 'id'], ['medoc', 'haut-medoc'], 0.28, 0.48],
+              [
+                'match',
+                ['get', 'id'],
+                ['medoc', 'haut-medoc', 'entre-deux-mers'],
+                0.28,
+                0.48,
+              ],
             ],
           ],
         },
@@ -323,7 +379,7 @@ export function MapView({
       map.on('mouseleave', fillLayerId, handleMouseLeave)
       map.on('click', fillLayerId, handleClick)
 
-      map.fitBounds(getFeatureCollectionBounds(medocGeoJson), {
+      map.fitBounds(getFeatureCollectionBounds(bordeauxGeoJson), {
         padding: { top: 90, right: 70, bottom: 80, left: 70 },
         duration: 900,
       })
@@ -342,29 +398,41 @@ export function MapView({
         return
       }
 
-      map.getCanvas().style.cursor = 'pointer'
-
-      if (
-        hoveredFeatureIdRef.current !== null &&
-        hoveredFeatureIdRef.current !== sourceFeatureId
-      ) {
-        setFeatureHover(map, hoveredFeatureIdRef.current, false)
+      if (hoverLeaveTimeoutRef.current !== null) {
+        window.clearTimeout(hoverLeaveTimeoutRef.current)
+        hoverLeaveTimeoutRef.current = null
       }
 
-      hoveredFeatureIdRef.current = sourceFeatureId
-      setFeatureHover(map, sourceFeatureId, true)
-      setHoveredRegion(getHoveredRegion(feature?.properties, id))
+      map.getCanvas().style.cursor = 'pointer'
+
+      if (hoveredFeatureIdRef.current !== sourceFeatureId) {
+        if (hoveredFeatureIdRef.current !== null) {
+          setFeatureHover(map, hoveredFeatureIdRef.current, false)
+        }
+
+        hoveredFeatureIdRef.current = sourceFeatureId
+        setFeatureHover(map, sourceFeatureId, true)
+      }
+      const nextRegion = getHoveredRegion(feature?.properties, id)
+      const nextRegionKey = hoveredRegionKey(nextRegion)
+
+      if (hoveredRegionKeyRef.current !== nextRegionKey) {
+        hoveredRegionKeyRef.current = nextRegionKey
+        setHoveredRegion(nextRegion)
+      }
     }
 
     function handleMouseLeave() {
       map.getCanvas().style.cursor = ''
 
-      if (hoveredFeatureIdRef.current !== null) {
-        setFeatureHover(map, hoveredFeatureIdRef.current, false)
-        hoveredFeatureIdRef.current = null
+      if (hoverLeaveTimeoutRef.current !== null) {
+        window.clearTimeout(hoverLeaveTimeoutRef.current)
       }
 
-      setHoveredRegion(null)
+      hoverLeaveTimeoutRef.current = window.setTimeout(() => {
+        clearHoverState()
+        hoverLeaveTimeoutRef.current = null
+      }, 90)
     }
 
     function handleClick(event: MapLayerMouseEvent) {
@@ -377,8 +445,23 @@ export function MapView({
 
     return () => {
       cancelled = true
+      if (hoverLeaveTimeoutRef.current !== null) {
+        window.clearTimeout(hoverLeaveTimeoutRef.current)
+        hoverLeaveTimeoutRef.current = null
+      }
+      clearHoverState()
       map.remove()
       mapRef.current = null
+    }
+
+    function clearHoverState() {
+      if (hoveredFeatureIdRef.current !== null) {
+        setFeatureHover(map, hoveredFeatureIdRef.current, false)
+        hoveredFeatureIdRef.current = null
+      }
+
+      hoveredRegionKeyRef.current = null
+      setHoveredRegion(null)
     }
   }, [appellations, onSelectAppellation])
 
@@ -390,6 +473,7 @@ export function MapView({
     }
 
     setLayerVisibility(map, 'osm-raster', layers.roadsBasemap)
+    setLayerVisibility(map, cadillacHullLayerId, layers.aocBoundaries)
     setLayerVisibility(map, fillLayerId, layers.aocBoundaries)
     setLayerVisibility(map, hoverAppellationShadeLayerId, layers.aocBoundaries)
     setLayerVisibility(map, hoverCommuneShadeLayerId, layers.aocBoundaries)
@@ -400,6 +484,11 @@ export function MapView({
     setLayerVisibility(map, labelLayerId, layers.studyLabels || mode === 'Study')
     setLayerVisibility(map, chateauCircleLayerId, true)
     setLayerVisibility(map, chateauLabelLayerId, true)
+    map.setPaintProperty(
+      cadillacHullLayerId,
+      'fill-color',
+      appellationFillColorExpression(layers.grapeEmphasis),
+    )
     map.setPaintProperty(
       fillLayerId,
       'fill-color',
@@ -420,6 +509,12 @@ export function MapView({
         : ['==', ['get', 'id'], '__none__']
 
     map.setFilter(fillLayerId, filter)
+    map.setFilter(
+      cadillacHullLayerId,
+      filteredAppellationIds.includes('cadillac')
+        ? ['==', ['get', 'id'], 'cadillac']
+        : filterNone(),
+    )
     map.setFilter(
       hoverAppellationShadeLayerId,
       hoveredRegion
@@ -449,11 +544,11 @@ export function MapView({
   )
 }
 
-async function loadMedocGeoJson(): Promise<FeatureCollection> {
-  const response = await fetch('/data/medoc-display-exclusive-2026.geojson')
+async function loadBordeauxGeoJson(path: string): Promise<FeatureCollection> {
+  const response = await fetch(path)
 
   if (!response.ok) {
-    throw new Error(`Failed to load Médoc display GeoJSON: ${response.status}`)
+    throw new Error(`Failed to load Bordeaux display GeoJSON ${path}: ${response.status}`)
   }
 
   return (await response.json()) as FeatureCollection
@@ -468,6 +563,15 @@ const approximateCenters: Record<AppellationId, [number, number]> = {
   margaux: [-0.69, 45.0],
   'moulis-en-medoc': [-0.88, 45.07],
   'listrac-medoc': [-0.91, 45.14],
+  'entre-deux-mers': [-0.12, 44.8],
+  'entre-deux-mers-haut-benauge': [-0.18, 44.68],
+  cadillac: [-0.32, 44.64],
+  'cotes-de-bordeaux-cadillac': [-0.28, 44.7],
+  loupiac: [-0.29, 44.63],
+  'sainte-croix-du-mont': [-0.28, 44.6],
+  'premieres-cotes-de-bordeaux': [-0.33, 44.72],
+  'cotes-de-bordeaux-saint-macaire': [-0.23, 44.56],
+  'graves-de-vayres': [-0.32, 44.9],
 }
 
 function createLabelPoints(
@@ -530,6 +634,15 @@ const curatedLabelCenters: Partial<Record<AppellationId, [number, number]>> = {
   margaux: [-0.665, 45.025],
   'moulis-en-medoc': [-0.777, 45.045],
   'listrac-medoc': [-0.795, 45.095],
+  'entre-deux-mers': [-0.14, 44.81],
+  'entre-deux-mers-haut-benauge': [-0.21, 44.69],
+  cadillac: [-0.32, 44.64],
+  'cotes-de-bordeaux-cadillac': [-0.27, 44.72],
+  loupiac: [-0.3, 44.63],
+  'sainte-croix-du-mont': [-0.28, 44.6],
+  'premieres-cotes-de-bordeaux': [-0.35, 44.73],
+  'cotes-de-bordeaux-saint-macaire': [-0.23, 44.56],
+  'graves-de-vayres': [-0.33, 44.9],
 }
 
 function createChateauPoints(): FeatureCollection {
@@ -582,10 +695,19 @@ function appellationHoverPriority(id: AppellationId | null) {
     case 'margaux':
     case 'moulis-en-medoc':
     case 'listrac-medoc':
+    case 'entre-deux-mers-haut-benauge':
+    case 'cadillac':
+    case 'loupiac':
+    case 'sainte-croix-du-mont':
       return 3
     case 'haut-medoc':
+    case 'premieres-cotes-de-bordeaux':
+    case 'cotes-de-bordeaux-cadillac':
+    case 'cotes-de-bordeaux-saint-macaire':
+    case 'graves-de-vayres':
       return 2
     case 'medoc':
+    case 'entre-deux-mers':
       return 1
     default:
       return 0
@@ -610,6 +732,10 @@ function getHoveredRegion(
       typeof properties?.commune === 'string' ? properties.commune : undefined,
     insee: typeof properties?.insee === 'string' ? properties.insee : undefined,
   }
+}
+
+function hoveredRegionKey(region: HoveredRegion) {
+  return [region.id, region.insee ?? region.commune ?? ''].join(':')
 }
 
 function attachCommuneToChateaux(

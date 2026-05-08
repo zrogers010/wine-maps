@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { booleanIntersects, flatten } from '@turf/turf'
+import { bbox, booleanIntersects, flatten } from '@turf/turf'
 
 const sourcePath = 'public/data/bordeaux-inao-aoc-2026.geojson'
 const outputPath = 'public/data/bordeaux-display-exclusive-2026.geojson'
@@ -29,6 +29,7 @@ const source = JSON.parse(await fs.readFile(sourcePath, 'utf-8'))
 const flattenedFeatures = flatten(source).features.map((feature, index) => ({
   ...feature,
   id: feature.id ?? `${feature.properties?.id ?? 'aoc'}-${index}`,
+  bbox: bbox(feature),
 }))
 const outputFeatures = []
 
@@ -37,7 +38,11 @@ for (const feature of flattenedFeatures) {
   const isCoveredByHigherPriority = flattenedFeatures.some((candidate) => {
     const candidatePriority = priorityById.get(candidate.properties?.id) ?? 0
 
-    return candidatePriority > priority && booleanIntersects(feature, candidate)
+    return (
+      candidatePriority > priority &&
+      bboxesIntersect(feature.bbox, candidate.bbox) &&
+      booleanIntersects(feature, candidate)
+    )
   })
 
   if (isCoveredByHigherPriority) {
@@ -72,3 +77,12 @@ await fs.mkdir(path.dirname(outputPath), { recursive: true })
 await fs.writeFile(outputPath, `${JSON.stringify(collection)}\n`)
 
 console.log(`Wrote ${outputFeatures.length} exclusive display features to ${path.resolve(outputPath)}`)
+
+function bboxesIntersect(left, right) {
+  return (
+    left[0] <= right[2] &&
+    left[2] >= right[0] &&
+    left[1] <= right[3] &&
+    left[3] >= right[1]
+  )
+}
