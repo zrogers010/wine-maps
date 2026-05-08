@@ -1,0 +1,170 @@
+[
+  {
+    "id": "chateau-lafite-rothschild",
+    "name": "Château Lafite Rothschild",
+    "appellationId": "pauillac",
+    "classificationNote": "1855 First Growth",
+    "coordinates": [-0.7732141, 45.2248191]
+  },
+  {
+    "id": "chateau-latour",
+    "name": "Château Latour",
+    "appellationId": "pauillac",
+    "classificationNote": "1855 First Growth",
+    "coordinates": [-0.7445573, 45.1758564]
+  },
+  {
+    "id": "chateau-mouton-rothschild",
+    "name": "Château Mouton Rothschild",
+    "appellationId": "pauillac",
+    "classificationNote": "1855 First Growth",
+    "coordinates": [-0.7690274, 45.2149699]
+  },
+  {
+    "id": "chateau-pichon-baron",
+    "name": "Château Pichon Baron",
+    "appellationId": "pauillac",
+    "classificationNote": "1855 Second Growth",
+    "coordinates": [-0.7524218, 45.1761978]
+  },
+  {
+    "id": "chateau-lynch-bages",
+    "name": "Château Lynch-Bages",
+    "appellationId": "pauillac",
+    "classificationNote": "1855 Fifth Growth",
+    "coordinates": [-0.7545445, 45.191382]
+  },
+  {
+    "id": "chateau-cos-destournel",
+    "name": "Château Cos d'Estournel",
+    "appellationId": "saint-estephe",
+    "classificationNote": "1855 Second Growth",
+    "coordinates": [-0.7757641, 45.2307746]
+  },
+  {
+    "id": "chateau-montrose",
+    "name": "Château Montrose",
+    "appellationId": "saint-estephe",
+    "classificationNote": "1855 Second Growth",
+    "coordinates": [-0.7622628, 45.2468877]
+  },
+  {
+    "id": "chateau-calon-segur",
+    "name": "Château Calon-Ségur",
+    "appellationId": "saint-estephe",
+    "classificationNote": "1855 Third Growth",
+    "coordinates": [-0.7785773, 45.2667097]
+  },
+  {
+    "id": "chateau-leoville-las-cases",
+    "name": "Château Léoville Las Cases",
+    "appellationId": "saint-julien",
+    "classificationNote": "1855 Second Growth",
+    "coordinates": [-0.74041, 45.16371]
+  },
+  {
+    "id": "chateau-ducru-beaucaillou",
+    "name": "Château Ducru-Beaucaillou",
+    "appellationId": "saint-julien",
+    "classificationNote": "1855 Second Growth",
+    "coordinates": [-0.7310231, 45.1490826]
+  },
+  {
+    "id": "chateau-beychevelle",
+    "name": "Château Beychevelle",
+    "appellationId": "saint-julien",
+    "classificationNote": "1855 Fourth Growth",
+    "coordinates": [-0.7349611, 45.1449549]
+  },
+  {
+    "id": "chateau-gruaud-larose",
+    "name": "Château Gruaud Larose",
+    "appellationId": "saint-julien",
+    "classificationNote": "1855 Second Growth",
+    "coordinates": [-0.750964, 45.1445308]
+  },
+  {
+    "id": "chateau-margaux",
+    "name": "Château Margaux",
+    "appellationId": "margaux",
+    "classificationNote": "1855 First Growth",
+    "coordinates": [-0.6688079, 45.0444363]
+  },
+  {
+    "id": "chateau-palmer",
+    "name": "Château Palmer",
+    "appellationId": "margaux",
+    "classificationNote": "1855 Third Growth",
+    "coordinates": [-0.6692824, 45.036693]
+  },
+  {
+    "id": "chateau-rauzan-segla",
+    "name": "Château Rauzan-Ségla",
+    "appellationId": "margaux",
+    "classificationNote": "1855 Second Growth",
+    "coordinates": [-0.6755056, 45.035948]
+  },
+  {
+    "id": "chateau-giscours",
+    "name": "Château Giscours",
+    "appellationId": "margaux",
+    "classificationNote": "1855 Third Growth",
+    "coordinates": [-0.6464342, 45.008894]
+  },
+  {
+    "id": "chateau-chasse-spleen",
+    "name": "Château Chasse-Spleen",
+    "appellationId": "moulis-en-medoc",
+    "classificationNote": "Cru Bourgeois Exceptionnel context",
+    "coordinates": [-0.7406156, 45.0748825]
+  },
+  {
+    "id": "chateau-poujeaux",
+    "name": "Château Poujeaux",
+    "appellationId": "moulis-en-medoc",
+    "classificationNote": "Cru Bourgeois Exceptionnel context",
+    "coordinates": [-0.7415316, 45.0792717]
+  },
+  {
+    "id": "chateau-fourcas-hosten",
+    "name": "Château Fourcas Hosten",
+    "appellationId": "listrac-medoc",
+    "classificationNote": "Cru Bourgeois context",
+    "coordinates": [-0.7890873, 45.0753675]
+  },
+  {
+    "id": "chateau-clarke",
+    "name": "Château Clarke",
+    "appellationId": "listrac-medoc",
+    "classificationNote": "Listrac-Médoc estate",
+    "coordinates": [-0.774396, 45.0663983]
+  },
+  {
+    "id": "chateau-la-tour-carnet",
+    "name": "Château La Tour Carnet",
+    "appellationId": "haut-medoc",
+    "classificationNote": "1855 Fourth Growth",
+    "coordinates": [-0.7938327, 45.14701]
+  },
+  {
+    "id": "chateau-sociando-mallet",
+    "name": "Château Sociando-Mallet",
+    "appellationId": "haut-medoc",
+    "classificationNote": "Haut-Médoc estate",
+    "coordinates": [-0.7768475, 45.2856565]
+  },
+  {
+    "id": "chateau-potensac",
+    "name": "Château Potensac",
+    "appellationId": "medoc",
+    "classificationNote": "Médoc estate",
+    "coordinates": [-0.836778, 45.307286]
+  },
+  {
+    "id": "chateau-greysac",
+    "name": "Château Greysac",
+    "appellationId": "medoc",
+    "classificationNote": "Médoc estate",
+    "coordinates": [-0.8660917, 45.3732979]
+  }
+]

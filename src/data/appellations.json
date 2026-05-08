@@ -1,0 +1,297 @@
+[
+  {
+    "id": "medoc",
+    "name": "Médoc",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Médoc",
+    "bank": "Left Bank",
+    "aocType": "District appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Merlot", "Cabernet Sauvignon"],
+    "importantGrapes": ["Cabernet Franc", "Petit Verdot", "Malbec", "Carmenère"],
+    "authorizedGrapesNote": "Use the current INAO cahier des charges for official grape authorization and blend rules; this app separates those rules from common market shorthand.",
+    "officialRulesNote": "Médoc AOC covers red wines from the northern Médoc district. Official production rules should be checked against INAO documents before publication-grade use.",
+    "commonPracticeNote": "Often Merlot-leaning relative to the most famous gravel-croupe communes, though Cabernet Sauvignon remains important across many blends.",
+    "classificationContext": "Less tied to the 1855 classified-growth narrative than Pauillac, Saint-Julien, Margaux, and Saint-Estèphe, but important for understanding the northern Médoc as a whole.",
+    "terroir": {
+      "keySoils": ["gravel", "clay", "limestone in places", "sand"],
+      "climate": ["maritime", "Gironde influence", "Atlantic moderation"],
+      "learningPoint": "The broader northern Médoc has a mix of gravel and heavier soils, so blends can vary from Cabernet-driven structure to rounder Merlot expression."
+    },
+    "tastingProfile": {
+      "fruit": ["blackcurrant", "plum", "black cherry"],
+      "nonFruit": ["cedar", "earth", "tobacco"],
+      "structure": ["medium-plus tannin", "medium to medium-plus acidity", "medium to full body"],
+      "ageingPotential": "moderate to high, producer-dependent"
+    },
+    "examNotes": [
+      "Left Bank district appellation north of Haut-Médoc.",
+      "Produces dry red Bordeaux blends.",
+      "Useful contrast with Haut-Médoc: generally broader and often less classification-focused."
+    ],
+    "neighborComparisons": {
+      "haut-medoc": "Haut-Médoc is the southern district appellation and includes several famous commune appellations.",
+      "saint-estephe": "Saint-Estèphe is a more tightly defined commune appellation with a stronger fine-wine identity."
+    }
+  },
+  {
+    "id": "haut-medoc",
+    "name": "Haut-Médoc",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Médoc",
+    "bank": "Left Bank",
+    "aocType": "District appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Cabernet Sauvignon", "Merlot"],
+    "importantGrapes": ["Cabernet Franc", "Petit Verdot", "Malbec", "Carmenère"],
+    "authorizedGrapesNote": "Official grape varieties and production rules belong in the INAO source layer; common study language should not be treated as a legal rule.",
+    "officialRulesNote": "Haut-Médoc AOC is a Left Bank district appellation for red Bordeaux. Some commune appellations sit within the broader Haut-Médoc geography.",
+    "commonPracticeNote": "Commonly Cabernet Sauvignon-led on better gravel sites, with Merlot and other Bordeaux varieties contributing fruit, mid-palate, perfume, and structure.",
+    "classificationContext": "Includes several classified-growth estates outside the most famous commune names, making it important in 1855 Classification study.",
+    "terroir": {
+      "keySoils": ["gravel croupes", "clay-gravel", "sand", "limestone in places"],
+      "climate": ["maritime", "Gironde moderation", "Atlantic rainfall pressure"],
+      "learningPoint": "Gravel ridges favor Cabernet Sauvignon by improving drainage and heat retention, while heavier soils can support Merlot."
+    },
+    "tastingProfile": {
+      "fruit": ["blackcurrant", "black plum", "redcurrant"],
+      "nonFruit": ["cedar", "graphite", "tobacco", "earth"],
+      "structure": ["medium-plus to high tannin", "medium-plus acidity", "medium-plus body"],
+      "ageingPotential": "moderate to high"
+    },
+    "examNotes": [
+      "Major Left Bank district appellation.",
+      "Red wines only in classic Bordeaux blend style.",
+      "Know it as a broader category around and between the named commune appellations."
+    ],
+    "neighborComparisons": {
+      "medoc": "Haut-Médoc is generally the more classification-heavy southern district.",
+      "margaux": "Margaux is a commune appellation often framed as more perfumed and elegant.",
+      "saint-julien": "Saint-Julien is smaller and known for polished, balanced classified-growth wines."
+    }
+  },
+  {
+    "id": "saint-estephe",
+    "name": "Saint-Estèphe",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Médoc",
+    "bank": "Left Bank",
+    "aocType": "Commune appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Cabernet Sauvignon"],
+    "importantGrapes": ["Merlot", "Cabernet Franc", "Petit Verdot"],
+    "authorizedGrapesNote": "Separate official AOC authorization from the common statement that wines are usually Cabernet Sauvignon-dominant blends.",
+    "officialRulesNote": "Saint-Estèphe AOC is a commune appellation for red Bordeaux. Exact authorized varieties and production constraints should be sourced from INAO.",
+    "commonPracticeNote": "Often Cabernet Sauvignon-led, with Merlot important on cooler or clay-influenced soils.",
+    "classificationContext": "Home to 1855 classified growths and often taught with emphasis on structure and longevity.",
+    "terroir": {
+      "keySoils": ["gravel", "clay", "limestone subsoils in places"],
+      "climate": ["maritime", "Gironde influence", "cooling Atlantic effect"],
+      "learningPoint": "More clay influence than some neighboring communes can contribute firmness, power, and Merlot suitability."
+    },
+    "tastingProfile": {
+      "fruit": ["blackcurrant", "black plum", "black cherry"],
+      "nonFruit": ["cedar", "graphite", "earth", "tobacco"],
+      "structure": ["high tannin", "medium-plus acidity", "full body"],
+      "ageingPotential": "high"
+    },
+    "examNotes": [
+      "Northernmost of the four famous Médoc commune appellations in this study set.",
+      "Often described as firm, structured, and ageworthy.",
+      "Useful comparison point for Pauillac and Saint-Julien."
+    ],
+    "neighborComparisons": {
+      "pauillac": "Pauillac is often more associated with cassis, graphite, and first-growth prestige.",
+      "saint-julien": "Saint-Julien is often described as more polished and harmonious.",
+      "medoc": "Médoc AOC is broader and less commune-specific."
+    }
+  },
+  {
+    "id": "pauillac",
+    "name": "Pauillac",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Médoc",
+    "bank": "Left Bank",
+    "aocType": "Commune appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Cabernet Sauvignon"],
+    "importantGrapes": ["Merlot", "Cabernet Franc", "Petit Verdot"],
+    "authorizedGrapesNote": "Separate official AOC authorization from common real-world practice.",
+    "officialRulesNote": "Pauillac AOC is a commune appellation for red Bordeaux. Use INAO documents for exact legal rules before publishing regulatory claims.",
+    "commonPracticeNote": "Commonly Cabernet Sauvignon-dominant, with Merlot, Cabernet Franc, Petit Verdot and other permitted Bordeaux varieties potentially involved depending on estate and vintage.",
+    "classificationContext": "Central to the 1855 Classification, including three First Growths: Lafite Rothschild, Latour, and Mouton Rothschild.",
+    "terroir": {
+      "keySoils": ["gravel", "sand", "clay in some areas"],
+      "climate": ["maritime", "Gironde influence"],
+      "learningPoint": "Well-drained gravel helps Cabernet Sauvignon ripen and contributes to structure."
+    },
+    "tastingProfile": {
+      "fruit": ["blackcurrant", "black cherry"],
+      "nonFruit": ["cedar", "graphite", "tobacco"],
+      "structure": ["high tannin", "medium-plus to high acidity", "medium-plus to full body"],
+      "ageingPotential": "high"
+    },
+    "examNotes": [
+      "Major Left Bank commune appellation.",
+      "Associated with Cabernet Sauvignon-dominant blends.",
+      "Important in the 1855 Classification context."
+    ],
+    "neighborComparisons": {
+      "saint-estephe": "Often firmer and more austere, with more clay influence.",
+      "saint-julien": "Often more polished and balanced.",
+      "margaux": "Often more perfumed and elegant."
+    }
+  },
+  {
+    "id": "saint-julien",
+    "name": "Saint-Julien",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Médoc",
+    "bank": "Left Bank",
+    "aocType": "Commune appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Cabernet Sauvignon"],
+    "importantGrapes": ["Merlot", "Cabernet Franc", "Petit Verdot"],
+    "authorizedGrapesNote": "Treat grape authorization as an official-rule question and blend dominance as an observation about typical wines.",
+    "officialRulesNote": "Saint-Julien AOC is a commune appellation for red Bordeaux. Legal production details should be sourced from INAO.",
+    "commonPracticeNote": "Typically Cabernet Sauvignon-dominant, often praised for balance between power, finesse, fruit, and structure.",
+    "classificationContext": "Small appellation with a high concentration of 1855 classified growths.",
+    "terroir": {
+      "keySoils": ["deep gravel", "sand", "clay-gravel"],
+      "climate": ["maritime", "Gironde moderation"],
+      "learningPoint": "Consistent gravelly sites help explain Saint-Julien's reputation for complete, balanced Left Bank wines."
+    },
+    "tastingProfile": {
+      "fruit": ["blackcurrant", "black cherry", "redcurrant"],
+      "nonFruit": ["cedar", "graphite", "violet", "tobacco"],
+      "structure": ["high tannin", "medium-plus acidity", "medium-plus to full body"],
+      "ageingPotential": "high"
+    },
+    "examNotes": [
+      "Commune appellation between Pauillac and Margaux.",
+      "Often used as the textbook example of balance in the Médoc.",
+      "High classified-growth density despite its small size."
+    ],
+    "neighborComparisons": {
+      "pauillac": "Pauillac is often more powerful and graphite-driven.",
+      "margaux": "Margaux is often more aromatic and silk-textured.",
+      "saint-estephe": "Saint-Estèphe is often firmer and more robust."
+    }
+  },
+  {
+    "id": "margaux",
+    "name": "Margaux",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Médoc",
+    "bank": "Left Bank",
+    "aocType": "Commune appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Cabernet Sauvignon"],
+    "importantGrapes": ["Merlot", "Cabernet Franc", "Petit Verdot"],
+    "authorizedGrapesNote": "Do not reduce Margaux to a single grape; it is a Bordeaux blend appellation with Cabernet Sauvignon commonly leading top wines.",
+    "officialRulesNote": "Margaux AOC is a commune appellation for red Bordeaux. Exact legal rules should be tied to INAO source data.",
+    "commonPracticeNote": "Often Cabernet Sauvignon-dominant in leading wines, with Merlot and other Bordeaux varieties shaping texture and aroma.",
+    "classificationContext": "Home to Château Margaux, a First Growth, plus many other classified estates.",
+    "terroir": {
+      "keySoils": ["fine gravel", "sand", "clay-limestone in places"],
+      "climate": ["maritime", "Gironde influence", "slightly varied commune mesoclimates"],
+      "learningPoint": "Margaux's best gravel sites support Cabernet Sauvignon while varied soils can add aromatic nuance and supple texture."
+    },
+    "tastingProfile": {
+      "fruit": ["blackcurrant", "red cherry", "plum"],
+      "nonFruit": ["violet", "cedar", "graphite", "sweet spice"],
+      "structure": ["medium-plus to high tannin", "medium-plus acidity", "medium-plus body"],
+      "ageingPotential": "high"
+    },
+    "examNotes": [
+      "Southernmost of the four famous Médoc commune appellations in this MVP.",
+      "Often described as perfumed, elegant, and refined.",
+      "Important 1855 Classification context."
+    ],
+    "neighborComparisons": {
+      "saint-julien": "Saint-Julien is often more compact and balanced.",
+      "pauillac": "Pauillac is often more powerful, tannic, and graphite-led.",
+      "moulis-en-medoc": "Moulis is inland and generally less classification-centered."
+    }
+  },
+  {
+    "id": "moulis-en-medoc",
+    "name": "Moulis-en-Médoc",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Médoc",
+    "bank": "Left Bank",
+    "aocType": "Commune appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Merlot", "Cabernet Sauvignon"],
+    "importantGrapes": ["Cabernet Franc", "Petit Verdot"],
+    "authorizedGrapesNote": "Use INAO for official authorization; common blends may lean Merlot or Cabernet Sauvignon depending on site and producer.",
+    "officialRulesNote": "Moulis-en-Médoc AOC is an inland commune appellation for red Bordeaux.",
+    "commonPracticeNote": "Often blends Merlot's roundness with Cabernet Sauvignon structure; style varies by gravel versus clay-limestone sites.",
+    "classificationContext": "No 1855 classified growths, but the appellation has respected Cru Bourgeois and estate-level study relevance.",
+    "terroir": {
+      "keySoils": ["gravel", "clay-limestone", "sand"],
+      "climate": ["maritime", "less directly river-moderated than riverfront communes"],
+      "learningPoint": "Inland position and mixed soils make Moulis useful for studying how Médoc style shifts away from the most famous gravel croupes."
+    },
+    "tastingProfile": {
+      "fruit": ["black plum", "blackcurrant", "red cherry"],
+      "nonFruit": ["cedar", "earth", "spice"],
+      "structure": ["medium-plus tannin", "medium acidity", "medium to medium-plus body"],
+      "ageingPotential": "moderate to high"
+    },
+    "examNotes": [
+      "One of the inland Médoc commune appellations.",
+      "Often less globally famous than Pauillac or Margaux but important for regional completeness.",
+      "Remember it alongside Listrac-Médoc."
+    ],
+    "neighborComparisons": {
+      "listrac-medoc": "Listrac is often presented as firmer and more rustic.",
+      "margaux": "Margaux is generally more associated with perfume, finesse, and classified growths.",
+      "haut-medoc": "Haut-Médoc is the broader surrounding district category."
+    }
+  },
+  {
+    "id": "listrac-medoc",
+    "name": "Listrac-Médoc",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Médoc",
+    "bank": "Left Bank",
+    "aocType": "Commune appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Merlot", "Cabernet Sauvignon"],
+    "importantGrapes": ["Cabernet Franc", "Petit Verdot"],
+    "authorizedGrapesNote": "Official AOC authorization must be sourced separately from typical blend descriptions.",
+    "officialRulesNote": "Listrac-Médoc AOC is an inland commune appellation for red Bordeaux.",
+    "commonPracticeNote": "Often blends Merlot and Cabernet Sauvignon, with a reputation for firmer, more structured wines in some examples.",
+    "classificationContext": "No 1855 classified growths; often studied through Cru Bourgeois and broader Médoc context.",
+    "terroir": {
+      "keySoils": ["clay-limestone", "gravel", "sand"],
+      "climate": ["maritime", "inland Médoc position", "Atlantic rainfall pressure"],
+      "learningPoint": "Heavier and mixed soils can support Merlot and contribute to a firmer, less overtly polished profile than some riverfront communes."
+    },
+    "tastingProfile": {
+      "fruit": ["black plum", "blackcurrant", "red plum"],
+      "nonFruit": ["earth", "cedar", "dried herbs"],
+      "structure": ["medium-plus to high tannin", "medium acidity", "medium-plus body"],
+      "ageingPotential": "moderate to high"
+    },
+    "examNotes": [
+      "Inland Médoc commune appellation.",
+      "Often studied with Moulis-en-Médoc.",
+      "Useful reminder that not all Médoc commune appellations are 1855-classified-growth centers."
+    ],
+    "neighborComparisons": {
+      "moulis-en-medoc": "Moulis is often a little rounder depending on producer and site.",
+      "saint-julien": "Saint-Julien is generally more polished and classification-focused.",
+      "haut-medoc": "Haut-Médoc provides the wider district context."
+    }
+  }
+]

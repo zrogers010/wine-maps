@@ -1,0 +1,232 @@
+{
+  "type": "FeatureCollection",
+  "metadata": {
+    "name": "Médoc AOC placeholder boundaries",
+    "placeholder": true,
+    "dataStatus": "Development-only sketch polygons. Do not use for legal, vineyard, parcel, or publication-grade boundary claims.",
+    "replacementSources": [
+      "INAO / data.gouv.fr AOC-AOP boundary data",
+      "INAO Délimitation Parcellaire des AOC Viticoles",
+      "OpenStreetMap landuse=vineyard polygons"
+    ]
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "medoc",
+      "properties": {
+        "id": "medoc",
+        "name": "Médoc",
+        "aocType": "District appellation",
+        "subregion": "Médoc",
+        "bank": "Left Bank",
+        "primaryStyle": "Dry red",
+        "dominantGrape": "Merlot",
+        "placeholder": true,
+        "dataStatus": "Dev placeholder, not official boundary data"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-0.98, 45.55],
+          [-0.71, 45.56],
+          [-0.67, 45.34],
+          [-0.80, 45.29],
+          [-0.98, 45.32],
+          [-0.98, 45.55]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "haut-medoc",
+      "properties": {
+        "id": "haut-medoc",
+        "name": "Haut-Médoc",
+        "aocType": "District appellation",
+        "subregion": "Médoc",
+        "bank": "Left Bank",
+        "primaryStyle": "Dry red",
+        "dominantGrape": "Cabernet Sauvignon",
+        "placeholder": true,
+        "dataStatus": "Dev placeholder, not official boundary data"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-0.98, 45.28],
+          [-0.86, 45.25],
+          [-0.83, 45.16],
+          [-0.96, 45.18],
+          [-1.00, 45.13],
+          [-0.96, 45.04],
+          [-0.82, 44.97],
+          [-0.70, 44.93],
+          [-0.58, 44.97],
+          [-0.61, 45.08],
+          [-0.63, 45.16],
+          [-0.65, 45.25],
+          [-0.67, 45.34],
+          [-0.80, 45.29],
+          [-0.98, 45.28]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "saint-estephe",
+      "properties": {
+        "id": "saint-estephe",
+        "name": "Saint-Estèphe",
+        "aocType": "Commune appellation",
+        "subregion": "Médoc",
+        "bank": "Left Bank",
+        "primaryStyle": "Dry red",
+        "dominantGrape": "Cabernet Sauvignon",
+        "placeholder": true,
+        "dataStatus": "Dev placeholder, not official boundary data"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-0.82, 45.30],
+          [-0.68, 45.34],
+          [-0.65, 45.25],
+          [-0.77, 45.22],
+          [-0.86, 45.25],
+          [-0.82, 45.30]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "pauillac",
+      "properties": {
+        "id": "pauillac",
+        "name": "Pauillac",
+        "aocType": "Commune appellation",
+        "subregion": "Médoc",
+        "bank": "Left Bank",
+        "primaryStyle": "Dry red",
+        "dominantGrape": "Cabernet Sauvignon",
+        "placeholder": true,
+        "dataStatus": "Dev placeholder, not official boundary data"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-0.77, 45.22],
+          [-0.65, 45.25],
+          [-0.63, 45.16],
+          [-0.73, 45.13],
+          [-0.83, 45.16],
+          [-0.77, 45.22]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "saint-julien",
+      "properties": {
+        "id": "saint-julien",
+        "name": "Saint-Julien",
+        "aocType": "Commune appellation",
+        "subregion": "Médoc",
+        "bank": "Left Bank",
+        "primaryStyle": "Dry red",
+        "dominantGrape": "Cabernet Sauvignon",
+        "placeholder": true,
+        "dataStatus": "Dev placeholder, not official boundary data"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-0.75, 45.13],
+          [-0.63, 45.16],
+          [-0.61, 45.08],
+          [-0.71, 45.05],
+          [-0.81, 45.08],
+          [-0.75, 45.13]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "listrac-medoc",
+      "properties": {
+        "id": "listrac-medoc",
+        "name": "Listrac-Médoc",
+        "aocType": "Commune appellation",
+        "subregion": "Médoc",
+        "bank": "Left Bank",
+        "primaryStyle": "Dry red",
+        "dominantGrape": "Merlot",
+        "placeholder": true,
+        "dataStatus": "Dev placeholder, not official boundary data"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-0.96, 45.18],
+          [-0.84, 45.19],
+          [-0.81, 45.12],
+          [-0.91, 45.10],
+          [-1.00, 45.13],
+          [-0.96, 45.18]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "moulis-en-medoc",
+      "properties": {
+        "id": "moulis-en-medoc",
+        "name": "Moulis-en-Médoc",
+        "aocType": "Commune appellation",
+        "subregion": "Médoc",
+        "bank": "Left Bank",
+        "primaryStyle": "Dry red",
+        "dominantGrape": "Merlot",
+        "placeholder": true,
+        "dataStatus": "Dev placeholder, not official boundary data"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-0.91, 45.10],
+          [-0.81, 45.12],
+          [-0.79, 45.03],
+          [-0.89, 45.00],
+          [-0.96, 45.04],
+          [-0.91, 45.10]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "margaux",
+      "properties": {
+        "id": "margaux",
+        "name": "Margaux",
+        "aocType": "Commune appellation",
+        "subregion": "Médoc",
+        "bank": "Left Bank",
+        "primaryStyle": "Dry red",
+        "dominantGrape": "Cabernet Sauvignon",
+        "placeholder": true,
+        "dataStatus": "Dev placeholder, not official boundary data"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-0.75, 45.05],
+          [-0.61, 45.08],
+          [-0.58, 44.97],
+          [-0.70, 44.93],
+          [-0.82, 44.97],
+          [-0.75, 45.05]
+        ]]
+      }
+    }
+  ]
+}

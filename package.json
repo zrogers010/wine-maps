@@ -1,0 +1,42 @@
+{
+  "name": "wine-maps",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "data:build-bordeaux-exclusive": "node scripts/build-exclusive-bordeaux-display.mjs",
+    "data:build-exclusive": "node scripts/build-exclusive-medoc-display.mjs",
+    "data:extract-bordeaux": "node scripts/extract-inao-bordeaux.mjs && npm run data:build-bordeaux-exclusive",
+    "data:extract-medoc": "node scripts/extract-inao-medoc.mjs && npm run data:build-exclusive",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@turf/turf": "^7.3.5",
+    "d3": "^7.9.0",
+    "maplibre-gl": "^5.24.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/d3": "^7.4.3",
+    "@types/geojson": "^7946.0.16",
+    "@types/node": "^24.12.2",
+    "@types/proj4": "^2.5.6",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^10.2.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.5.0",
+    "proj4": "^2.20.8",
+    "shapefile": "^0.6.6",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.58.2",
+    "vite": "^8.0.10"
+  }
+}
