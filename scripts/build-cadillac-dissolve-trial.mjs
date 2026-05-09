@@ -54,12 +54,17 @@ const priorityById = new Map([
   ['loupiac', 3],
   ['sainte-croix-du-mont', 3],
 ])
+const minimumHullFeatureAreaShareById = new Map([
+  ['pauillac', 0.02],
+  ['saint-julien', 0.02],
+])
 
 const source = JSON.parse(await fs.readFile(sourcePath, 'utf-8'))
 const otherFeatures = source.features.filter(
   (feature) => !targetIds.includes(feature.properties?.id),
 )
 const trialFeatures = []
+let omittedSatelliteFeatureCount = 0
 
 for (const targetId of targetIds) {
   const targetFeatures = source.features.filter(
@@ -70,8 +75,10 @@ for (const targetId of targetIds) {
     throw new Error(`No features found for ${targetId}`)
   }
 
+  const hullSourceFeatures = filterSatelliteFeaturesForHull(targetId, targetFeatures)
+  omittedSatelliteFeatureCount += targetFeatures.length - hullSourceFeatures.length
   const hullPoints = featureCollection(
-    targetFeatures.flatMap((feature) => coordAll(feature).map((coordinate) => point(coordinate))),
+    hullSourceFeatures.flatMap((feature) => coordAll(feature).map((coordinate) => point(coordinate))),
   )
   const outerHull =
     concave(hullPoints, {
@@ -93,6 +100,7 @@ for (const targetId of targetIds) {
       concaveMaxEdgeKilometers,
       hullPointCount: hullPoints.features.length,
       sourceFeatureCount: targetFeatures.length,
+      hullSourceFeatureCount: hullSourceFeatures.length,
     },
     geometry: removeInteriorRings(outerHull.geometry),
   })
@@ -113,6 +121,7 @@ const collection = {
     hullTargetIds: targetIds,
     overlapCutCount,
     overlapFallbackCount,
+    omittedSatelliteFeatureCount,
   },
   features: [...otherFeatures, ...displayHullFeatures],
 }
@@ -124,6 +133,22 @@ console.log(`Wrote ${collection.features.length} features to ${path.resolve(outp
 console.log(`Built ${trialFeatures.length} filled concave hulls using maxEdge=${concaveMaxEdgeKilometers}km`)
 console.log(`Cut overlaps from ${overlapCutCount} hull features`)
 console.log(`Kept ${overlapFallbackCount} hulls uncut after full-overlap fallback`)
+console.log(`Omitted ${omittedSatelliteFeatureCount} tiny satellite features from low-zoom hulls`)
+
+function filterSatelliteFeaturesForHull(targetId, features) {
+  const minimumAreaShare = minimumHullFeatureAreaShareById.get(targetId)
+
+  if (!minimumAreaShare) {
+    return features
+  }
+
+  const totalArea = features.reduce((sum, feature) => sum + area(feature), 0)
+  const filteredFeatures = features.filter(
+    (feature) => area(feature) / totalArea >= minimumAreaShare,
+  )
+
+  return filteredFeatures.length > 0 ? filteredFeatures : features
+}
 
 function removeOverlaps(features) {
   const acceptedFeatures = []
