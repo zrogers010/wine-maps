@@ -37,10 +37,12 @@ interface MapViewProps {
 }
 
 const appellationSourceId = 'appellations'
-const cadillacHullSourceId = 'cadillac-hull'
+const lowZoomHullSourceId = 'low-zoom-hulls'
 const labelSourceId = 'appellation-label-points'
 const chateauSourceId = 'chateaux'
-const cadillacHullLayerId = 'cadillac-hull-fill'
+const lowZoomHullLayerId = 'low-zoom-hull-fill'
+const lowZoomHullShadeLayerId = 'low-zoom-hull-shade'
+const lowZoomHullBorderLayerId = 'low-zoom-hull-border'
 const fillLayerId = 'appellation-fill'
 const hoverAppellationShadeLayerId = 'hover-appellation-shade'
 const hoverCommuneShadeLayerId = 'hover-commune-shade'
@@ -53,6 +55,28 @@ const vineyardLayerId = 'vineyards-fill'
 const hydrologyLayerId = 'hydrology-line'
 type SourceFeatureId = string | number
 const chateaux = chateauData as ChateauPoint[]
+const zoomTransitionStart = 10.00
+const zoomTransitionEnd = 11.8
+const detailedHoverStart = 11
+const lowZoomHullIds: AppellationId[] = [
+  'medoc',
+  'haut-medoc',
+  'saint-estephe',
+  'pauillac',
+  'saint-julien',
+  'margaux',
+  'moulis-en-medoc',
+  'listrac-medoc',
+  'entre-deux-mers',
+  'entre-deux-mers-haut-benauge',
+  'cadillac',
+  'cotes-de-bordeaux-cadillac',
+  'loupiac',
+  'sainte-croix-du-mont',
+  'premieres-cotes-de-bordeaux',
+  'cotes-de-bordeaux-saint-macaire',
+  'graves-de-vayres',
+]
 
 interface HoveredRegion {
   id: AppellationId
@@ -114,7 +138,7 @@ export function MapView({
     )
 
     map.on('load', async () => {
-      const [bordeauxGeoJson, cadillacHullGeoJson] = await Promise.all([
+      const [bordeauxGeoJson, lowZoomHullGeoJson] = await Promise.all([
         loadBordeauxGeoJson('/data/bordeaux-display-exclusive-2026.geojson'),
         loadBordeauxGeoJson('/data/bordeaux-display-cadillac-dissolve-trial-2026.geojson'),
       ])
@@ -130,12 +154,13 @@ export function MapView({
         data: bordeauxGeoJson,
       } satisfies GeoJSONSourceSpecification)
 
-      map.addSource(cadillacHullSourceId, {
+      map.addSource(lowZoomHullSourceId, {
         type: 'geojson',
         data: {
-          ...cadillacHullGeoJson,
-          features: cadillacHullGeoJson.features.filter(
-            (feature) => feature.properties?.id === 'cadillac',
+          ...lowZoomHullGeoJson,
+          features: lowZoomHullGeoJson.features.filter(
+            (feature) => typeof feature.properties?.id === 'string' &&
+              lowZoomHullIds.includes(feature.properties.id as AppellationId),
           ),
         },
       } satisfies GeoJSONSourceSpecification)
@@ -184,12 +209,58 @@ export function MapView({
       })
 
       map.addLayer({
-        id: cadillacHullLayerId,
+        id: lowZoomHullLayerId,
         type: 'fill',
-        source: cadillacHullSourceId,
+        source: lowZoomHullSourceId,
         paint: {
           'fill-color': appellationFillColorExpression(false),
-          'fill-opacity': ['interpolate', ['linear'], ['zoom'], 10.8, 0.64, 12.2, 0],
+          'fill-opacity': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            zoomTransitionStart,
+            0.64,
+            zoomTransitionEnd,
+            0,
+          ],
+        },
+      })
+
+      map.addLayer({
+        id: lowZoomHullShadeLayerId,
+        type: 'fill',
+        source: lowZoomHullSourceId,
+        filter: filterNone(),
+        paint: {
+          'fill-color': '#1c0f12',
+          'fill-opacity': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            zoomTransitionStart,
+            0.14,
+            zoomTransitionEnd,
+            0,
+          ],
+        },
+      })
+
+      map.addLayer({
+        id: lowZoomHullBorderLayerId,
+        type: 'line',
+        source: lowZoomHullSourceId,
+        paint: {
+          'line-color': 'rgba(255, 253, 247, 0.92)',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.8, 11, 1.25],
+          'line-opacity': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            zoomTransitionStart,
+            0.62,
+            zoomTransitionEnd,
+            0,
+          ],
         },
       })
 
@@ -203,14 +274,14 @@ export function MapView({
             'interpolate',
             ['linear'],
             ['zoom'],
-            10.8,
+            zoomTransitionStart,
             [
               'case',
               ['boolean', ['feature-state', 'selected'], false],
               0.7,
               ['boolean', ['feature-state', 'hover'], false],
               0.8,
-              ['==', ['get', 'id'], 'cadillac'],
+              ['in', ['get', 'id'], ['literal', lowZoomHullIds]],
               0,
               [
                 'match',
@@ -220,7 +291,7 @@ export function MapView({
                 0.64,
               ],
             ],
-            12.2,
+            zoomTransitionEnd,
             [
               'case',
               ['boolean', ['feature-state', 'selected'], false],
@@ -261,7 +332,20 @@ export function MapView({
         filter: filterNone(),
         paint: {
           'fill-color': '#1c0f12',
-          'fill-opacity': 0.1,
+          'fill-opacity': [
+            'case',
+            ['in', ['get', 'id'], ['literal', lowZoomHullIds]],
+            [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              zoomTransitionStart,
+              0,
+              zoomTransitionEnd,
+              0.1,
+            ],
+            0.1,
+          ],
         },
       })
 
@@ -283,7 +367,15 @@ export function MapView({
         paint: {
           'line-color': 'rgba(68, 48, 36, 0.64)',
           'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.45, 11, 0.85],
-          'line-opacity': 0.34,
+          'line-opacity': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            zoomTransitionStart,
+            ['case', ['in', ['get', 'id'], ['literal', lowZoomHullIds]], 0, 0.34],
+            zoomTransitionEnd,
+            0.34,
+          ],
         },
       })
 
@@ -309,12 +401,29 @@ export function MapView({
             0.35,
           ],
           'line-opacity': [
-            'case',
-            ['boolean', ['feature-state', 'selected'], false],
-            0.95,
-            ['boolean', ['feature-state', 'hover'], false],
-            0.9,
-            0.36,
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            zoomTransitionStart,
+            [
+              'case',
+              ['in', ['get', 'id'], ['literal', lowZoomHullIds]],
+              0,
+              ['boolean', ['feature-state', 'selected'], false],
+              0.95,
+              ['boolean', ['feature-state', 'hover'], false],
+              0.9,
+              0.36,
+            ],
+            zoomTransitionEnd,
+            [
+              'case',
+              ['boolean', ['feature-state', 'selected'], false],
+              0.95,
+              ['boolean', ['feature-state', 'hover'], false],
+              0.9,
+              0.36,
+            ],
           ],
         },
       })
@@ -326,10 +435,12 @@ export function MapView({
         layout: {
           'text-field': ['get', 'name'],
           'text-font': ['Noto Sans Bold'],
-          'text-size': ['interpolate', ['linear'], ['zoom'], 8, 11.5, 11, 16],
+          'text-size': ['interpolate', ['linear'], ['zoom'], 8, 9.5, 11, 13.5],
           'text-letter-spacing': 0.02,
-          'text-allow-overlap': true,
-          'text-ignore-placement': true,
+          'text-variable-anchor': ['center', 'top', 'bottom', 'left', 'right'],
+          'text-radial-offset': 0.25,
+          'text-allow-overlap': false,
+          'text-ignore-placement': false,
         },
         paint: {
           'text-color': '#23171a',
@@ -374,9 +485,15 @@ export function MapView({
       })
 
       map.moveLayer(labelLayerId)
+      map.moveLayer(lowZoomHullLayerId, labelLayerId)
+      map.moveLayer(lowZoomHullShadeLayerId, labelLayerId)
+      map.moveLayer(lowZoomHullBorderLayerId, labelLayerId)
 
+      map.on('mousemove', lowZoomHullLayerId, handleHullMouseMove)
+      map.on('mouseleave', lowZoomHullLayerId, handleMouseLeave)
+      map.on('click', lowZoomHullLayerId, handleClick)
       map.on('mousemove', fillLayerId, handleMouseMove)
-      map.on('mouseleave', fillLayerId, handleMouseLeave)
+      map.on('mouseleave', fillLayerId, handleDetailMouseLeave)
       map.on('click', fillLayerId, handleClick)
 
       map.fitBounds(getFeatureCollectionBounds(bordeauxGeoJson), {
@@ -389,12 +506,45 @@ export function MapView({
 
     mapRef.current = map
 
+    function handleHullMouseMove(event: MapLayerMouseEvent) {
+      const feature = pickHoverFeature(event.features)
+      const id = getFeatureId(feature?.properties)
+
+      if (!id || !isLowZoomHullActive(map)) {
+        return
+      }
+
+      if (hoverLeaveTimeoutRef.current !== null) {
+        window.clearTimeout(hoverLeaveTimeoutRef.current)
+        hoverLeaveTimeoutRef.current = null
+      }
+
+      map.getCanvas().style.cursor = 'pointer'
+
+      if (hoveredFeatureIdRef.current !== null) {
+        setFeatureHover(map, hoveredFeatureIdRef.current, false)
+        hoveredFeatureIdRef.current = null
+      }
+
+      const nextRegion = { id }
+      const nextRegionKey = hoveredRegionKey(nextRegion)
+
+      if (hoveredRegionKeyRef.current !== nextRegionKey) {
+        hoveredRegionKeyRef.current = nextRegionKey
+        setHoveredRegion(nextRegion)
+      }
+    }
+
     function handleMouseMove(event: MapLayerMouseEvent) {
       const feature = pickHoverFeature(event.features)
       const id = getFeatureId(feature?.properties)
       const sourceFeatureId = getSourceFeatureId(feature)
 
       if (!id || sourceFeatureId === null) {
+        return
+      }
+
+      if (lowZoomHullIds.includes(id) && !isDetailedZoomActive(map)) {
         return
       }
 
@@ -435,6 +585,14 @@ export function MapView({
       }, 90)
     }
 
+    function handleDetailMouseLeave() {
+      if (isLowZoomHullActive(map)) {
+        return
+      }
+
+      handleMouseLeave()
+    }
+
     function handleClick(event: MapLayerMouseEvent) {
       const id = getFeatureId(event.features?.[0]?.properties)
 
@@ -473,7 +631,9 @@ export function MapView({
     }
 
     setLayerVisibility(map, 'osm-raster', layers.roadsBasemap)
-    setLayerVisibility(map, cadillacHullLayerId, layers.aocBoundaries)
+    setLayerVisibility(map, lowZoomHullLayerId, layers.aocBoundaries)
+    setLayerVisibility(map, lowZoomHullShadeLayerId, layers.aocBoundaries)
+    setLayerVisibility(map, lowZoomHullBorderLayerId, layers.aocBoundaries)
     setLayerVisibility(map, fillLayerId, layers.aocBoundaries)
     setLayerVisibility(map, hoverAppellationShadeLayerId, layers.aocBoundaries)
     setLayerVisibility(map, hoverCommuneShadeLayerId, layers.aocBoundaries)
@@ -485,9 +645,14 @@ export function MapView({
     setLayerVisibility(map, chateauCircleLayerId, true)
     setLayerVisibility(map, chateauLabelLayerId, true)
     map.setPaintProperty(
-      cadillacHullLayerId,
+      lowZoomHullLayerId,
       'fill-color',
       appellationFillColorExpression(layers.grapeEmphasis),
+    )
+    map.setPaintProperty(
+      lowZoomHullShadeLayerId,
+      'fill-color',
+      '#1c0f12',
     )
     map.setPaintProperty(
       fillLayerId,
@@ -510,9 +675,27 @@ export function MapView({
 
     map.setFilter(fillLayerId, filter)
     map.setFilter(
-      cadillacHullLayerId,
-      filteredAppellationIds.includes('cadillac')
-        ? ['==', ['get', 'id'], 'cadillac']
+      lowZoomHullLayerId,
+      lowZoomHullIds.some((id) => filteredAppellationIds.includes(id))
+        ? [
+            'in',
+            ['get', 'id'],
+            ['literal', lowZoomHullIds.filter((id) => filteredAppellationIds.includes(id))],
+          ]
+        : filterNone(),
+    )
+    map.setFilter(
+      lowZoomHullShadeLayerId,
+      lowZoomHullShadeFilter(hoveredRegion, legendHoveredId, filteredAppellationIds),
+    )
+    map.setFilter(
+      lowZoomHullBorderLayerId,
+      lowZoomHullIds.some((id) => filteredAppellationIds.includes(id))
+        ? [
+            'in',
+            ['get', 'id'],
+            ['literal', lowZoomHullIds.filter((id) => filteredAppellationIds.includes(id))],
+          ]
         : filterNone(),
     )
     map.setFilter(
@@ -626,7 +809,7 @@ function getAppellationLabelAnchor(
 }
 
 const curatedLabelCenters: Partial<Record<AppellationId, [number, number]>> = {
-  medoc: [-0.83, 45.38],
+  medoc: [-0.924, 45.356],
   'haut-medoc': [-0.66, 44.94],
   'saint-estephe': [-0.772, 45.263],
   pauillac: [-0.748, 45.185],
@@ -640,8 +823,8 @@ const curatedLabelCenters: Partial<Record<AppellationId, [number, number]>> = {
   'cotes-de-bordeaux-cadillac': [-0.27, 44.72],
   loupiac: [-0.3, 44.63],
   'sainte-croix-du-mont': [-0.28, 44.6],
-  'premieres-cotes-de-bordeaux': [-0.35, 44.73],
-  'cotes-de-bordeaux-saint-macaire': [-0.23, 44.56],
+  'premieres-cotes-de-bordeaux': [-0.46, 44.83],
+  'cotes-de-bordeaux-saint-macaire': [-0.172, 44.605],
   'graves-de-vayres': [-0.33, 44.9],
 }
 
@@ -818,7 +1001,37 @@ function communeShadeFilter(region: HoveredRegion): FilterSpecification {
     ]
   }
 
+  if (lowZoomHullIds.includes(region.id)) {
+    return filterNone()
+  }
+
   return ['==', ['get', 'id'], region.id]
+}
+
+function lowZoomHullShadeFilter(
+  region: HoveredRegion | null,
+  legendHoveredId: AppellationId | null,
+  filteredAppellationIds: AppellationId[],
+): FilterSpecification {
+  const activeId = region?.id ?? legendHoveredId
+
+  if (!activeId || !lowZoomHullIds.includes(activeId)) {
+    return filterNone()
+  }
+
+  if (!filteredAppellationIds.includes(activeId)) {
+    return filterNone()
+  }
+
+  return ['==', ['get', 'id'], activeId]
+}
+
+function isLowZoomHullActive(map: Map) {
+  return map.getZoom() < detailedHoverStart
+}
+
+function isDetailedZoomActive(map: Map) {
+  return map.getZoom() >= detailedHoverStart
 }
 
 interface HoverRegionCardProps {

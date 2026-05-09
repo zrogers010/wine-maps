@@ -73,13 +73,16 @@ while (true) {
   }
 
   const feature = result.value
-  const target = targetAocs.find((candidate) => {
-    if (candidate.app !== feature.properties.app) {
-      return false
-    }
+  const target = targetAocs
+    .slice()
+    .sort((left, right) => Number(Boolean(right.denom)) - Number(Boolean(left.denom)))
+    .find((candidate) => {
+      if (candidate.app !== feature.properties.app) {
+        return false
+      }
 
-    return !candidate.denom || candidate.denom === feature.properties.denom
-  })
+      return !candidate.denom || candidate.denom === feature.properties.denom
+    })
 
   if (!target) {
     continue

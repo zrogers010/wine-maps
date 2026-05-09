@@ -26,9 +26,25 @@ region groups, not as part of the Médoc or Entre-Deux-Mers legends.
 - Use a clean land/sea basemap with bright water and low visual noise.
 - Use distinct pastel appellation fills with thin internal parcel/commune lines.
 - Keep appellation labels above château dots and château labels.
+- Appellation labels should use collision-aware placement. Do not force labels to
+  overlap just to show every name at once; smaller text or placement fallback is
+  preferred.
 - Keep château dots small and secondary to appellation names.
 - At close zooms, let AOC fills fade slightly, but never enough to lose color.
 - Avoid thick borders; use subtle boundaries plus hover emphasis.
+
+## Zoom-Level Geometry
+
+- Use two display levels for region groups where the raw source is visually too
+  fragmented at atlas zoom.
+- Low zoom: render a filled, non-overlapping outer hull for each appellation.
+- Transition zoom: crossfade the hulls out and detailed source geometry in.
+- Close zoom: detailed AOC/commune parcel geometry becomes the active hover
+  target.
+- Legend hover should shade the low-zoom hull when hull mode is active, not the
+  detailed parcel fragments underneath.
+- Keep the exact/source-derived display data available for close zoom and for
+  provenance; hulls are cartographic display helpers, not official boundaries.
 
 ## Interaction Model
 
