@@ -11,7 +11,22 @@ node_modules
 dist
 dist-ssr
 *.local
-data/raw
+
+# Proprietary/source map data
+data/raw/
+public/data/
+src/data/*.geojson
+src/data/*.topojson
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.qpj
+*.gpkg
+*.kml
+*.kmz
+*.zip
 
 # Editor directories and files
 .vscode/*
