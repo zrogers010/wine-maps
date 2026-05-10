@@ -18,6 +18,21 @@ export const APPELLATION_COLORS: Record<string, string> = {
   'premieres-cotes-de-bordeaux': '#e879b7',
   'cotes-de-bordeaux-saint-macaire': '#c9b458',
   'graves-de-vayres': '#7cc7e8',
+  'saint-emilion': '#d14f7a',
+  pomerol: '#9d4edd',
+  'lalande-de-pomerol': '#b565d9',
+  fronsac: '#c44569',
+  'canon-fronsac': '#e15f41',
+  'montagne-saint-emilion': '#f08a5d',
+  'lussac-saint-emilion': '#f6a04d',
+  'puisseguin-saint-emilion': '#cf6a87',
+  'saint-georges-saint-emilion': '#e66767',
+  'pessac-leognan': '#8d6e63',
+  graves: '#b08d57',
+  'graves-superieures': '#d4a64f',
+  sauternes: '#f2c94c',
+  barsac: '#f6d365',
+  cerons: '#d7b55a',
 }
 
 export const GRAPE_COLORS: Record<string, string> = {

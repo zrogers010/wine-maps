@@ -52,6 +52,45 @@ const targetAocs = [
     name: 'Côtes de Bordeaux-Saint-Macaire',
   },
   { app: 'Graves de Vayres', id: 'graves-de-vayres', name: 'Graves de Vayres' },
+  { app: 'Saint-Emilion', id: 'saint-emilion', name: 'Saint-Émilion' },
+  { app: 'Pomerol', id: 'pomerol', name: 'Pomerol' },
+  {
+    app: 'Lalande-de-Pomerol',
+    id: 'lalande-de-pomerol',
+    name: 'Lalande-de-Pomerol',
+  },
+  { app: 'Fronsac', id: 'fronsac', name: 'Fronsac' },
+  { app: 'Canon Fronsac', id: 'canon-fronsac', name: 'Canon Fronsac' },
+  {
+    app: 'Montagne-Saint-Emilion',
+    id: 'montagne-saint-emilion',
+    name: 'Montagne-Saint-Émilion',
+  },
+  {
+    app: 'Lussac Saint-Emilion',
+    id: 'lussac-saint-emilion',
+    name: 'Lussac-Saint-Émilion',
+  },
+  {
+    app: 'Puisseguin Saint-Emilion',
+    id: 'puisseguin-saint-emilion',
+    name: 'Puisseguin-Saint-Émilion',
+  },
+  {
+    app: 'Saint-Georges-Saint-Emilion',
+    id: 'saint-georges-saint-emilion',
+    name: 'Saint-Georges-Saint-Émilion',
+  },
+  { app: 'Pessac-Léognan', id: 'pessac-leognan', name: 'Pessac-Léognan' },
+  { app: 'Graves', id: 'graves', name: 'Graves' },
+  {
+    app: 'Graves supérieures',
+    id: 'graves-superieures',
+    name: 'Graves Supérieures',
+  },
+  { app: 'Sauternes', id: 'sauternes', name: 'Sauternes' },
+  { app: 'Barsac', id: 'barsac', name: 'Barsac' },
+  { app: 'Cérons', id: 'cerons', name: 'Cérons' },
 ]
 
 proj4.defs(

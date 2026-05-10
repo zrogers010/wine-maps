@@ -23,6 +23,21 @@ const priorityById = new Map([
   ['cadillac', 3],
   ['loupiac', 3],
   ['sainte-croix-du-mont', 3],
+  ['saint-emilion', 2],
+  ['pomerol', 3],
+  ['lalande-de-pomerol', 3],
+  ['fronsac', 2],
+  ['canon-fronsac', 3],
+  ['montagne-saint-emilion', 3],
+  ['lussac-saint-emilion', 3],
+  ['puisseguin-saint-emilion', 3],
+  ['saint-georges-saint-emilion', 3],
+  ['graves', 2],
+  ['graves-superieures', 1],
+  ['pessac-leognan', 3],
+  ['sauternes', 2],
+  ['barsac', 3],
+  ['cerons', 2],
 ])
 
 const source = JSON.parse(await fs.readFile(sourcePath, 'utf-8'))

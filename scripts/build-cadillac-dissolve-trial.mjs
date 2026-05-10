@@ -10,11 +10,42 @@ import {
   difference,
   featureCollection,
   point,
+  union,
 } from '@turf/turf'
 
 const sourcePath = 'public/data/bordeaux-display-exclusive-2026.geojson'
 const outputPath = 'public/data/bordeaux-display-cadillac-dissolve-trial-2026.geojson'
-const concaveMaxEdgeKilometers = 2.4
+const concaveMaxEdgeKilometers = 3
+const geometryPatchesById = new Map([
+  [
+    'saint-emilion',
+    [
+      {
+        type: 'Feature',
+        properties: {
+          displayStatus:
+            'Visual-only low-zoom patch to close the teaching-map gap between Right Bank AOCs.',
+        },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [-0.248, 44.908],
+              [-0.226, 44.928],
+              [-0.19, 44.938],
+              [-0.145, 44.928],
+              [-0.105, 44.905],
+              [-0.123, 44.884],
+              [-0.172, 44.876],
+              [-0.224, 44.892],
+              [-0.248, 44.908],
+            ],
+          ],
+        },
+      },
+    ],
+  ],
+])
 const targetIds = [
   'medoc',
   'haut-medoc',
@@ -33,6 +64,20 @@ const targetIds = [
   'premieres-cotes-de-bordeaux',
   'cotes-de-bordeaux-saint-macaire',
   'graves-de-vayres',
+  'saint-emilion',
+  'pomerol',
+  'lalande-de-pomerol',
+  'fronsac',
+  'canon-fronsac',
+  'montagne-saint-emilion',
+  'lussac-saint-emilion',
+  'puisseguin-saint-emilion',
+  'saint-georges-saint-emilion',
+  'pessac-leognan',
+  'graves',
+  'sauternes',
+  'barsac',
+  'cerons',
 ]
 
 const priorityById = new Map([
@@ -53,6 +98,21 @@ const priorityById = new Map([
   ['cadillac', 3],
   ['loupiac', 3],
   ['sainte-croix-du-mont', 3],
+  ['saint-emilion', 2],
+  ['pomerol', 3],
+  ['lalande-de-pomerol', 3],
+  ['fronsac', 2],
+  ['canon-fronsac', 3],
+  ['montagne-saint-emilion', 3],
+  ['lussac-saint-emilion', 3],
+  ['puisseguin-saint-emilion', 3],
+  ['saint-georges-saint-emilion', 3],
+  ['graves', 2],
+  ['graves-superieures', 1],
+  ['pessac-leognan', 3],
+  ['sauternes', 2],
+  ['barsac', 3],
+  ['cerons', 2],
 ])
 const minimumHullFeatureAreaShareById = new Map([
   ['pauillac', 0.02],
@@ -77,32 +137,30 @@ for (const targetId of targetIds) {
 
   const hullSourceFeatures = filterSatelliteFeaturesForHull(targetId, targetFeatures)
   omittedSatelliteFeatureCount += targetFeatures.length - hullSourceFeatures.length
-  const hullPoints = featureCollection(
-    hullSourceFeatures.flatMap((feature) => coordAll(feature).map((coordinate) => point(coordinate))),
+  const displayGeometryFeature = applyGeometryPatches(
+    targetId,
+    buildConcaveHull(hullSourceFeatures, concaveMaxEdgeKilometers),
   )
-  const outerHull =
-    concave(hullPoints, {
-      maxEdge: concaveMaxEdgeKilometers,
-      units: 'kilometers',
-    }) ?? convex(hullPoints)
 
-  if (!outerHull) {
-    throw new Error(`Could not create outer hull for ${targetId}`)
+  if (!displayGeometryFeature) {
+    throw new Error(`Could not create display geometry for ${targetId}`)
   }
 
   trialFeatures.push({
-    ...outerHull,
+    ...displayGeometryFeature,
     id: targetId,
     properties: {
       ...targetFeatures[0].properties,
+      id: targetId,
       displayStatus:
         'Trial display feature: AOC features replaced by one filled concave outer hull for low-zoom display.',
       concaveMaxEdgeKilometers,
-      hullPointCount: hullPoints.features.length,
+      hullPointCount: coordAll(displayGeometryFeature).length,
       sourceFeatureCount: targetFeatures.length,
       hullSourceFeatureCount: hullSourceFeatures.length,
+      patchCount: geometryPatchesById.get(targetId)?.length ?? 0,
     },
-    geometry: removeInteriorRings(outerHull.geometry),
+    geometry: removeInteriorRings(displayGeometryFeature.geometry),
   })
 }
 
@@ -148,6 +206,27 @@ function filterSatelliteFeaturesForHull(targetId, features) {
   )
 
   return filteredFeatures.length > 0 ? filteredFeatures : features
+}
+
+function buildConcaveHull(features, maxEdge) {
+  const hullPoints = featureCollection(
+    features.flatMap((feature) => coordAll(feature).map((coordinate) => point(coordinate))),
+  )
+
+  return concave(hullPoints, {
+    maxEdge,
+    units: 'kilometers',
+  }) ?? convex(hullPoints)
+}
+
+function applyGeometryPatches(targetId, feature) {
+  const patches = geometryPatchesById.get(targetId)
+
+  if (!patches || patches.length === 0) {
+    return feature
+  }
+
+  return union(featureCollection([feature, ...patches])) ?? feature
 }
 
 function removeOverlaps(features) {

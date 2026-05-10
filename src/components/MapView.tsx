@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { area, booleanPointInPolygon, point, pointOnFeature } from '@turf/turf'
 import maplibregl, {
+  type ExpressionSpecification,
   type FilterSpecification,
   type GeoJSONSourceSpecification,
   type Map,
@@ -21,6 +22,7 @@ import {
   getFeatureCollectionBounds,
 } from '../utils/geo'
 import {
+  APPELLATION_COLORS,
   appellationFillColorExpression,
   createAtlasMapStyle,
 } from '../utils/mapStyles'
@@ -57,7 +59,8 @@ type SourceFeatureId = string | number
 const chateaux = chateauData as ChateauPoint[]
 const zoomTransitionStart = 10.00
 const zoomTransitionEnd = 11.8
-const detailedHoverStart = 11
+const detailedHoverStart = 10.8
+const detailedHautMedocFillColor = '#7fb23f'
 const lowZoomHullIds: AppellationId[] = [
   'medoc',
   'haut-medoc',
@@ -76,7 +79,24 @@ const lowZoomHullIds: AppellationId[] = [
   'premieres-cotes-de-bordeaux',
   'cotes-de-bordeaux-saint-macaire',
   'graves-de-vayres',
+  'saint-emilion',
+  'pomerol',
+  'lalande-de-pomerol',
+  'fronsac',
+  'canon-fronsac',
+  'montagne-saint-emilion',
+  'lussac-saint-emilion',
+  'puisseguin-saint-emilion',
+  'saint-georges-saint-emilion',
+  'pessac-leognan',
+  'graves',
+  'sauternes',
+  'barsac',
+  'cerons',
 ]
+const lowZoomRenderedHullIds: AppellationId[] = lowZoomHullIds.filter(
+  (id) => id !== 'cotes-de-bordeaux-cadillac',
+)
 
 interface HoveredRegion {
   id: AppellationId
@@ -110,6 +130,13 @@ export function MapView({
   const hoveredAppellation = activeRegion
     ? appellations.find((appellation) => appellation.id === activeRegion.id)
     : null
+  const relatedAppellationIds = sharedGeographyIdsFor(activeRegion?.id)
+  const relatedAppellations =
+    relatedAppellationIds.length > 0
+      ? appellations.filter((appellation) =>
+          relatedAppellationIds.includes(appellation.id),
+        )
+      : []
   const hoveredChateaux = activeRegion
     ? getVisibleChateaux(chateauxWithCommune, activeRegion, hoveredRegion !== null)
     : []
@@ -160,7 +187,7 @@ export function MapView({
           ...lowZoomHullGeoJson,
           features: lowZoomHullGeoJson.features.filter(
             (feature) => typeof feature.properties?.id === 'string' &&
-              lowZoomHullIds.includes(feature.properties.id as AppellationId),
+              lowZoomRenderedHullIds.includes(feature.properties.id as AppellationId),
           ),
         },
       } satisfies GeoJSONSourceSpecification)
@@ -269,7 +296,7 @@ export function MapView({
         type: 'fill',
         source: appellationSourceId,
         paint: {
-          'fill-color': appellationFillColorExpression(false),
+          'fill-color': detailedAppellationFillColorExpression(false),
           'fill-opacity': [
             'interpolate',
             ['linear'],
@@ -277,12 +304,29 @@ export function MapView({
             zoomTransitionStart,
             [
               'case',
+              ['in', ['get', 'id'], ['literal', lowZoomHullIds]],
+              0,
               ['boolean', ['feature-state', 'selected'], false],
               0.7,
               ['boolean', ['feature-state', 'hover'], false],
               0.8,
+              [
+                'match',
+                ['get', 'id'],
+                ['medoc', 'haut-medoc', 'entre-deux-mers'],
+                0.36,
+                0.64,
+              ],
+            ],
+            detailedHoverStart,
+            [
+              'case',
               ['in', ['get', 'id'], ['literal', lowZoomHullIds]],
               0,
+              ['boolean', ['feature-state', 'selected'], false],
+              0.7,
+              ['boolean', ['feature-state', 'hover'], false],
+              0.8,
               [
                 'match',
                 ['get', 'id'],
@@ -405,6 +449,17 @@ export function MapView({
             ['linear'],
             ['zoom'],
             zoomTransitionStart,
+            [
+              'case',
+              ['in', ['get', 'id'], ['literal', lowZoomHullIds]],
+              0,
+              ['boolean', ['feature-state', 'selected'], false],
+              0.95,
+              ['boolean', ['feature-state', 'hover'], false],
+              0.9,
+              0.36,
+            ],
+            detailedHoverStart,
             [
               'case',
               ['in', ['get', 'id'], ['literal', lowZoomHullIds]],
@@ -657,7 +712,7 @@ export function MapView({
     map.setPaintProperty(
       fillLayerId,
       'fill-color',
-      appellationFillColorExpression(layers.grapeEmphasis),
+      detailedAppellationFillColorExpression(layers.grapeEmphasis),
     )
   }, [isReady, layers, mode])
 
@@ -676,11 +731,14 @@ export function MapView({
     map.setFilter(fillLayerId, filter)
     map.setFilter(
       lowZoomHullLayerId,
-      lowZoomHullIds.some((id) => filteredAppellationIds.includes(id))
+      lowZoomRenderedHullIds.some((id) => filteredAppellationIds.includes(id))
         ? [
             'in',
             ['get', 'id'],
-            ['literal', lowZoomHullIds.filter((id) => filteredAppellationIds.includes(id))],
+            [
+              'literal',
+              lowZoomRenderedHullIds.filter((id) => filteredAppellationIds.includes(id)),
+            ],
           ]
         : filterNone(),
     )
@@ -690,11 +748,14 @@ export function MapView({
     )
     map.setFilter(
       lowZoomHullBorderLayerId,
-      lowZoomHullIds.some((id) => filteredAppellationIds.includes(id))
+      lowZoomRenderedHullIds.some((id) => filteredAppellationIds.includes(id))
         ? [
             'in',
             ['get', 'id'],
-            ['literal', lowZoomHullIds.filter((id) => filteredAppellationIds.includes(id))],
+            [
+              'literal',
+              lowZoomRenderedHullIds.filter((id) => filteredAppellationIds.includes(id)),
+            ],
           ]
         : filterNone(),
     )
@@ -721,6 +782,7 @@ export function MapView({
       <HoverRegionCard
         appellation={hoveredAppellation}
         chateaux={hoveredChateaux}
+          relatedAppellations={relatedAppellations}
         region={activeRegion}
       />
     </>
@@ -737,6 +799,37 @@ async function loadBordeauxGeoJson(path: string): Promise<FeatureCollection> {
   return (await response.json()) as FeatureCollection
 }
 
+function detailedAppellationFillColorExpression(
+  grapeEmphasis: boolean,
+): ExpressionSpecification {
+  if (grapeEmphasis) {
+    return appellationFillColorExpression(true)
+  }
+
+  return [
+    'match',
+    ['get', 'id'],
+    'haut-medoc',
+    detailedHautMedocFillColor,
+    ...Object.entries(APPELLATION_COLORS)
+      .filter(([id]) => id !== 'haut-medoc')
+      .flatMap(([id, color]) => [id, color]),
+    '#8c6f4f',
+  ] as unknown as ExpressionSpecification
+}
+
+function sharedGeographyIdsFor(id: AppellationId | undefined): AppellationId[] {
+  if (id === 'cadillac' || id === 'cotes-de-bordeaux-cadillac') {
+    return ['cadillac', 'cotes-de-bordeaux-cadillac']
+  }
+
+  if (id === 'graves' || id === 'graves-superieures') {
+    return ['graves', 'graves-superieures']
+  }
+
+  return []
+}
+
 const approximateCenters: Record<AppellationId, [number, number]> = {
   medoc: [-0.84, 45.43],
   'haut-medoc': [-0.76, 45.1],
@@ -748,13 +841,28 @@ const approximateCenters: Record<AppellationId, [number, number]> = {
   'listrac-medoc': [-0.91, 45.14],
   'entre-deux-mers': [-0.12, 44.8],
   'entre-deux-mers-haut-benauge': [-0.18, 44.68],
-  cadillac: [-0.32, 44.64],
+  cadillac: [-0.335, 44.695],
   'cotes-de-bordeaux-cadillac': [-0.28, 44.7],
   loupiac: [-0.29, 44.63],
   'sainte-croix-du-mont': [-0.28, 44.6],
   'premieres-cotes-de-bordeaux': [-0.33, 44.72],
   'cotes-de-bordeaux-saint-macaire': [-0.23, 44.56],
   'graves-de-vayres': [-0.32, 44.9],
+  'saint-emilion': [-0.15, 44.9],
+  pomerol: [-0.2, 44.93],
+  'lalande-de-pomerol': [-0.22, 44.96],
+  fronsac: [-0.27, 44.93],
+  'canon-fronsac': [-0.28, 44.96],
+  'montagne-saint-emilion': [-0.14, 44.94],
+  'lussac-saint-emilion': [-0.08, 44.95],
+  'puisseguin-saint-emilion': [-0.06, 44.92],
+  'saint-georges-saint-emilion': [-0.13, 44.97],
+  'pessac-leognan': [-0.64, 44.73],
+  graves: [-0.424, 44.616],
+  'graves-superieures': [-0.48, 44.47],
+  sauternes: [-0.34, 44.54],
+  barsac: [-0.32, 44.6],
+  cerons: [-0.34, 44.64],
 }
 
 function createLabelPoints(
@@ -819,13 +927,28 @@ const curatedLabelCenters: Partial<Record<AppellationId, [number, number]>> = {
   'listrac-medoc': [-0.795, 45.095],
   'entre-deux-mers': [-0.14, 44.81],
   'entre-deux-mers-haut-benauge': [-0.21, 44.69],
-  cadillac: [-0.32, 44.64],
+  cadillac: [-0.335, 44.695],
   'cotes-de-bordeaux-cadillac': [-0.27, 44.72],
   loupiac: [-0.3, 44.63],
   'sainte-croix-du-mont': [-0.28, 44.6],
   'premieres-cotes-de-bordeaux': [-0.46, 44.83],
   'cotes-de-bordeaux-saint-macaire': [-0.172, 44.605],
   'graves-de-vayres': [-0.33, 44.9],
+  'saint-emilion': [-0.15, 44.9],
+  pomerol: [-0.205, 44.925],
+  'lalande-de-pomerol': [-0.225, 44.955],
+  fronsac: [-0.275, 44.925],
+  'canon-fronsac': [-0.285, 44.955],
+  'montagne-saint-emilion': [-0.14, 44.94],
+  'lussac-saint-emilion': [-0.08, 44.95],
+  'puisseguin-saint-emilion': [-0.055, 44.92],
+  'saint-georges-saint-emilion': [-0.13, 44.97],
+  'pessac-leognan': [-0.64, 44.73],
+  graves: [-0.424, 44.616],
+  'graves-superieures': [-0.48, 44.47],
+  sauternes: [-0.34, 44.54],
+  barsac: [-0.32, 44.6],
+  cerons: [-0.34, 44.64],
 }
 
 function createChateauPoints(): FeatureCollection {
@@ -1015,7 +1138,7 @@ function lowZoomHullShadeFilter(
 ): FilterSpecification {
   const activeId = region?.id ?? legendHoveredId
 
-  if (!activeId || !lowZoomHullIds.includes(activeId)) {
+  if (!activeId || !lowZoomRenderedHullIds.includes(activeId)) {
     return filterNone()
   }
 
@@ -1037,12 +1160,14 @@ function isDetailedZoomActive(map: Map) {
 interface HoverRegionCardProps {
   appellation: AppellationMetadata | null | undefined
   chateaux: ChateauPoint[]
+  relatedAppellations: AppellationMetadata[]
   region: HoveredRegion | null
 }
 
 function HoverRegionCard({
   appellation,
   chateaux: notableChateaux,
+  relatedAppellations,
   region,
 }: HoverRegionCardProps) {
   if (!appellation || !region) {
@@ -1058,6 +1183,9 @@ function HoverRegionCard({
     )
   }
 
+  const studyCueAppellations =
+    relatedAppellations.length > 1 ? relatedAppellations : [appellation]
+
   return (
     <aside className="hover-region-card">
       <span className="hover-card-kicker">
@@ -1068,6 +1196,19 @@ function HoverRegionCard({
         <span>{appellation.aocType}</span>
         <span>{appellation.primaryStyle}</span>
       </div>
+      {relatedAppellations.length > 1 ? (
+        <section className="shared-aoc-section">
+          <h3>Shared geography</h3>
+          <ul>
+            {relatedAppellations.map((relatedAppellation) => (
+              <li key={relatedAppellation.id}>
+                <strong>{relatedAppellation.name} AOC</strong>
+                <span>{relatedAppellation.primaryStyle}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       <section className="hierarchy-section">
         <h3>Geography hierarchy</h3>
         <ol className="hierarchy-list">
@@ -1076,11 +1217,11 @@ function HoverRegionCard({
             value={`${appellation.name} AOC`}
           />
           <HierarchyItem
-            label="Commune in source data"
+            label="Commune"
             value={
               region.commune
                 ? `${region.commune}${region.insee ? ` (${region.insee})` : ''}`
-                : 'Not provided for this feature'
+                : ''
             }
           />
         </ol>
@@ -1091,10 +1232,33 @@ function HoverRegionCard({
           <dd>{appellation.dominantGrapes.join(', ')}</dd>
         </div>
         <div>
-          <dt>Key soils</dt>
+          <dt>Soil characteristics</dt>
           <dd>{appellation.terroir.keySoils.join(', ')}</dd>
         </div>
       </dl>
+      <div className="study-cues-compact" aria-label="Typical exam cues">
+        <h3>Varietals</h3>
+        {studyCueAppellations.map((studyAppellation) => (
+          <article key={studyAppellation.id}>
+            {studyCueAppellations.length > 1 ? (
+              <h4>{studyAppellation.name}</h4>
+            ) : null}
+            {studyCuesForAppellation(studyAppellation).map((cue) => (
+              <div className="study-cue-row" key={cue.label}>
+                <strong>{cue.label}</strong>
+                <span className="study-cue-details">
+                  <span>
+                    <b>Visual:</b> {cue.visual}
+                  </span>
+                  <span>
+                    <b>Taste:</b> {cue.tasting}
+                  </span>
+                </span>
+              </div>
+            ))}
+          </article>
+        ))}
+      </div>
       <p>{appellation.terroir.learningPoint}</p>
       {notableChateaux.length > 0 ? (
         <section className="chateau-section">
@@ -1115,6 +1279,154 @@ function HoverRegionCard({
       ) : null}
     </aside>
   )
+}
+
+interface StudyCue {
+  label: string
+  visual: string
+  tasting: string
+}
+
+function studyCuesForAppellation(appellation: AppellationMetadata): StudyCue[] {
+  const grapeCues = unique([
+    ...appellation.dominantGrapes,
+    ...appellation.importantGrapes,
+  ])
+    .slice(0, 2)
+    .map((grape) => grapeStudyCue(grape, appellation.primaryStyle))
+
+  return [...grapeCues, wineStyleStudyCue(appellation)]
+}
+
+function wineStyleStudyCue(appellation: AppellationMetadata): StudyCue {
+  const style = appellation.primaryStyle.toLowerCase()
+  const tasting = [
+    ...appellation.tastingProfile.fruit.slice(0, 2),
+    ...appellation.tastingProfile.nonFruit.slice(0, 2),
+    ...appellation.tastingProfile.structure.slice(0, 1),
+  ].join(', ')
+
+  if (style.includes('sweet white')) {
+    return {
+      label: 'Sweet white',
+      visual: 'medium lemon-gold to deep gold, often viscous',
+      tasting,
+    }
+  }
+
+  if (style.includes('dry white') || style.includes('white wine')) {
+    return {
+      label: 'Dry white',
+      visual: 'pale lemon to lemon-green, bright clarity',
+      tasting,
+    }
+  }
+
+  if (style.includes('red')) {
+    return {
+      label: 'Dry red blend',
+      visual: 'medium ruby to deep ruby, garnet with age',
+      tasting,
+    }
+  }
+
+  return {
+    label: appellation.primaryStyle,
+    visual: 'note intensity, hue, rim variation, clarity, and viscosity',
+    tasting,
+  }
+}
+
+function grapeStudyCue(grape: string, primaryStyle: string): StudyCue {
+  const normalizedGrape = grape
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+  const isSweetWhite = primaryStyle.toLowerCase().includes('sweet white')
+
+  if (normalizedGrape.includes('cabernet sauvignon')) {
+    return {
+      label: grape,
+      visual: 'deepens ruby color',
+      tasting: 'blackcurrant, cedar, graphite, firm tannin',
+    }
+  }
+
+  if (normalizedGrape.includes('merlot')) {
+    return {
+      label: grape,
+      visual: 'medium-deep ruby, softer rim than Cabernet',
+      tasting: 'plum, black cherry, rounder body and tannin',
+    }
+  }
+
+  if (normalizedGrape.includes('cabernet franc')) {
+    return {
+      label: grape,
+      visual: 'medium ruby',
+      tasting: 'redcurrant, violet, leaf, fresh acidity',
+    }
+  }
+
+  if (normalizedGrape.includes('petit verdot')) {
+    return {
+      label: grape,
+      visual: 'adds deep purple-ruby color',
+      tasting: 'blackberry, violet, spice, extra tannin',
+    }
+  }
+
+  if (normalizedGrape.includes('malbec')) {
+    return {
+      label: grape,
+      visual: 'deep purple-ruby',
+      tasting: 'black plum, blackberry, spice, color and body',
+    }
+  }
+
+  if (normalizedGrape.includes('carmenere')) {
+    return {
+      label: grape,
+      visual: 'deep ruby',
+      tasting: 'black fruit, pepper, herbal notes, plush texture',
+    }
+  }
+
+  if (normalizedGrape.includes('sauvignon blanc')) {
+    return {
+      label: grape,
+      visual: 'pale lemon-green',
+      tasting: 'citrus, gooseberry, grass, high acidity',
+    }
+  }
+
+  if (normalizedGrape.includes('semillon')) {
+    return {
+      label: grape,
+      visual: isSweetWhite ? 'gold, amber with age' : 'pale lemon to gold',
+      tasting: isSweetWhite
+        ? 'apricot, honey, marmalade, botrytis spice'
+        : 'lemon curd, wax, honey, medium-plus body',
+    }
+  }
+
+  if (normalizedGrape.includes('muscadelle')) {
+    return {
+      label: grape,
+      visual: 'pale lemon',
+      tasting: 'grapey floral lift, soft acidity, aromatic top notes',
+    }
+  }
+
+  return {
+    label: grape,
+    visual: 'variety-dependent color and intensity cue',
+    tasting: 'use fruit, structure, and aroma markers with local context',
+  }
+}
+
+function unique(values: string[]) {
+  return [...new Set(values)]
 }
 
 interface HierarchyItemProps {

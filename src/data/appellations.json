@@ -604,5 +604,464 @@
     "neighborComparisons": {
       "entre-deux-mers": "Entre-deux-Mers is broader and primarily dry white in classic study shorthand."
     }
+  },
+  {
+    "id": "saint-emilion",
+    "name": "Saint-Émilion",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Right Bank",
+    "bank": "Right Bank",
+    "aocType": "Commune appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Merlot", "Cabernet Franc"],
+    "importantGrapes": ["Cabernet Sauvignon", "Malbec"],
+    "authorizedGrapesNote": "Use INAO for official authorization; study shorthand is Merlot with important Cabernet Franc.",
+    "officialRulesNote": "Saint-Émilion is a Right Bank red-wine AOC; Saint-Émilion Grand Cru is a related stricter designation not separately displayed in this MVP.",
+    "commonPracticeNote": "Commonly Merlot-led, with Cabernet Franc contributing perfume, freshness, and structure.",
+    "classificationContext": "Know the separate Saint-Émilion classification context, especially for advanced Bordeaux study.",
+    "terroir": {
+      "keySoils": ["limestone plateau", "clay-limestone", "sand and gravel in places"],
+      "climate": ["maritime", "Dordogne influence", "Right Bank continental nuance"],
+      "learningPoint": "Limestone and clay-limestone sites help explain Merlot richness with Cabernet Franc freshness and ageworthy structure."
+    },
+    "tastingProfile": {
+      "fruit": ["plum", "black cherry", "redcurrant"],
+      "nonFruit": ["violet", "cedar", "earth", "tobacco"],
+      "structure": ["medium-plus tannin", "medium acidity", "medium-plus body"],
+      "ageingPotential": "moderate to high, producer-dependent"
+    },
+    "examNotes": ["Major Right Bank appellation.", "Merlot and Cabernet Franc are the key study grapes.", "Contrast with Pomerol as often more limestone-driven and classification-focused."],
+    "neighborComparisons": {
+      "pomerol": "Pomerol is generally smaller, often plusher, and has no formal classification.",
+      "montagne-saint-emilion": "Montagne-Saint-Émilion is a satellite appellation north of Saint-Émilion."
+    }
+  },
+  {
+    "id": "pomerol",
+    "name": "Pomerol",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Right Bank",
+    "bank": "Right Bank",
+    "aocType": "Commune appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Merlot"],
+    "importantGrapes": ["Cabernet Franc", "Cabernet Sauvignon"],
+    "authorizedGrapesNote": "Use INAO for official rules; common exam shorthand emphasizes Merlot dominance.",
+    "officialRulesNote": "Pomerol is a small Right Bank red-wine appellation.",
+    "commonPracticeNote": "Often Merlot-dominant, producing plush, concentrated reds with refined tannins.",
+    "classificationContext": "No formal classification, despite global prestige and famous estates.",
+    "terroir": {
+      "keySoils": ["clay", "gravel", "iron-rich clay in places"],
+      "climate": ["maritime", "Dordogne influence"],
+      "learningPoint": "Clay-rich soils are central to why Merlot can produce deep, plush, ageworthy wines here."
+    },
+    "tastingProfile": {
+      "fruit": ["plum", "black cherry", "blackberry"],
+      "nonFruit": ["violet", "truffle", "cedar", "chocolate"],
+      "structure": ["medium-plus tannin", "medium acidity", "full body"],
+      "ageingPotential": "high for top wines"
+    },
+    "examNotes": ["Key Right Bank appellation.", "Merlot is the main blind-tasting clue.", "Prestigious but unclassified."],
+    "neighborComparisons": {
+      "saint-emilion": "Saint-Émilion is larger and more varied, often with more visible Cabernet Franc character.",
+      "lalande-de-pomerol": "Lalande-de-Pomerol is nearby and often a more accessible Right Bank comparison."
+    }
+  },
+  {
+    "id": "lalande-de-pomerol",
+    "name": "Lalande-de-Pomerol",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Right Bank",
+    "bank": "Right Bank",
+    "aocType": "Commune appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Merlot"],
+    "importantGrapes": ["Cabernet Franc", "Cabernet Sauvignon"],
+    "authorizedGrapesNote": "Check INAO for official grape rules; study language follows Right Bank Merlot-led blends.",
+    "officialRulesNote": "Lalande-de-Pomerol is a Right Bank red-wine AOC north of Pomerol.",
+    "commonPracticeNote": "Usually Merlot-led and approachable relative to the most famous Pomerol wines.",
+    "terroir": {
+      "keySoils": ["gravel", "clay", "sand"],
+      "climate": ["maritime", "Dordogne influence"],
+      "learningPoint": "The mix of gravel and clay supports Merlot-led blends with Right Bank softness and freshness."
+    },
+    "tastingProfile": {
+      "fruit": ["plum", "red cherry", "black cherry"],
+      "nonFruit": ["cedar", "earth", "violet"],
+      "structure": ["medium tannin", "medium acidity", "medium body"],
+      "ageingPotential": "moderate"
+    },
+    "examNotes": ["Right Bank satellite of Pomerol.", "Merlot-led red blends.", "Useful value comparison for Pomerol."],
+    "neighborComparisons": {
+      "pomerol": "Pomerol is generally denser, more prestigious, and more expensive."
+    }
+  },
+  {
+    "id": "fronsac",
+    "name": "Fronsac",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Right Bank",
+    "bank": "Right Bank",
+    "aocType": "Commune appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Merlot"],
+    "importantGrapes": ["Cabernet Franc", "Cabernet Sauvignon"],
+    "authorizedGrapesNote": "Use INAO for official rules; exam shorthand is Merlot-led Right Bank red.",
+    "officialRulesNote": "Fronsac is a Right Bank red-wine AOC west of Saint-Émilion and Pomerol.",
+    "commonPracticeNote": "Can show structured, earthy Merlot-led reds with good value.",
+    "terroir": {
+      "keySoils": ["limestone", "clay-limestone", "molasse"],
+      "climate": ["maritime", "Dordogne and Isle influence"],
+      "learningPoint": "Limestone and clay can give Fronsac more firmness and earthy structure than simple Right Bank shorthand suggests."
+    },
+    "tastingProfile": {
+      "fruit": ["plum", "black cherry", "redcurrant"],
+      "nonFruit": ["earth", "cedar", "tobacco"],
+      "structure": ["medium-plus tannin", "medium acidity", "medium-plus body"],
+      "ageingPotential": "moderate to high"
+    },
+    "examNotes": ["Right Bank appellation west of Pomerol.", "Merlot-led but often structured.", "Canon Fronsac is the smaller related appellation."],
+    "neighborComparisons": {
+      "canon-fronsac": "Canon Fronsac is smaller and often treated as a more specific Fronsac-area appellation."
+    }
+  },
+  {
+    "id": "canon-fronsac",
+    "name": "Canon Fronsac",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Right Bank",
+    "bank": "Right Bank",
+    "aocType": "Commune appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Merlot"],
+    "importantGrapes": ["Cabernet Franc", "Cabernet Sauvignon"],
+    "authorizedGrapesNote": "Use INAO for official rules; study shorthand is Merlot-led Right Bank red.",
+    "officialRulesNote": "Canon Fronsac is a small Right Bank red-wine AOC near Fronsac.",
+    "commonPracticeNote": "Often structured, savory, and limestone-influenced.",
+    "terroir": {
+      "keySoils": ["limestone", "clay-limestone"],
+      "climate": ["maritime", "Dordogne influence"],
+      "learningPoint": "The smaller limestone-influenced area can give wines freshness, firmness, and savory depth."
+    },
+    "tastingProfile": {
+      "fruit": ["plum", "black cherry", "red cherry"],
+      "nonFruit": ["earth", "cedar", "dried herbs"],
+      "structure": ["medium-plus tannin", "medium acidity", "medium-plus body"],
+      "ageingPotential": "moderate to high"
+    },
+    "examNotes": ["Small Right Bank appellation.", "Study with Fronsac.", "Merlot-led dry reds."],
+    "neighborComparisons": {
+      "fronsac": "Fronsac is the broader neighboring reference point."
+    }
+  },
+  {
+    "id": "montagne-saint-emilion",
+    "name": "Montagne-Saint-Émilion",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Right Bank",
+    "bank": "Right Bank",
+    "aocType": "Satellite appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Merlot", "Cabernet Franc"],
+    "importantGrapes": ["Cabernet Sauvignon"],
+    "authorizedGrapesNote": "Use INAO for official rules; study shorthand follows Saint-Émilion satellite red blends.",
+    "officialRulesNote": "A Saint-Émilion satellite appellation for dry red wines.",
+    "commonPracticeNote": "Usually Merlot-led, often slightly less concentrated than top Saint-Émilion but similar in style.",
+    "terroir": {
+      "keySoils": ["clay-limestone", "limestone", "sand in places"],
+      "climate": ["maritime", "Right Bank"],
+      "learningPoint": "Satellite appellations help map the wider limestone and clay-limestone Right Bank landscape."
+    },
+    "tastingProfile": {
+      "fruit": ["plum", "red cherry", "black cherry"],
+      "nonFruit": ["violet", "earth", "cedar"],
+      "structure": ["medium tannin", "medium acidity", "medium body"],
+      "ageingPotential": "moderate"
+    },
+    "examNotes": ["Saint-Émilion satellite.", "Merlot-led dry red.", "Useful for Right Bank hierarchy study."],
+    "neighborComparisons": {
+      "saint-emilion": "Saint-Émilion is the major reference appellation."
+    }
+  },
+  {
+    "id": "lussac-saint-emilion",
+    "name": "Lussac-Saint-Émilion",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Right Bank",
+    "bank": "Right Bank",
+    "aocType": "Satellite appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Merlot"],
+    "importantGrapes": ["Cabernet Franc", "Cabernet Sauvignon"],
+    "authorizedGrapesNote": "Use INAO for official rules; common practice is Merlot-led Right Bank blend.",
+    "officialRulesNote": "A Saint-Émilion satellite appellation for red wines.",
+    "commonPracticeNote": "Often approachable Merlot-led reds with red and black plum fruit.",
+    "terroir": {
+      "keySoils": ["clay-limestone", "limestone", "sand"],
+      "climate": ["maritime", "Right Bank"],
+      "learningPoint": "Clay-limestone supports Merlot ripeness while preserving structure and freshness."
+    },
+    "tastingProfile": {
+      "fruit": ["plum", "red cherry", "black cherry"],
+      "nonFruit": ["earth", "cedar", "dried herbs"],
+      "structure": ["medium tannin", "medium acidity", "medium body"],
+      "ageingPotential": "moderate"
+    },
+    "examNotes": ["Saint-Émilion satellite.", "Merlot-led red blends.", "Part of the Right Bank study cluster."],
+    "neighborComparisons": {
+      "montagne-saint-emilion": "Both are Saint-Émilion satellites with Merlot-led profiles."
+    }
+  },
+  {
+    "id": "puisseguin-saint-emilion",
+    "name": "Puisseguin-Saint-Émilion",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Right Bank",
+    "bank": "Right Bank",
+    "aocType": "Satellite appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Merlot"],
+    "importantGrapes": ["Cabernet Franc", "Cabernet Sauvignon"],
+    "authorizedGrapesNote": "Use INAO for official rules; common study framing is Merlot-led Right Bank blend.",
+    "officialRulesNote": "A Saint-Émilion satellite appellation for red wines.",
+    "commonPracticeNote": "Typically Merlot-led, with savory red-fruit and plum notes.",
+    "terroir": {
+      "keySoils": ["clay-limestone", "limestone"],
+      "climate": ["maritime", "Right Bank"],
+      "learningPoint": "Limestone and clay help place it in the same broad study family as Saint-Émilion."
+    },
+    "tastingProfile": {
+      "fruit": ["plum", "red cherry", "black cherry"],
+      "nonFruit": ["earth", "cedar", "violet"],
+      "structure": ["medium tannin", "medium acidity", "medium body"],
+      "ageingPotential": "moderate"
+    },
+    "examNotes": ["Saint-Émilion satellite.", "Merlot-led dry red.", "Good satellite appellation for map hierarchy."],
+    "neighborComparisons": {
+      "lussac-saint-emilion": "Both are northeastern Saint-Émilion satellites."
+    }
+  },
+  {
+    "id": "saint-georges-saint-emilion",
+    "name": "Saint-Georges-Saint-Émilion",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Right Bank",
+    "bank": "Right Bank",
+    "aocType": "Satellite appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Merlot"],
+    "importantGrapes": ["Cabernet Franc", "Cabernet Sauvignon"],
+    "authorizedGrapesNote": "Use INAO for official rules; common study framing is Merlot-led Right Bank blend.",
+    "officialRulesNote": "A small Saint-Émilion satellite appellation for red wines.",
+    "commonPracticeNote": "Usually Merlot-led with moderate structure and Right Bank savory fruit.",
+    "terroir": {
+      "keySoils": ["clay-limestone", "limestone"],
+      "climate": ["maritime", "Right Bank"],
+      "learningPoint": "A small satellite that reinforces the limestone/clay-limestone Right Bank pattern."
+    },
+    "tastingProfile": {
+      "fruit": ["plum", "red cherry", "black cherry"],
+      "nonFruit": ["earth", "cedar", "violet"],
+      "structure": ["medium tannin", "medium acidity", "medium body"],
+      "ageingPotential": "moderate"
+    },
+    "examNotes": ["Small Saint-Émilion satellite.", "Merlot-led dry red.", "Useful for advanced map detail."],
+    "neighborComparisons": {
+      "montagne-saint-emilion": "Montagne-Saint-Émilion is the larger nearby satellite reference."
+    }
+  },
+  {
+    "id": "pessac-leognan",
+    "name": "Pessac-Léognan",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Graves",
+    "bank": "Left Bank / Graves",
+    "aocType": "Commune appellation",
+    "primaryStyle": "Dry red and white",
+    "dominantGrapes": ["Cabernet Sauvignon", "Sauvignon Blanc"],
+    "importantGrapes": ["Merlot", "Sémillon", "Cabernet Franc", "Petit Verdot"],
+    "authorizedGrapesNote": "Use INAO for exact red and white grape rules; exam shorthand separates Cabernet-led reds from Sauvignon/Sémillon dry whites.",
+    "officialRulesNote": "Pessac-Léognan covers dry red and dry white wines in the northern Graves area.",
+    "commonPracticeNote": "Reds are often Cabernet Sauvignon-led; whites commonly blend Sauvignon Blanc and Sémillon.",
+    "classificationContext": "Home to classified Graves estates; crucial for both red and dry white Bordeaux study.",
+    "terroir": {
+      "keySoils": ["gravel", "sand", "clay", "limestone in places"],
+      "climate": ["maritime", "forest moderation", "Garonne influence"],
+      "learningPoint": "Gravel gives the Graves region its name and supports structured reds plus ageworthy dry whites."
+    },
+    "tastingProfile": {
+      "fruit": ["blackcurrant", "black cherry", "citrus"],
+      "nonFruit": ["cedar", "smoke", "gravelly mineral", "grass"],
+      "structure": ["medium-plus tannin in reds", "high acidity in whites", "medium-plus body"],
+      "ageingPotential": "high for top reds and whites"
+    },
+    "examNotes": ["Northern Graves appellation.", "Important for both red and dry white Bordeaux.", "Know smoky/gravelly red and ageworthy white profiles."],
+    "neighborComparisons": {
+      "graves": "Graves is broader and generally less prestige-focused.",
+      "sauternes": "Sauternes is sweet white, not the dry white style of Pessac-Léognan."
+    }
+  },
+  {
+    "id": "graves",
+    "name": "Graves",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Graves",
+    "bank": "Left Bank / Graves",
+    "aocType": "District appellation",
+    "primaryStyle": "Dry red and white",
+    "dominantGrapes": ["Cabernet Sauvignon", "Merlot", "Sauvignon Blanc"],
+    "importantGrapes": ["Sémillon", "Cabernet Franc", "Petit Verdot"],
+    "authorizedGrapesNote": "Use INAO for exact red and white rules; study shorthand separates red Bordeaux blends from Sauvignon/Sémillon dry whites.",
+    "officialRulesNote": "Graves is a broad southern Left Bank appellation for dry red and white wines.",
+    "commonPracticeNote": "Reds can be Cabernet/Merlot blends; whites often Sauvignon Blanc and Sémillon.",
+    "terroir": {
+      "keySoils": ["gravel", "sand", "clay"],
+      "climate": ["maritime", "Garonne influence", "Landes forest moderation"],
+      "learningPoint": "The gravelly soils are the classic Graves identity and help explain structure in reds and freshness in whites."
+    },
+    "tastingProfile": {
+      "fruit": ["blackcurrant", "plum", "citrus"],
+      "nonFruit": ["cedar", "smoke", "herbs", "mineral notes"],
+      "structure": ["medium tannin", "medium-plus acidity", "medium body"],
+      "ageingPotential": "moderate to high, producer-dependent"
+    },
+    "examNotes": ["Southern Left Bank district.", "Dry reds and dry whites.", "Do not confuse with Graves de Vayres."],
+    "neighborComparisons": {
+      "pessac-leognan": "Pessac-Léognan is the more prestigious northern Graves appellation.",
+      "graves-de-vayres": "Graves de Vayres is a separate small Dordogne-side appellation."
+    }
+  },
+  {
+    "id": "graves-superieures",
+    "name": "Graves Supérieures",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Graves",
+    "bank": "Left Bank / Graves",
+    "aocType": "District appellation",
+    "primaryStyle": "Sweet white",
+    "dominantGrapes": ["Sémillon"],
+    "importantGrapes": ["Sauvignon Blanc", "Muscadelle"],
+    "authorizedGrapesNote": "Use INAO for official sweetness and grape rules; study shorthand is sweet white Graves.",
+    "officialRulesNote": "Graves Supérieures is a sweet white appellation associated with the Graves area.",
+    "commonPracticeNote": "Less famous than Sauternes/Barsac but useful for understanding sweet white Bordeaux geography.",
+    "terroir": {
+      "keySoils": ["gravel", "sand", "clay"],
+      "climate": ["maritime", "Garonne influence"],
+      "learningPoint": "Sweet white production here belongs to the broader Bordeaux pattern of Sémillon-led wines with Sauvignon Blanc freshness."
+    },
+    "tastingProfile": {
+      "fruit": ["apricot", "peach", "citrus peel"],
+      "nonFruit": ["honey", "floral notes", "wax"],
+      "structure": ["medium acidity", "medium-plus sweetness", "medium body"],
+      "ageingPotential": "moderate"
+    },
+    "examNotes": ["Sweet white Graves appellation.", "Sémillon-led study profile.", "Less central than Sauternes/Barsac."],
+    "neighborComparisons": {
+      "sauternes": "Sauternes is the classic high-prestige botrytized sweet white reference."
+    }
+  },
+  {
+    "id": "sauternes",
+    "name": "Sauternes",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Graves / Sauternes",
+    "bank": "Left Bank / Graves",
+    "aocType": "Commune appellation",
+    "primaryStyle": "Sweet white",
+    "dominantGrapes": ["Sémillon"],
+    "importantGrapes": ["Sauvignon Blanc", "Muscadelle"],
+    "authorizedGrapesNote": "Use INAO for official rules; study shorthand is botrytized Sémillon-led sweet white.",
+    "officialRulesNote": "Sauternes is a famous sweet white Bordeaux appellation.",
+    "commonPracticeNote": "Commonly Sémillon-led with Sauvignon Blanc for acidity and aromatic lift.",
+    "classificationContext": "Central to the 1855 Classification sweet wine section, including Château d'Yquem.",
+    "terroir": {
+      "keySoils": ["gravel", "clay", "limestone in places"],
+      "climate": ["maritime", "morning mists", "Cirons and Garonne influence"],
+      "learningPoint": "The Ciron/Garonne mist pattern promotes noble rot, concentrating sugars, acidity, and flavor."
+    },
+    "tastingProfile": {
+      "fruit": ["apricot", "marmalade", "pineapple"],
+      "nonFruit": ["honey", "saffron", "botrytis spice", "toast"],
+      "structure": ["high sweetness", "medium-plus acidity", "full body"],
+      "ageingPotential": "very high"
+    },
+    "examNotes": ["Classic botrytized sweet white Bordeaux.", "Sémillon-led with Sauvignon Blanc.", "Know Sauternes and Barsac together."],
+    "neighborComparisons": {
+      "barsac": "Barsac can label as Barsac or Sauternes and is often framed as a little lighter or more lifted."
+    }
+  },
+  {
+    "id": "barsac",
+    "name": "Barsac",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Graves / Sauternes",
+    "bank": "Left Bank / Graves",
+    "aocType": "Commune appellation",
+    "primaryStyle": "Sweet white",
+    "dominantGrapes": ["Sémillon"],
+    "importantGrapes": ["Sauvignon Blanc", "Muscadelle"],
+    "authorizedGrapesNote": "Use INAO for official rules; Barsac producers may also use the Sauternes name.",
+    "officialRulesNote": "Barsac is a sweet white appellation within the Sauternes study area.",
+    "commonPracticeNote": "Sémillon-led botrytized wines, often described as lifted and elegant relative to some Sauternes examples.",
+    "classificationContext": "Important in the 1855 sweet wine classification context.",
+    "terroir": {
+      "keySoils": ["limestone", "clay", "gravel"],
+      "climate": ["maritime", "morning mists", "Ciron and Garonne influence"],
+      "learningPoint": "Barsac shares the noble-rot sweet wine mechanism with Sauternes while having its own commune identity."
+    },
+    "tastingProfile": {
+      "fruit": ["apricot", "orange marmalade", "peach"],
+      "nonFruit": ["honey", "saffron", "botrytis spice"],
+      "structure": ["high sweetness", "medium-plus acidity", "full body"],
+      "ageingPotential": "high"
+    },
+    "examNotes": ["Study with Sauternes.", "Sweet white, Sémillon-led, botrytized.", "Can be labeled Barsac or Sauternes under relevant rules."],
+    "neighborComparisons": {
+      "sauternes": "Sauternes is the broader famous reference; Barsac is a distinct commune appellation."
+    }
+  },
+  {
+    "id": "cerons",
+    "name": "Cérons",
+    "country": "France",
+    "region": "Bordeaux",
+    "subregion": "Graves / Sauternes",
+    "bank": "Left Bank / Graves",
+    "aocType": "Commune appellation",
+    "primaryStyle": "Sweet white",
+    "dominantGrapes": ["Sémillon"],
+    "importantGrapes": ["Sauvignon Blanc", "Muscadelle"],
+    "authorizedGrapesNote": "Use INAO for exact rules; study shorthand is sweet white Bordeaux near Sauternes/Barsac.",
+    "officialRulesNote": "Cérons is a sweet white appellation north of Barsac/Sauternes.",
+    "commonPracticeNote": "Usually less famous than Sauternes and Barsac but similar in grape family and sweet white study profile.",
+    "terroir": {
+      "keySoils": ["gravel", "clay", "limestone"],
+      "climate": ["maritime", "Garonne influence"],
+      "learningPoint": "Cérons helps connect the Graves map to the sweet white belt around Sauternes and Barsac."
+    },
+    "tastingProfile": {
+      "fruit": ["apricot", "citrus peel", "peach"],
+      "nonFruit": ["honey", "floral notes", "wax"],
+      "structure": ["medium-plus sweetness", "medium acidity", "medium body"],
+      "ageingPotential": "moderate"
+    },
+    "examNotes": ["Small sweet white Bordeaux appellation.", "Study near Barsac/Sauternes.", "Sémillon-led profile."],
+    "neighborComparisons": {
+      "barsac": "Barsac is the more famous sweet white neighbor to the south."
+    }
   }
 ]

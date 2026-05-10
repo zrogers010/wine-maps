@@ -10,6 +10,7 @@ import { APPELLATION_COLORS } from '../utils/mapStyles'
 import { MapView } from './MapView'
 
 const appellations = appellationData as AppellationMetadata[]
+const hiddenMapIds: AppellationId[] = ['graves-superieures']
 
 const regionLegendGroups: Array<{ title: string; ids: AppellationId[] }> = [
   {
@@ -39,6 +40,30 @@ const regionLegendGroups: Array<{ title: string; ids: AppellationId[] }> = [
       'graves-de-vayres',
     ],
   },
+  {
+    title: 'Bordeaux / Right Bank',
+    ids: [
+      'saint-emilion',
+      'pomerol',
+      'lalande-de-pomerol',
+      'fronsac',
+      'canon-fronsac',
+      'montagne-saint-emilion',
+      'lussac-saint-emilion',
+      'puisseguin-saint-emilion',
+      'saint-georges-saint-emilion',
+    ],
+  },
+  {
+    title: 'Bordeaux / Graves & Sauternes',
+    ids: [
+      'pessac-leognan',
+      'graves',
+      'sauternes',
+      'barsac',
+      'cerons',
+    ],
+  },
 ]
 
 const defaultLayers: LayerState = {
@@ -55,7 +80,9 @@ export function AppShell() {
   const [legendHoveredId, setLegendHoveredId] = useState<AppellationId | null>(null)
   const layers = defaultLayers
   const mode: ExperienceMode = 'Explore'
-  const filteredIds = appellations.map((appellation) => appellation.id)
+  const filteredIds = appellations
+    .map((appellation) => appellation.id)
+    .filter((id) => !hiddenMapIds.includes(id))
 
   const handleSelectAppellation = useCallback((id: AppellationId) => {
     setSelectedId(id)
@@ -99,7 +126,7 @@ export function AppShell() {
                       className="region-legend-swatch"
                       style={{ backgroundColor: APPELLATION_COLORS[appellation.id] }}
                     />
-                    <span>{appellation.name}</span>
+                    <span>{legendLabel(appellation)}</span>
                   </div>
                 )
               })}
@@ -109,4 +136,12 @@ export function AppShell() {
       </aside>
     </div>
   )
+}
+
+function legendLabel(appellation: AppellationMetadata) {
+  if (appellation.id === 'cadillac') {
+    return 'Cadillac Côtes de Bordeaux'
+  }
+
+  return appellation.name
 }
