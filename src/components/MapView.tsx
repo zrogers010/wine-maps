@@ -57,9 +57,9 @@ const vineyardLayerId = 'vineyards-fill'
 const hydrologyLayerId = 'hydrology-line'
 type SourceFeatureId = string | number
 const chateaux = chateauData as ChateauPoint[]
-const zoomTransitionStart = 10.00
-const zoomTransitionEnd = 11.8
-const detailedHoverStart = 10.8
+const zoomTransitionStart = 9.80
+const zoomTransitionEnd = 10.80
+const detailedHoverStart = 10.50
 const detailedHautMedocFillColor = '#7fb23f'
 const lowZoomHullIds: AppellationId[] = [
   'medoc',
