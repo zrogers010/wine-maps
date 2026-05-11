@@ -2,8 +2,8 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { booleanIntersects, flatten } from '@turf/turf'
 
-const sourcePath = 'public/data/medoc-inao-aoc-2026.geojson'
-const outputPath = 'public/data/medoc-display-exclusive-2026.geojson'
+const sourcePath = 'public/data/france/bordeaux/medoc-inao-aoc-2026.geojson'
+const outputPath = 'public/data/france/bordeaux/medoc-display-exclusive-2026.geojson'
 
 const priorityById = new Map([
   ['medoc', 1],

@@ -13,8 +13,8 @@ import {
   union,
 } from '@turf/turf'
 
-const sourcePath = 'public/data/bordeaux-display-exclusive-2026.geojson'
-const outputPath = 'public/data/bordeaux-display-cadillac-dissolve-trial-2026.geojson'
+const sourcePath = 'public/data/france/bordeaux/bordeaux-display-exclusive-2026.geojson'
+const outputPath = 'public/data/france/bordeaux/bordeaux-display-cadillac-dissolve-trial-2026.geojson'
 const concaveMaxEdgeKilometers = 3
 const geometryPatchesById = new Map([
   [

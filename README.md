@@ -32,10 +32,10 @@ regions. See `docs/REGION_TEMPLATE.md`.
 
 Primary detailed boundary source:
 
-- `src/data/bordeaux-inao-aoc-2026.geojson` is generated from
+- `src/data/france/bordeaux/bordeaux-inao-aoc-2026.geojson` is generated from
   [Délimitation Parcellaire des AOC Viticoles de l'INAO](https://www.data.gouv.fr/datasets/delimitation-parcellaire-des-aoc-viticoles-de-linao/),
   resource `2026-05-05-delim-parcellaire-aoc-shp.zip`.
-- `public/data/bordeaux-display-exclusive-2026.geojson` is the runtime display
+- `public/data/france/bordeaux/bordeaux-display-exclusive-2026.geojson` is the runtime display
   layer loaded by MapLibre, so the large boundary file is not bundled into
   JavaScript.
 - The national SHP is Lambert-93 (`EPSG:2154`); the app extract is transformed
@@ -54,8 +54,8 @@ Other useful data sources:
 
 The old placeholder file is still kept only as a development fallback:
 
-- `src/data/medoc-placeholder.geojson`
-- `src/data/appellations.json`
+- `src/data/france/bordeaux/medoc-placeholder.geojson`
+- `src/data/france/bordeaux/appellations.json`
 
 ## Accuracy Model
 
@@ -97,10 +97,13 @@ src/
   components/
     MapView.tsx
   data/
-    appellations.json
-    bordeaux-inao-aoc-2026.geojson
-    medoc-inao-aoc-2026.geojson
-    medoc-placeholder.geojson
+    france/
+      bordeaux/
+        appellations.json
+        chateaux.json
+        bordeaux-inao-aoc-2026.geojson
+        medoc-inao-aoc-2026.geojson
+        medoc-placeholder.geojson
   docs/
     REGION_TEMPLATE.md
   scripts/

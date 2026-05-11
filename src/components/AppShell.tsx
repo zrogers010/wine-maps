@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import appellationData from '../data/appellations.json'
+import appellationData from '../data/france/bordeaux/appellations.json'
 import type {
   AppellationId,
   AppellationMetadata,

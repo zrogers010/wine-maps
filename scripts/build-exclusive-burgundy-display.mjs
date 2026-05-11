@@ -2,42 +2,26 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { bbox, booleanIntersects, flatten } from '@turf/turf'
 
-const sourcePath = 'public/data/france/bordeaux/bordeaux-inao-aoc-2026.geojson'
-const outputPath = 'public/data/france/bordeaux/bordeaux-display-exclusive-2026.geojson'
+const sourcePath = 'public/data/france/burgundy/burgundy-inao-aoc-2026.geojson'
+const outputPath = 'public/data/france/burgundy/burgundy-display-exclusive-2026.geojson'
 
 const priorityById = new Map([
-  ['medoc', 1],
-  ['haut-medoc', 2],
-  ['saint-estephe', 3],
-  ['pauillac', 3],
-  ['saint-julien', 3],
-  ['margaux', 3],
-  ['moulis-en-medoc', 3],
-  ['listrac-medoc', 3],
-  ['entre-deux-mers', 1],
-  ['premieres-cotes-de-bordeaux', 2],
-  ['cotes-de-bordeaux-cadillac', 2],
-  ['cotes-de-bordeaux-saint-macaire', 2],
-  ['graves-de-vayres', 2],
-  ['entre-deux-mers-haut-benauge', 3],
-  ['cadillac', 3],
-  ['loupiac', 3],
-  ['sainte-croix-du-mont', 3],
-  ['saint-emilion', 2],
-  ['pomerol', 3],
-  ['lalande-de-pomerol', 3],
-  ['fronsac', 2],
-  ['canon-fronsac', 3],
-  ['montagne-saint-emilion', 3],
-  ['lussac-saint-emilion', 3],
-  ['puisseguin-saint-emilion', 3],
-  ['saint-georges-saint-emilion', 3],
-  ['graves', 2],
-  ['graves-superieures', 1],
-  ['pessac-leognan', 3],
-  ['sauternes', 2],
-  ['barsac', 3],
-  ['cerons', 2],
+  ['petit-chablis', 1],
+  ['chablis', 2],
+  ['chablis-grand-cru', 4],
+  ['gevrey-chambertin', 3],
+  ['morey-saint-denis', 3],
+  ['chambolle-musigny', 3],
+  ['vougeot', 3],
+  ['vosne-romanee', 3],
+  ['nuits-saint-georges', 3],
+  ['aloxe-corton', 3],
+  ['beaune', 3],
+  ['pommard', 3],
+  ['volnay', 3],
+  ['meursault', 3],
+  ['puligny-montrachet', 3],
+  ['chassagne-montrachet', 3],
 ])
 
 const source = JSON.parse(await fs.readFile(sourcePath, 'utf-8'))
@@ -70,7 +54,7 @@ for (const feature of flattenedFeatures) {
     properties: {
       ...feature.properties,
       displayStatus:
-        'Exclusive cartographic display feature: lower-priority district AOC features are hidden when they overlap higher-priority AOCs.',
+        'Exclusive cartographic display feature: lower-priority Burgundy AOC features are hidden when they overlap higher-priority AOCs.',
       sourceFeatureId: feature.id,
     },
   })
@@ -79,7 +63,7 @@ for (const feature of flattenedFeatures) {
 const collection = {
   type: 'FeatureCollection',
   metadata: {
-    name: 'Bordeaux exclusive display AOC layer',
+    name: 'Burgundy exclusive display AOC layer',
     source: sourcePath,
     note:
       'Generated from INAO AOC production-area features for map display. It resolves overlapping legal eligibility layers by displaying more specific AOCs over broader AOCs.',

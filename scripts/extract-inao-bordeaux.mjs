@@ -5,8 +5,8 @@ import shapefile from 'shapefile'
 
 const sourceBase =
   'data/raw/inao-aoc-viticoles-2026-05-05/2026-05-05_delim-parcellaire-aoc-shp'
-const outputPath = 'src/data/bordeaux-inao-aoc-2026.geojson'
-const publicOutputPath = 'public/data/bordeaux-inao-aoc-2026.geojson'
+const outputPath = 'src/data/france/bordeaux/bordeaux-inao-aoc-2026.geojson'
+const publicOutputPath = 'public/data/france/bordeaux/bordeaux-inao-aoc-2026.geojson'
 
 const targetAocs = [
   { app: 'Médoc', id: 'medoc', name: 'Médoc' },

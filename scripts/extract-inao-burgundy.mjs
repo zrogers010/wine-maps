@@ -5,30 +5,27 @@ import shapefile from 'shapefile'
 
 const sourceBase =
   'data/raw/inao-aoc-viticoles-2026-05-05/2026-05-05_delim-parcellaire-aoc-shp'
-const outputPath = 'src/data/france/bordeaux/medoc-inao-aoc-2026.geojson'
-const publicOutputPath = 'public/data/france/bordeaux/medoc-inao-aoc-2026.geojson'
+const outputPath = 'src/data/france/burgundy/burgundy-inao-aoc-2026.geojson'
+const publicOutputPath = 'public/data/france/burgundy/burgundy-inao-aoc-2026.geojson'
 
-const targetApps = new Map([
-  ['Médoc', 'medoc'],
-  ['Haut-Médoc', 'haut-medoc'],
-  ['Saint-Estèphe', 'saint-estephe'],
-  ['Pauillac', 'pauillac'],
-  ['Saint-Julien', 'saint-julien'],
-  ['Margaux', 'margaux'],
-  ['Moulis ou Moulis-en-Médoc', 'moulis-en-medoc'],
-  ['Listrac-Médoc', 'listrac-medoc'],
-])
-
-const namesById = new Map([
-  ['medoc', 'Médoc'],
-  ['haut-medoc', 'Haut-Médoc'],
-  ['saint-estephe', 'Saint-Estèphe'],
-  ['pauillac', 'Pauillac'],
-  ['saint-julien', 'Saint-Julien'],
-  ['margaux', 'Margaux'],
-  ['moulis-en-medoc', 'Moulis-en-Médoc'],
-  ['listrac-medoc', 'Listrac-Médoc'],
-])
+const targetAocs = [
+  { app: 'Petit Chablis', id: 'petit-chablis', name: 'Petit Chablis' },
+  { app: 'Chablis', id: 'chablis', name: 'Chablis' },
+  { app: 'Chablis Grand Cru', id: 'chablis-grand-cru', name: 'Chablis Grand Cru' },
+  { app: 'Gevrey-Chambertin', id: 'gevrey-chambertin', name: 'Gevrey-Chambertin' },
+  { app: 'Morey-Saint-Denis', id: 'morey-saint-denis', name: 'Morey-Saint-Denis' },
+  { app: 'Chambolle-Musigny', id: 'chambolle-musigny', name: 'Chambolle-Musigny' },
+  { app: 'Vougeot', id: 'vougeot', name: 'Vougeot' },
+  { app: 'Vosne-Romanée', id: 'vosne-romanee', name: 'Vosne-Romanée' },
+  { app: 'Nuits-Saint-Georges', id: 'nuits-saint-georges', name: 'Nuits-Saint-Georges' },
+  { app: 'Aloxe-Corton', id: 'aloxe-corton', name: 'Aloxe-Corton' },
+  { app: 'Beaune', id: 'beaune', name: 'Beaune' },
+  { app: 'Pommard', id: 'pommard', name: 'Pommard' },
+  { app: 'Volnay', id: 'volnay', name: 'Volnay' },
+  { app: 'Meursault', id: 'meursault', name: 'Meursault' },
+  { app: 'Puligny-Montrachet', id: 'puligny-montrachet', name: 'Puligny-Montrachet' },
+  { app: 'Chassagne-Montrachet', id: 'chassagne-montrachet', name: 'Chassagne-Montrachet' },
+]
 
 proj4.defs(
   'EPSG:2154',
@@ -49,9 +46,9 @@ while (true) {
   }
 
   const feature = result.value
-  const id = targetApps.get(feature.properties.app)
+  const target = targetAocs.find((candidate) => candidate.app === feature.properties.app)
 
-  if (!id) {
+  if (!target) {
     continue
   }
 
@@ -59,10 +56,10 @@ while (true) {
 
   features.push({
     type: 'Feature',
-    id: `${id}-${features.length + 1}`,
+    id: `${target.id}-${features.length + 1}`,
     properties: {
-      id,
-      name: namesById.get(id),
+      id: target.id,
+      name: target.name,
       sourceApp: feature.properties.app,
       sourceDenom: feature.properties.denom,
       sign: feature.properties.signe,
@@ -83,29 +80,26 @@ while (true) {
 const collection = {
   type: 'FeatureCollection',
   metadata: {
-    name: 'Médoc INAO AOC viticole parcel delimitation extract',
+    name: 'Burgundy INAO AOC viticole parcel delimitation extract',
     placeholder: false,
     source:
-      'Délimitation Parcellaire des AOC Viticoles de l’INAO, data.gouv.fr',
+      "Délimitation Parcellaire des AOC Viticoles de l'INAO, data.gouv.fr",
     sourceUrl:
       'https://www.data.gouv.fr/datasets/delimitation-parcellaire-des-aoc-viticoles-de-linao/',
-    sourceResource:
-      '2026-05-05-delim-parcellaire-aoc-shp.zip',
+    sourceResource: '2026-05-05-delim-parcellaire-aoc-shp.zip',
     sourceProjection: 'EPSG:2154',
     outputProjection: 'EPSG:4326',
-    note:
-      'The INAO dataset itself says these online data are informational; official parcel delimitations are the deposited plans available from town halls or INAO services.',
   },
   features,
 }
 
 const serialized = `${JSON.stringify(collection)}\n`
 
+await fs.mkdir(path.dirname(outputPath), { recursive: true })
 await fs.mkdir(path.dirname(publicOutputPath), { recursive: true })
 await fs.writeFile(outputPath, serialized)
 await fs.writeFile(publicOutputPath, serialized)
 
-const size = (await fs.stat(outputPath)).size
 const counts = features.reduce((acc, feature) => {
   acc[feature.properties.id] = (acc[feature.properties.id] ?? 0) + 1
   return acc
@@ -113,7 +107,6 @@ const counts = features.reduce((acc, feature) => {
 
 console.log(`Wrote ${features.length} features to ${path.resolve(outputPath)}`)
 console.log(`Copied runtime asset to ${path.resolve(publicOutputPath)}`)
-console.log(`Size: ${(size / 1024 / 1024).toFixed(2)} MB`)
 console.log(counts)
 
 function transformGeometry(geometry) {

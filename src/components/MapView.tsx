@@ -8,7 +8,7 @@ import maplibregl, {
   type MapLayerMouseEvent,
 } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import chateauData from '../data/chateaux.json'
+import chateauData from '../data/france/bordeaux/chateaux.json'
 import type {
   AppellationId,
   AppellationMetadata,
@@ -166,8 +166,8 @@ export function MapView({
 
     map.on('load', async () => {
       const [bordeauxGeoJson, lowZoomHullGeoJson] = await Promise.all([
-        loadBordeauxGeoJson('/data/bordeaux-display-exclusive-2026.geojson'),
-        loadBordeauxGeoJson('/data/bordeaux-display-cadillac-dissolve-trial-2026.geojson'),
+        loadBordeauxGeoJson('/data/france/bordeaux/bordeaux-display-exclusive-2026.geojson'),
+        loadBordeauxGeoJson('/data/france/bordeaux/bordeaux-display-cadillac-dissolve-trial-2026.geojson'),
       ])
 
       if (cancelled) {
@@ -1192,6 +1192,12 @@ function HoverRegionCard({
         {appellation.region} / {appellation.subregion}
       </span>
       <h2>{appellation.name}</h2>
+      {region.commune ? (
+        <div className="hover-card-commune">
+          {region.commune}
+          {region.insee ? <span>{region.insee}</span> : null}
+        </div>
+      ) : null}
       <div className="hover-card-meta">
         <span>{appellation.aocType}</span>
         <span>{appellation.primaryStyle}</span>

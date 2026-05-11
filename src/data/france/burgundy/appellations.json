@@ -1,0 +1,455 @@
+[
+  {
+    "id": "petit-chablis",
+    "name": "Petit Chablis",
+    "country": "France",
+    "region": "Burgundy",
+    "subregion": "Chablis",
+    "bank": "Northern Burgundy",
+    "aocType": "Regional / village-level appellation",
+    "primaryStyle": "Dry white",
+    "dominantGrapes": ["Chardonnay"],
+    "importantGrapes": [],
+    "authorizedGrapesNote": "Study shorthand: Chardonnay dry white. Use INAO for exact production rules.",
+    "officialRulesNote": "Petit Chablis is an AOC for dry white wines in the Chablis area.",
+    "commonPracticeNote": "Usually lighter and earlier-drinking than Chablis.",
+    "terroir": {
+      "keySoils": ["Portlandian limestone", "clay-limestone"],
+      "climate": ["cool continental", "spring frost risk"],
+      "learningPoint": "Cool climate and limestone soils make high-acid Chardonnay with citrus and mineral cues."
+    },
+    "tastingProfile": {
+      "fruit": ["lemon", "green apple", "pear"],
+      "nonFruit": ["chalk", "wet stone", "white flowers"],
+      "structure": ["high acidity", "light to medium body", "dry"],
+      "ageingPotential": "generally short to moderate"
+    },
+    "examNotes": ["Chardonnay only in common study shorthand.", "Lighter Chablis-area category.", "Useful contrast with Chablis and Chablis Grand Cru."],
+    "neighborComparisons": {}
+  },
+  {
+    "id": "chablis",
+    "name": "Chablis",
+    "country": "France",
+    "region": "Burgundy",
+    "subregion": "Chablis",
+    "bank": "Northern Burgundy",
+    "aocType": "Village appellation",
+    "primaryStyle": "Dry white",
+    "dominantGrapes": ["Chardonnay"],
+    "importantGrapes": [],
+    "authorizedGrapesNote": "Study shorthand: Chardonnay dry white. Use INAO for official rules.",
+    "officialRulesNote": "Chablis is an AOC for dry white wines in northern Burgundy.",
+    "commonPracticeNote": "Typically unoaked or subtly handled, emphasizing acidity, citrus, and mineral character.",
+    "terroir": {
+      "keySoils": ["Kimmeridgian limestone", "marl", "clay-limestone"],
+      "climate": ["cool continental", "frost-prone"],
+      "learningPoint": "Kimmeridgian limestone and cool climate are central to the classic high-acid, mineral Chablis profile."
+    },
+    "tastingProfile": {
+      "fruit": ["lemon", "green apple", "white peach"],
+      "nonFruit": ["chalk", "oyster shell", "wet stone"],
+      "structure": ["high acidity", "medium body", "dry"],
+      "ageingPotential": "moderate, higher for top sites"
+    },
+    "examNotes": ["Northern Burgundy Chardonnay.", "High acid, citrus, mineral cues.", "Contrast with richer Côte de Beaune Chardonnay."],
+    "neighborComparisons": {}
+  },
+  {
+    "id": "chablis-grand-cru",
+    "name": "Chablis Grand Cru",
+    "country": "France",
+    "region": "Burgundy",
+    "subregion": "Chablis",
+    "bank": "Northern Burgundy",
+    "aocType": "Grand cru appellation",
+    "primaryStyle": "Dry white",
+    "dominantGrapes": ["Chardonnay"],
+    "importantGrapes": [],
+    "authorizedGrapesNote": "Study shorthand: Chardonnay dry white. Use INAO for official site rules.",
+    "officialRulesNote": "Chablis Grand Cru covers the grand cru climats of Chablis.",
+    "commonPracticeNote": "More concentration, texture, and ageing potential than basic Chablis.",
+    "classificationContext": "Grand cru level in the Burgundy hierarchy.",
+    "terroir": {
+      "keySoils": ["Kimmeridgian limestone", "marl"],
+      "climate": ["cool continental", "southwest-facing grand cru slope"],
+      "learningPoint": "Grand cru exposure and limestone soils give more power while retaining Chablis acidity."
+    },
+    "tastingProfile": {
+      "fruit": ["lemon curd", "ripe apple", "stone fruit"],
+      "nonFruit": ["chalk", "honey", "oyster shell"],
+      "structure": ["high acidity", "medium-plus body", "long finish"],
+      "ageingPotential": "high"
+    },
+    "examNotes": ["Grand cru Chablis.", "Chardonnay, high acidity, mineral profile.", "More body and age potential than Chablis."],
+    "neighborComparisons": {}
+  },
+  {
+    "id": "gevrey-chambertin",
+    "name": "Gevrey-Chambertin",
+    "country": "France",
+    "region": "Burgundy",
+    "subregion": "Côte de Nuits",
+    "bank": "Côte d'Or",
+    "aocType": "Village appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Pinot Noir"],
+    "importantGrapes": [],
+    "authorizedGrapesNote": "Study shorthand: Pinot Noir red Burgundy. Use INAO for exact rules.",
+    "officialRulesNote": "Gevrey-Chambertin is a Côte de Nuits village appellation.",
+    "commonPracticeNote": "Often among the firmer, more structured Côte de Nuits village profiles.",
+    "terroir": {
+      "keySoils": ["limestone", "marl", "clay-limestone"],
+      "climate": ["continental", "Côte d'Or slope exposure"],
+      "learningPoint": "Côte de Nuits limestone and slope position help frame structured Pinot Noir with savory depth."
+    },
+    "tastingProfile": {
+      "fruit": ["red cherry", "raspberry", "black cherry"],
+      "nonFruit": ["earth", "spice", "game", "forest floor"],
+      "structure": ["medium-plus tannin for Pinot Noir", "medium-plus acidity", "medium body"],
+      "ageingPotential": "moderate to high"
+    },
+    "examNotes": ["Côte de Nuits village.", "Pinot Noir.", "Often taught as structured and powerful by Burgundy standards."],
+    "neighborComparisons": {}
+  },
+  {
+    "id": "morey-saint-denis",
+    "name": "Morey-Saint-Denis",
+    "country": "France",
+    "region": "Burgundy",
+    "subregion": "Côte de Nuits",
+    "bank": "Côte d'Or",
+    "aocType": "Village appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Pinot Noir"],
+    "importantGrapes": [],
+    "authorizedGrapesNote": "Study shorthand: Pinot Noir red Burgundy. Use INAO for official rules.",
+    "officialRulesNote": "Morey-Saint-Denis is a Côte de Nuits village appellation.",
+    "commonPracticeNote": "Often positioned stylistically between Gevrey structure and Chambolle elegance.",
+    "terroir": {
+      "keySoils": ["limestone", "marl", "clay-limestone"],
+      "climate": ["continental", "Côte d'Or slope exposure"],
+      "learningPoint": "Its position between famous neighbors makes it useful for studying Côte de Nuits transitions."
+    },
+    "tastingProfile": {
+      "fruit": ["red cherry", "raspberry", "black cherry"],
+      "nonFruit": ["earth", "violet", "spice"],
+      "structure": ["medium tannin", "medium-plus acidity", "medium body"],
+      "ageingPotential": "moderate to high"
+    },
+    "examNotes": ["Côte de Nuits village.", "Pinot Noir.", "Bridge style between Gevrey and Chambolle in study shorthand."],
+    "neighborComparisons": {}
+  },
+  {
+    "id": "chambolle-musigny",
+    "name": "Chambolle-Musigny",
+    "country": "France",
+    "region": "Burgundy",
+    "subregion": "Côte de Nuits",
+    "bank": "Côte d'Or",
+    "aocType": "Village appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Pinot Noir"],
+    "importantGrapes": [],
+    "authorizedGrapesNote": "Study shorthand: Pinot Noir red Burgundy. Use INAO for official rules.",
+    "officialRulesNote": "Chambolle-Musigny is a Côte de Nuits village appellation.",
+    "commonPracticeNote": "Often taught as elegant, perfumed, and fine-boned.",
+    "terroir": {
+      "keySoils": ["limestone", "thin soils", "marl"],
+      "climate": ["continental", "Côte d'Or slope exposure"],
+      "learningPoint": "Thin limestone-influenced soils help frame the classic perfume and finesse shorthand."
+    },
+    "tastingProfile": {
+      "fruit": ["raspberry", "red cherry", "strawberry"],
+      "nonFruit": ["violet", "rose", "spice", "forest floor"],
+      "structure": ["fine tannin", "medium-plus acidity", "medium body"],
+      "ageingPotential": "moderate to high"
+    },
+    "examNotes": ["Côte de Nuits village.", "Pinot Noir.", "Often described as elegant and floral."],
+    "neighborComparisons": {}
+  },
+  {
+    "id": "vougeot",
+    "name": "Vougeot",
+    "country": "France",
+    "region": "Burgundy",
+    "subregion": "Côte de Nuits",
+    "bank": "Côte d'Or",
+    "aocType": "Village appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Pinot Noir"],
+    "importantGrapes": ["Chardonnay"],
+    "authorizedGrapesNote": "Study shorthand: mainly Pinot Noir red Burgundy, with some white permitted depending on classification/site.",
+    "officialRulesNote": "Vougeot is a small Côte de Nuits village appellation.",
+    "commonPracticeNote": "Best known in study context because of Clos de Vougeot nearby.",
+    "terroir": {
+      "keySoils": ["limestone", "clay-limestone"],
+      "climate": ["continental", "Côte d'Or slope exposure"],
+      "learningPoint": "Small village geography highlights Burgundy's tight village-by-village hierarchy."
+    },
+    "tastingProfile": {
+      "fruit": ["red cherry", "raspberry", "black cherry"],
+      "nonFruit": ["earth", "spice", "forest floor"],
+      "structure": ["medium tannin", "medium-plus acidity", "medium body"],
+      "ageingPotential": "moderate"
+    },
+    "examNotes": ["Small Côte de Nuits village.", "Pinot Noir focus.", "Study near Chambolle and Vosne-Romanée."],
+    "neighborComparisons": {}
+  },
+  {
+    "id": "vosne-romanee",
+    "name": "Vosne-Romanée",
+    "country": "France",
+    "region": "Burgundy",
+    "subregion": "Côte de Nuits",
+    "bank": "Côte d'Or",
+    "aocType": "Village appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Pinot Noir"],
+    "importantGrapes": [],
+    "authorizedGrapesNote": "Study shorthand: Pinot Noir red Burgundy. Use INAO for official rules.",
+    "officialRulesNote": "Vosne-Romanée is a Côte de Nuits village appellation.",
+    "commonPracticeNote": "Often associated with perfume, spice, silkiness, and major grand cru context.",
+    "classificationContext": "Home area for some of Burgundy's most famous grand cru names.",
+    "terroir": {
+      "keySoils": ["limestone", "marl", "clay-limestone"],
+      "climate": ["continental", "Côte d'Or slope exposure"],
+      "learningPoint": "Vosne is crucial for understanding Burgundy's village-to-grand-cru hierarchy."
+    },
+    "tastingProfile": {
+      "fruit": ["red cherry", "raspberry", "black cherry"],
+      "nonFruit": ["exotic spice", "violet", "earth", "tea"],
+      "structure": ["silky tannin", "medium-plus acidity", "medium body"],
+      "ageingPotential": "high for top wines"
+    },
+    "examNotes": ["Côte de Nuits village.", "Pinot Noir.", "Know for famous grand cru context and spicy perfume."],
+    "neighborComparisons": {}
+  },
+  {
+    "id": "nuits-saint-georges",
+    "name": "Nuits-Saint-Georges",
+    "country": "France",
+    "region": "Burgundy",
+    "subregion": "Côte de Nuits",
+    "bank": "Côte d'Or",
+    "aocType": "Village appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Pinot Noir"],
+    "importantGrapes": [],
+    "authorizedGrapesNote": "Study shorthand: Pinot Noir red Burgundy. Use INAO for official rules.",
+    "officialRulesNote": "Nuits-Saint-Georges is a Côte de Nuits village appellation.",
+    "commonPracticeNote": "Often firmer and more savory, especially compared with Chambolle or Volnay shorthand.",
+    "terroir": {
+      "keySoils": ["limestone", "marl", "clay-limestone"],
+      "climate": ["continental", "Côte d'Or slope exposure"],
+      "learningPoint": "A key southern Côte de Nuits village with structured Pinot Noir identity."
+    },
+    "tastingProfile": {
+      "fruit": ["red cherry", "black cherry", "raspberry"],
+      "nonFruit": ["earth", "spice", "leather", "forest floor"],
+      "structure": ["medium-plus tannin", "medium-plus acidity", "medium body"],
+      "ageingPotential": "moderate to high"
+    },
+    "examNotes": ["Southern Côte de Nuits village.", "Pinot Noir.", "Often structured and savory."],
+    "neighborComparisons": {}
+  },
+  {
+    "id": "aloxe-corton",
+    "name": "Aloxe-Corton",
+    "country": "France",
+    "region": "Burgundy",
+    "subregion": "Côte de Beaune",
+    "bank": "Côte d'Or",
+    "aocType": "Village appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Pinot Noir"],
+    "importantGrapes": ["Chardonnay"],
+    "authorizedGrapesNote": "Study shorthand: mostly Pinot Noir village wine; Corton/Corton-Charlemagne grand cru context nearby.",
+    "officialRulesNote": "Aloxe-Corton is a Côte de Beaune village appellation.",
+    "commonPracticeNote": "Often firmer and more structured than some Côte de Beaune red villages.",
+    "classificationContext": "Important for Corton and Corton-Charlemagne context.",
+    "terroir": {
+      "keySoils": ["limestone", "marl", "clay-limestone"],
+      "climate": ["continental", "Côte de Beaune slope exposure"],
+      "learningPoint": "Aloxe marks the northern Côte de Beaune transition and major Corton hill context."
+    },
+    "tastingProfile": {
+      "fruit": ["red cherry", "raspberry", "black cherry"],
+      "nonFruit": ["earth", "spice", "forest floor"],
+      "structure": ["medium-plus tannin", "medium-plus acidity", "medium body"],
+      "ageingPotential": "moderate to high"
+    },
+    "examNotes": ["Northern Côte de Beaune village.", "Pinot Noir focus.", "Know Corton hill context."],
+    "neighborComparisons": {}
+  },
+  {
+    "id": "beaune",
+    "name": "Beaune",
+    "country": "France",
+    "region": "Burgundy",
+    "subregion": "Côte de Beaune",
+    "bank": "Côte d'Or",
+    "aocType": "Village appellation",
+    "primaryStyle": "Dry red and white",
+    "dominantGrapes": ["Pinot Noir"],
+    "importantGrapes": ["Chardonnay"],
+    "authorizedGrapesNote": "Study shorthand: mainly Pinot Noir, with Chardonnay also important in Côte de Beaune.",
+    "officialRulesNote": "Beaune is a Côte de Beaune village appellation with many premier cru sites.",
+    "commonPracticeNote": "Often red-fruited, approachable, and important as the historic wine capital.",
+    "terroir": {
+      "keySoils": ["limestone", "marl", "clay-limestone"],
+      "climate": ["continental", "Côte de Beaune slope exposure"],
+      "learningPoint": "Beaune's many premier cru climats make it a useful map for learning Burgundy hierarchy."
+    },
+    "tastingProfile": {
+      "fruit": ["red cherry", "raspberry", "strawberry"],
+      "nonFruit": ["earth", "spice", "tea"],
+      "structure": ["medium tannin", "medium-plus acidity", "medium body"],
+      "ageingPotential": "moderate"
+    },
+    "examNotes": ["Côte de Beaune village.", "Historic Burgundy center.", "Many premier cru sites."],
+    "neighborComparisons": {}
+  },
+  {
+    "id": "pommard",
+    "name": "Pommard",
+    "country": "France",
+    "region": "Burgundy",
+    "subregion": "Côte de Beaune",
+    "bank": "Côte d'Or",
+    "aocType": "Village appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Pinot Noir"],
+    "importantGrapes": [],
+    "authorizedGrapesNote": "Study shorthand: Pinot Noir red Burgundy. Use INAO for official rules.",
+    "officialRulesNote": "Pommard is a Côte de Beaune village appellation for red wines.",
+    "commonPracticeNote": "Often taught as fuller, firmer, and more tannic than Volnay.",
+    "terroir": {
+      "keySoils": ["clay-limestone", "marl", "iron-rich clay in places"],
+      "climate": ["continental", "Côte de Beaune slope exposure"],
+      "learningPoint": "Pommard is a classic contrast point for structured Côte de Beaune Pinot Noir."
+    },
+    "tastingProfile": {
+      "fruit": ["red cherry", "black cherry", "plum"],
+      "nonFruit": ["earth", "spice", "forest floor"],
+      "structure": ["medium-plus tannin", "medium-plus acidity", "medium-plus body"],
+      "ageingPotential": "moderate to high"
+    },
+    "examNotes": ["Côte de Beaune red village.", "Pinot Noir.", "Often contrasted with Volnay."],
+    "neighborComparisons": {}
+  },
+  {
+    "id": "volnay",
+    "name": "Volnay",
+    "country": "France",
+    "region": "Burgundy",
+    "subregion": "Côte de Beaune",
+    "bank": "Côte d'Or",
+    "aocType": "Village appellation",
+    "primaryStyle": "Dry red",
+    "dominantGrapes": ["Pinot Noir"],
+    "importantGrapes": [],
+    "authorizedGrapesNote": "Study shorthand: Pinot Noir red Burgundy. Use INAO for official rules.",
+    "officialRulesNote": "Volnay is a Côte de Beaune village appellation for red wines.",
+    "commonPracticeNote": "Often described as elegant, perfumed, and lighter-framed than Pommard.",
+    "terroir": {
+      "keySoils": ["limestone", "thin soils", "marl"],
+      "climate": ["continental", "Côte de Beaune slope exposure"],
+      "learningPoint": "Volnay is a key map contrast with Pommard: finesse versus firmer structure."
+    },
+    "tastingProfile": {
+      "fruit": ["raspberry", "red cherry", "strawberry"],
+      "nonFruit": ["violet", "rose", "spice"],
+      "structure": ["fine tannin", "medium-plus acidity", "medium body"],
+      "ageingPotential": "moderate to high"
+    },
+    "examNotes": ["Côte de Beaune red village.", "Pinot Noir.", "Elegant/fine-boned study shorthand."],
+    "neighborComparisons": {}
+  },
+  {
+    "id": "meursault",
+    "name": "Meursault",
+    "country": "France",
+    "region": "Burgundy",
+    "subregion": "Côte de Beaune",
+    "bank": "Côte d'Or",
+    "aocType": "Village appellation",
+    "primaryStyle": "Dry white",
+    "dominantGrapes": ["Chardonnay"],
+    "importantGrapes": [],
+    "authorizedGrapesNote": "Study shorthand: Chardonnay white Burgundy. Use INAO for exact rules.",
+    "officialRulesNote": "Meursault is a Côte de Beaune village appellation strongly associated with dry white wines.",
+    "commonPracticeNote": "Often richer and broader than Puligny-Montrachet shorthand.",
+    "terroir": {
+      "keySoils": ["limestone", "marl", "clay-limestone"],
+      "climate": ["continental", "Côte de Beaune slope exposure"],
+      "learningPoint": "Meursault anchors the richer, nuttier side of Côte de Beaune Chardonnay study."
+    },
+    "tastingProfile": {
+      "fruit": ["ripe apple", "lemon curd", "pear"],
+      "nonFruit": ["hazelnut", "butter", "toast", "mineral"],
+      "structure": ["medium-plus acidity", "medium-plus body", "creamy texture"],
+      "ageingPotential": "moderate to high"
+    },
+    "examNotes": ["Côte de Beaune Chardonnay.", "Often richer/nuttier style.", "Contrast with Puligny precision."],
+    "neighborComparisons": {}
+  },
+  {
+    "id": "puligny-montrachet",
+    "name": "Puligny-Montrachet",
+    "country": "France",
+    "region": "Burgundy",
+    "subregion": "Côte de Beaune",
+    "bank": "Côte d'Or",
+    "aocType": "Village appellation",
+    "primaryStyle": "Dry white",
+    "dominantGrapes": ["Chardonnay"],
+    "importantGrapes": [],
+    "authorizedGrapesNote": "Study shorthand: Chardonnay white Burgundy. Use INAO for official rules.",
+    "officialRulesNote": "Puligny-Montrachet is a Côte de Beaune village appellation famous for dry white wines.",
+    "commonPracticeNote": "Often described as precise, mineral, and elegant.",
+    "classificationContext": "Important for Montrachet-family grand cru context.",
+    "terroir": {
+      "keySoils": ["limestone", "marl", "thin stony soils"],
+      "climate": ["continental", "Côte de Beaune slope exposure"],
+      "learningPoint": "Puligny is central to studying high-precision Côte de Beaune Chardonnay."
+    },
+    "tastingProfile": {
+      "fruit": ["lemon", "green apple", "white peach"],
+      "nonFruit": ["chalk", "flint", "white flowers", "subtle toast"],
+      "structure": ["high acidity", "medium body", "long mineral finish"],
+      "ageingPotential": "high for top wines"
+    },
+    "examNotes": ["Côte de Beaune Chardonnay.", "Precision and minerality shorthand.", "Know Montrachet context."],
+    "neighborComparisons": {}
+  },
+  {
+    "id": "chassagne-montrachet",
+    "name": "Chassagne-Montrachet",
+    "country": "France",
+    "region": "Burgundy",
+    "subregion": "Côte de Beaune",
+    "bank": "Côte d'Or",
+    "aocType": "Village appellation",
+    "primaryStyle": "Dry white and red",
+    "dominantGrapes": ["Chardonnay"],
+    "importantGrapes": ["Pinot Noir"],
+    "authorizedGrapesNote": "Study shorthand: Chardonnay-dominant in global fine-wine context, with Pinot Noir also produced.",
+    "officialRulesNote": "Chassagne-Montrachet is a Côte de Beaune village appellation for white and red wines.",
+    "commonPracticeNote": "White wines are often broader and more powerful than Puligny shorthand.",
+    "classificationContext": "Important for Montrachet-family grand cru context.",
+    "terroir": {
+      "keySoils": ["limestone", "marl", "clay-limestone"],
+      "climate": ["continental", "Côte de Beaune slope exposure"],
+      "learningPoint": "Chassagne helps complete the Meursault-Puligny-Chassagne white Burgundy study triangle."
+    },
+    "tastingProfile": {
+      "fruit": ["ripe apple", "lemon curd", "stone fruit"],
+      "nonFruit": ["toast", "hazelnut", "mineral", "spice"],
+      "structure": ["medium-plus acidity", "medium-plus body", "textured"],
+      "ageingPotential": "moderate to high"
+    },
+    "examNotes": ["Côte de Beaune Chardonnay focus.", "Also produces red.", "Study with Puligny and Meursault."],
+    "neighborComparisons": {}
+  }
+]

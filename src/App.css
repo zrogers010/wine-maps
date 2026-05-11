@@ -1,3 +1,93 @@
+.region-index-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: #241317;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(111, 22, 39, 0.12), transparent 32%),
+    linear-gradient(135deg, #ead9bd 0%, #fbf2df 100%);
+}
+
+.region-index-card {
+  width: min(720px, 100%);
+  border: 1px solid rgba(111, 22, 39, 0.16);
+  border-radius: 22px;
+  padding: 28px;
+  background: rgba(248, 239, 219, 0.9);
+  box-shadow: 0 24px 70px rgba(66, 48, 33, 0.16);
+}
+
+.region-index-kicker {
+  color: #8d2439;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.region-index-card h1 {
+  margin: 8px 0 10px;
+  color: #5a1022;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(38px, 7vw, 68px);
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+}
+
+.region-index-card p {
+  max-width: 560px;
+  margin: 0;
+  color: #5b4c4f;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.region-link-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.region-link-list a,
+.region-link-disabled {
+  display: grid;
+  gap: 3px;
+  border: 1px solid rgba(111, 22, 39, 0.14);
+  border-radius: 14px;
+  padding: 13px 14px;
+  color: inherit;
+  background: rgba(255, 250, 236, 0.62);
+  text-decoration: none;
+}
+
+.region-link-list a:hover {
+  border-color: rgba(111, 22, 39, 0.28);
+  background: rgba(255, 250, 236, 0.9);
+}
+
+.region-link-list strong,
+.region-home-link {
+  color: #5a1022;
+  font-size: 17px;
+  font-weight: 820;
+}
+
+.region-link-list span {
+  color: #6c5a5e;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.region-link-disabled {
+  opacity: 0.72;
+}
+
+.region-home-link {
+  display: inline-flex;
+  margin-top: 22px;
+}
+
 .map-only-shell {
   position: fixed;
   inset: 0;
@@ -96,10 +186,10 @@
   z-index: 2;
   top: 14px;
   left: 14px;
-  width: min(420px, calc(100vw - 28px));
+  width: min(360px, calc(100vw - 28px));
   border: 1px solid rgba(111, 22, 39, 0.18);
   border-radius: 16px;
-  padding: 14px 16px;
+  padding: 13px 14px;
   color: #241317;
   background: rgba(248, 239, 219, 0.94);
   box-shadow: 0 14px 40px rgba(66, 48, 33, 0.16);
@@ -107,11 +197,28 @@
 }
 
 .hover-region-card h2 {
-  margin: 3px 0 8px;
+  margin: 3px 0 5px;
   color: #5a1022;
   font-size: 24px;
   line-height: 1;
   letter-spacing: -0.03em;
+}
+
+.hover-card-commune {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 8px;
+  color: #4d3328;
+  font-size: 13px;
+  font-weight: 760;
+  line-height: 1.15;
+}
+
+.hover-card-commune span {
+  color: #80696e;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .hover-region-card p {
@@ -202,8 +309,8 @@
 
 .hierarchy-list li {
   display: grid;
-  grid-template-columns: 128px 1fr;
-  gap: 8px;
+  grid-template-columns: 112px 1fr;
+  gap: 7px;
   align-items: baseline;
 }
 
@@ -306,8 +413,8 @@
 
 .study-cue-row {
   display: grid;
-  grid-template-columns: 94px 1fr;
-  gap: 7px;
+  grid-template-columns: 82px 1fr;
+  gap: 6px;
   align-items: baseline;
 }
 
