@@ -1,4 +1,4 @@
-# CruTerrain Region Template
+# SommelierMaps Region Template
 
 This document locks the current Bordeaux / Médoc map style and interaction
 model as the template for future regions.

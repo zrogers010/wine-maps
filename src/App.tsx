@@ -1,19 +1,37 @@
+import { AlsacePage } from './components/AlsacePage'
 import { AppShell } from './components/AppShell'
 import { BurgundyPage } from './components/BurgundyPage'
+import { ChampagnePage } from './components/ChampagnePage'
+import type { ReactNode } from 'react'
 import './App.css'
 
 const bordeauxPaths = new Set(['/bordeaux', '/burdeux', '/bourdeux'])
 const burgundyPaths = new Set(['/burgundy', '/burgandy', '/bourgogne'])
+const champagnePaths = new Set(['/champagne', '/champage'])
+const alsacePaths = new Set(['/alsace'])
 
 function App() {
   const pathname = normalizePath(window.location.pathname)
+  const activePath = bordeauxPaths.has(pathname)
+    ? '/bordeaux'
+    : burgundyPaths.has(pathname)
+      ? '/burgundy'
+      : champagnePaths.has(pathname)
+        ? '/champagne'
+        : alsacePaths.has(pathname)
+          ? '/alsace'
+          : pathname
 
   if (bordeauxPaths.has(pathname)) {
     if (pathname !== '/bordeaux') {
       window.history.replaceState(null, '', '/bordeaux')
     }
 
-    return <AppShell />
+    return (
+      <AppFrame activePath={activePath}>
+        <AppShell />
+      </AppFrame>
+    )
   }
 
   if (burgundyPaths.has(pathname)) {
@@ -21,21 +39,98 @@ function App() {
       window.history.replaceState(null, '', '/burgundy')
     }
 
-    return <BurgundyPage />
+    return (
+      <AppFrame activePath={activePath}>
+        <BurgundyPage />
+      </AppFrame>
+    )
+  }
+
+  if (champagnePaths.has(pathname)) {
+    if (pathname !== '/champagne') {
+      window.history.replaceState(null, '', '/champagne')
+    }
+
+    return (
+      <AppFrame activePath={activePath}>
+        <ChampagnePage />
+      </AppFrame>
+    )
+  }
+
+  if (alsacePaths.has(pathname)) {
+    return (
+      <AppFrame activePath={activePath}>
+        <AlsacePage />
+      </AppFrame>
+    )
   }
 
   if (pathname === '/') {
-    return <RegionIndexPage />
+    return (
+      <AppFrame activePath={activePath}>
+        <RegionIndexPage />
+      </AppFrame>
+    )
   }
 
-  return <NotFoundPage />
+  return (
+    <AppFrame activePath={activePath}>
+      <NotFoundPage />
+    </AppFrame>
+  )
+}
+
+function AppFrame({
+  activePath,
+  children,
+}: {
+  activePath: string
+  children: ReactNode
+}) {
+  return (
+    <>
+      <nav className="region-top-nav" aria-label="Wine region navigation">
+        <a className="region-top-nav-brand" href="/">
+          SommelierMaps
+        </a>
+        <div className="region-top-nav-links">
+          <a
+            className={activePath === '/bordeaux' ? 'is-active' : undefined}
+            href="/bordeaux"
+          >
+            Bordeaux
+          </a>
+          <a
+            className={activePath === '/burgundy' ? 'is-active' : undefined}
+            href="/burgundy"
+          >
+            Burgundy
+          </a>
+          <a
+            className={activePath === '/champagne' ? 'is-active' : undefined}
+            href="/champagne"
+          >
+            Champagne
+          </a>
+          <a
+            className={activePath === '/alsace' ? 'is-active' : undefined}
+            href="/alsace"
+          >
+            Alsace
+          </a>
+        </div>
+      </nav>
+      {children}
+    </>
+  )
 }
 
 function RegionIndexPage() {
   return (
     <main className="region-index-page">
       <section className="region-index-card">
-        <span className="region-index-kicker">CruTerrain</span>
+        <span className="region-index-kicker">SommelierMaps</span>
         <h1>Wine Region Maps</h1>
         <p>
           Explore each wine region on its own focused map. Start with Bordeaux,
@@ -50,10 +145,14 @@ function RegionIndexPage() {
             <strong>Burgundy</strong>
             <span>New map: Chablis, Côte de Nuits, and Côte de Beaune.</span>
           </a>
-          <div className="region-link-disabled">
+          <a href="/champagne">
             <strong>Champagne</strong>
-            <span>Great follow-up: Montagne de Reims, Vallée de la Marne, Côte des Blancs.</span>
-          </div>
+            <span>Study map: Montagne de Reims, Marne Valley, Côte des Blancs, and Aube.</span>
+          </a>
+          <a href="/alsace">
+            <strong>Alsace</strong>
+            <span>New map: Alsace regional AOC, Crémant d&apos;Alsace, and Grand Cru sites.</span>
+          </a>
         </div>
       </section>
     </main>
@@ -64,7 +163,7 @@ function NotFoundPage() {
   return (
     <main className="region-index-page">
       <section className="region-index-card">
-        <span className="region-index-kicker">CruTerrain</span>
+        <span className="region-index-kicker">SommelierMaps</span>
         <h1>Region Not Found</h1>
         <p>This wine-region map is not available yet.</p>
         <a className="region-home-link" href="/bordeaux">Open Bordeaux</a>

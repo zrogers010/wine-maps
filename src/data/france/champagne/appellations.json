@@ -1,0 +1,77 @@
+[
+  {
+    "id": "champagne",
+    "name": "Champagne",
+    "country": "France",
+    "region": "Champagne",
+    "subregion": "Champagne AOC",
+    "bank": "Champagne",
+    "aocType": "Regional appellation",
+    "primaryStyle": "Traditional-method sparkling wine",
+    "dominantGrapes": ["Chardonnay", "Pinot Noir", "Meunier"],
+    "importantGrapes": ["Arbane", "Petit Meslier", "Pinot Blanc", "Pinot Gris"],
+    "officialRulesNote": "Champagne AOC rules apply. This geometry comes through OpenDataWine access to INAO delimitation data.",
+    "commonPracticeNote": "The same geographic delimitation is also used for Coteaux champenois in the OpenDataWine source, so the map renders the shared area once.",
+    "terroir": {
+      "keySoils": ["chalk", "limestone", "marl", "clay-limestone"],
+      "climate": ["cool continental", "northern latitude", "frost risk"],
+      "learningPoint": "High latitude, cool climate, and chalk help Champagne retain high acidity for traditional-method sparkling wine."
+    },
+    "tastingProfile": {
+      "fruit": ["lemon", "green apple", "red apple"],
+      "nonFruit": ["brioche", "toast", "chalk", "almond"],
+      "structure": ["high acidity", "fine mousse", "dry to sweet depending on dosage"],
+      "ageingPotential": "moderate to high, especially vintage and prestige cuvées"
+    }
+  },
+  {
+    "id": "coteaux-champenois",
+    "name": "Coteaux champenois",
+    "country": "France",
+    "region": "Champagne",
+    "subregion": "Champagne AOC",
+    "bank": "Champagne",
+    "aocType": "Regional still-wine appellation",
+    "primaryStyle": "Still dry red, white, and rosé",
+    "dominantGrapes": ["Pinot Noir", "Chardonnay", "Meunier"],
+    "importantGrapes": ["Arbane", "Petit Meslier", "Pinot Blanc", "Pinot Gris"],
+    "officialRulesNote": "Coteaux champenois is a still-wine AOC. In the OpenDataWine source, it shares the same geometry as Champagne.",
+    "commonPracticeNote": "Usually rare, still, and site/producer-specific; red examples are often Pinot Noir-led.",
+    "terroir": {
+      "keySoils": ["chalk", "limestone", "marl", "clay-limestone"],
+      "climate": ["cool continental", "northern latitude", "frost risk"],
+      "learningPoint": "Use Coteaux champenois to remember that Champagne's delimited area also supports still wines, not only sparkling wine."
+    },
+    "tastingProfile": {
+      "fruit": ["red cherry", "lemon", "green apple"],
+      "nonFruit": ["chalk", "flowers", "subtle spice"],
+      "structure": ["high acidity", "light to medium body", "dry"],
+      "ageingPotential": "short to moderate, higher for top villages/producers"
+    }
+  },
+  {
+    "id": "rose-des-riceys",
+    "name": "Rosé des Riceys",
+    "country": "France",
+    "region": "Champagne",
+    "subregion": "Côte des Bar",
+    "bank": "Aube",
+    "aocType": "Village / local appellation",
+    "primaryStyle": "Still rosé",
+    "dominantGrapes": ["Pinot Noir"],
+    "importantGrapes": [],
+    "officialRulesNote": "Rosé des Riceys is a distinct AOC for still rosé wine from the Les Riceys area.",
+    "commonPracticeNote": "An important exam cue because it is Champagne-region wine, but not sparkling Champagne.",
+    "terroir": {
+      "keySoils": ["Kimmeridgian marl", "limestone", "clay-limestone"],
+      "climate": ["cool continental", "southern Champagne", "Aube influence"],
+      "learningPoint": "Rosé des Riceys is a rare still rosé AOC in the Côte des Bar, strongly associated with Pinot Noir."
+    },
+    "tastingProfile": {
+      "fruit": ["strawberry", "red cherry", "raspberry"],
+      "nonFruit": ["rose", "spice", "mineral"],
+      "structure": ["fresh acidity", "light tannin", "dry"],
+      "ageingPotential": "short to moderate"
+    }
+  }
+]

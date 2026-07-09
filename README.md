@@ -1,6 +1,6 @@
-# CruTerrain
+# SommelierMaps
 
-CruTerrain is currently a map-first Bordeaux AOC/AOP prototype. The app is kept
+SommelierMaps is currently a map-first Bordeaux AOC/AOP prototype. The app is kept
 deliberately simple for now: a white basemap with detailed AOC viticole
 boundaries, labels, and separate region legends.
 

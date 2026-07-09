@@ -78,6 +78,7 @@ const defaultLayers: LayerState = {
 export function AppShell() {
   const [selectedId, setSelectedId] = useState<AppellationId | null>(null)
   const [legendHoveredId, setLegendHoveredId] = useState<AppellationId | null>(null)
+  const [subregionHoveredIds, setSubregionHoveredIds] = useState<AppellationId[] | null>(null)
   const layers = defaultLayers
   const mode: ExperienceMode = 'Explore'
   const filteredIds = appellations
@@ -97,6 +98,7 @@ export function AppShell() {
         mode={mode}
         selectedId={selectedId}
         legendHoveredId={legendHoveredId}
+        subregionHoveredIds={subregionHoveredIds}
         onSelectAppellation={handleSelectAppellation}
       />
       <div className="map-source-badge">
@@ -106,7 +108,12 @@ export function AppShell() {
       <aside className="region-legend" aria-label="Bordeaux appellation legend">
         {regionLegendGroups.map((group) => (
           <section className="region-legend-group" key={group.title}>
-            <h2>{group.title}</h2>
+            <h2
+              onMouseEnter={() => setSubregionHoveredIds(group.ids)}
+              onMouseLeave={() => setSubregionHoveredIds(null)}
+            >
+              {group.title}
+            </h2>
             <div className="region-legend-list">
               {group.ids.map((id) => {
                 const appellation = appellations.find((candidate) => candidate.id === id)

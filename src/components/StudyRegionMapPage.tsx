@@ -8,7 +8,6 @@ import maplibregl, {
   type MapLayerMouseEvent,
 } from 'maplibre-gl'
 import type { Feature, FeatureCollection, Geometry } from 'geojson'
-import appellationData from '../data/france/burgundy/appellations.json'
 import {
   flyToBounds,
   LEGEND_PREVIEW_PADDING,
@@ -20,7 +19,7 @@ import { createAtlasMapStyle } from '../utils/mapStyles'
 
 type SourceFeatureId = string | number
 
-interface BurgundyAppellationMetadata {
+export interface StudyRegionMetadata {
   id: string
   name: string
   country: string
@@ -31,9 +30,7 @@ interface BurgundyAppellationMetadata {
   primaryStyle: string
   dominantGrapes: string[]
   importantGrapes: string[]
-  officialRulesNote: string
-  commonPracticeNote: string
-  classificationContext?: string
+  notableProducers?: string[]
   terroir: {
     keySoils: string[]
     climate: string[]
@@ -45,110 +42,73 @@ interface BurgundyAppellationMetadata {
     structure: string[]
     ageingPotential: string
   }
-  examNotes: string[]
 }
 
-interface HoveredBurgundyRegion {
+interface LegendGroup {
+  title: string
+  ids: string[]
+}
+
+interface HoveredRegion {
   id: string
   commune?: string
   insee?: string
 }
 
-const appellations = appellationData as BurgundyAppellationMetadata[]
-const burgundySourceId = 'burgundy-appellations'
-const burgundyLowZoomSourceId = 'burgundy-low-zoom-hulls'
-const burgundyLabelSourceId = 'burgundy-labels'
-const burgundyLowZoomLayerId = 'burgundy-low-zoom-fill'
-const burgundyLowZoomShadeLayerId = 'burgundy-low-zoom-shade'
-const burgundyLowZoomBorderLayerId = 'burgundy-low-zoom-border'
-const burgundyFillLayerId = 'burgundy-fill'
-const burgundyAppellationShadeLayerId = 'burgundy-appellation-shade'
-const burgundyCommuneShadeLayerId = 'burgundy-commune-shade'
-const burgundyCommuneLineLayerId = 'burgundy-commune-lines'
-const burgundyLineLayerId = 'burgundy-lines'
-const burgundyLabelLayerId = 'burgundy-labels'
+interface StudyRegionMapPageProps {
+  appellations: StudyRegionMetadata[]
+  colors: Record<string, string>
+  detailDataPath: string
+  emptyCardTitle: string
+  hullDataPath: string
+  legendAriaLabel: string
+  legendGroups: LegendGroup[]
+  legendFitMaxZoomById?: Record<string, number>
+  labelMinZoom?: number
+  sharedGeometryIds?: Record<string, string>
+  sourceBadge: string
+}
+
 const zoomTransitionStart = 9.8
 const detailedHoverStart = 10.5
 const zoomTransitionEnd = 10.8
 
-const burgundyIds = [
-  'petit-chablis',
-  'chablis',
-  'chablis-grand-cru',
-  'gevrey-chambertin',
-  'morey-saint-denis',
-  'chambolle-musigny',
-  'vougeot',
-  'vosne-romanee',
-  'nuits-saint-georges',
-  'aloxe-corton',
-  'beaune',
-  'pommard',
-  'volnay',
-  'meursault',
-  'puligny-montrachet',
-  'chassagne-montrachet',
-]
+export function StudyRegionMapPage({
+  appellations,
+  colors,
+  detailDataPath,
+  emptyCardTitle,
+  hullDataPath,
+  legendAriaLabel,
+  legendFitMaxZoomById = {},
+  legendGroups,
+  labelMinZoom = 0,
+  sharedGeometryIds = {},
+  sourceBadge,
+}: StudyRegionMapPageProps) {
+  const sourcePrefix = emptyCardTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  const detailSourceId = `${sourcePrefix}-detail`
+  const hullSourceId = `${sourcePrefix}-hulls`
+  const labelSourceId = `${sourcePrefix}-labels`
+  const hullLayerId = `${sourcePrefix}-hull-fill`
+  const hullShadeLayerId = `${sourcePrefix}-hull-shade`
+  const hullBorderLayerId = `${sourcePrefix}-hull-border`
+  const detailFillLayerId = `${sourcePrefix}-fill`
+  const appellationShadeLayerId = `${sourcePrefix}-appellation-shade`
+  const communeShadeLayerId = `${sourcePrefix}-commune-shade`
+  const communeLineLayerId = `${sourcePrefix}-commune-lines`
+  const lineLayerId = `${sourcePrefix}-lines`
+  const labelLayerId = `${sourcePrefix}-labels`
 
-const burgundyColors: Record<string, string> = {
-  'petit-chablis': '#c7d98b',
-  chablis: '#8fc7d8',
-  'chablis-grand-cru': '#4b9bb8',
-  'gevrey-chambertin': '#b84f6f',
-  'morey-saint-denis': '#c7637f',
-  'chambolle-musigny': '#d7839a',
-  vougeot: '#b66bd8',
-  'vosne-romanee': '#8f5cc7',
-  'nuits-saint-georges': '#7b4aa6',
-  'aloxe-corton': '#d97757',
-  beaune: '#e0a653',
-  pommard: '#c84c4c',
-  volnay: '#e47d9a',
-  meursault: '#e7c75f',
-  'puligny-montrachet': '#d9df70',
-  'chassagne-montrachet': '#c8b85f',
-}
-
-const legendGroups = [
-  {
-    title: 'Burgundy / Chablis',
-    ids: ['petit-chablis', 'chablis', 'chablis-grand-cru'],
-  },
-  {
-    title: 'Burgundy / Côte de Nuits',
-    ids: [
-      'gevrey-chambertin',
-      'morey-saint-denis',
-      'chambolle-musigny',
-      'vougeot',
-      'vosne-romanee',
-      'nuits-saint-georges',
-    ],
-  },
-  {
-    title: 'Burgundy / Côte de Beaune',
-    ids: [
-      'aloxe-corton',
-      'beaune',
-      'pommard',
-      'volnay',
-      'meursault',
-      'puligny-montrachet',
-      'chassagne-montrachet',
-    ],
-  },
-]
-
-export function BurgundyPage() {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const overviewBoundsRef = useRef<[[number, number], [number, number]] | null>(null)
-  const lowZoomHullGeoJsonRef = useRef<FeatureCollection | null>(null)
+  const hullGeoJsonRef = useRef<FeatureCollection | null>(null)
   const hoveredFeatureIdRef = useRef<SourceFeatureId | null>(null)
   const hoveredRegionKeyRef = useRef<string | null>(null)
   const hoverLeaveTimeoutRef = useRef<number | null>(null)
   const [isReady, setIsReady] = useState(false)
-  const [hoveredRegion, setHoveredRegion] = useState<HoveredBurgundyRegion | null>(null)
+  const [hoveredRegion, setHoveredRegion] = useState<HoveredRegion | null>(null)
   const [legendHoveredId, setLegendHoveredId] = useState<string | null>(null)
   const [subregionHoveredIds, setSubregionHoveredIds] = useState<string[] | null>(null)
 
@@ -166,9 +126,9 @@ export function BurgundyPage() {
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: createAtlasMapStyle(),
-      center: [4.8, 47.2],
-      zoom: 8.4,
-      minZoom: 6.8,
+      center: [4.25, 48.85],
+      zoom: 8,
+      minZoom: 6.5,
       maxZoom: 14,
       attributionControl: false,
       fadeDuration: 180,
@@ -197,38 +157,38 @@ export function BurgundyPage() {
     )
 
     map.on('load', async () => {
-      const [burgundyGeoJson, burgundyLowZoomGeoJson] = await Promise.all([
-        loadGeoJson('/data/france/burgundy/burgundy-display-exclusive-2026.geojson'),
-        loadGeoJson('/data/france/burgundy/burgundy-display-hulls-2026.geojson'),
+      const [detailGeoJson, hullGeoJson] = await Promise.all([
+        loadGeoJson(detailDataPath),
+        loadGeoJson(hullDataPath),
       ])
 
       if (cancelled) {
         return
       }
 
-      lowZoomHullGeoJsonRef.current = burgundyLowZoomGeoJson
+      hullGeoJsonRef.current = hullGeoJson
 
-      map.addSource(burgundySourceId, {
+      map.addSource(detailSourceId, {
         type: 'geojson',
-        data: burgundyGeoJson,
+        data: detailGeoJson,
       } satisfies GeoJSONSourceSpecification)
 
-      map.addSource(burgundyLowZoomSourceId, {
+      map.addSource(hullSourceId, {
         type: 'geojson',
-        data: burgundyLowZoomGeoJson,
+        data: hullGeoJson,
       } satisfies GeoJSONSourceSpecification)
 
-      map.addSource(burgundyLabelSourceId, {
+      map.addSource(labelSourceId, {
         type: 'geojson',
-        data: createLabelPoints(burgundyLowZoomGeoJson),
+        data: createLabelPoints(hullGeoJson, appellations),
       } satisfies GeoJSONSourceSpecification)
 
       map.addLayer({
-        id: burgundyLowZoomLayerId,
+        id: hullLayerId,
         type: 'fill',
-        source: burgundyLowZoomSourceId,
+        source: hullSourceId,
         paint: {
-          'fill-color': burgundyFillColorExpression(),
+          'fill-color': fillColorExpression(colors),
           'fill-opacity': [
             'interpolate',
             ['linear'],
@@ -242,9 +202,9 @@ export function BurgundyPage() {
       })
 
       map.addLayer({
-        id: burgundyLowZoomShadeLayerId,
+        id: hullShadeLayerId,
         type: 'fill',
-        source: burgundyLowZoomSourceId,
+        source: hullSourceId,
         filter: filterNone(),
         paint: {
           'fill-color': '#1c0f12',
@@ -261,9 +221,9 @@ export function BurgundyPage() {
       })
 
       map.addLayer({
-        id: burgundyLowZoomBorderLayerId,
+        id: hullBorderLayerId,
         type: 'line',
-        source: burgundyLowZoomSourceId,
+        source: hullSourceId,
         paint: {
           'line-color': 'rgba(96, 65, 45, 0.52)',
           'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.65, 11, 1.15],
@@ -280,11 +240,11 @@ export function BurgundyPage() {
       })
 
       map.addLayer({
-        id: burgundyFillLayerId,
+        id: detailFillLayerId,
         type: 'fill',
-        source: burgundySourceId,
+        source: detailSourceId,
         paint: {
-          'fill-color': burgundyFillColorExpression(),
+          'fill-color': fillColorExpression(colors),
           // Fade in across the same span the hulls fade out for one smooth crossfade.
           'fill-opacity': [
             'interpolate',
@@ -293,27 +253,17 @@ export function BurgundyPage() {
             zoomTransitionStart,
             0,
             zoomTransitionEnd,
-            [
-              'case',
-              ['boolean', ['feature-state', 'hover'], false],
-              0.86,
-              0.68,
-            ],
+            ['case', ['boolean', ['feature-state', 'hover'], false], 0.86, 0.68],
             13.5,
-            [
-              'case',
-              ['boolean', ['feature-state', 'hover'], false],
-              0.66,
-              0.52,
-            ],
+            ['case', ['boolean', ['feature-state', 'hover'], false], 0.66, 0.52],
           ],
         },
       })
 
       map.addLayer({
-        id: burgundyAppellationShadeLayerId,
+        id: appellationShadeLayerId,
         type: 'fill',
-        source: burgundySourceId,
+        source: detailSourceId,
         filter: filterNone(),
         paint: {
           'fill-color': '#1c0f12',
@@ -330,9 +280,9 @@ export function BurgundyPage() {
       })
 
       map.addLayer({
-        id: burgundyCommuneShadeLayerId,
+        id: communeShadeLayerId,
         type: 'fill',
-        source: burgundySourceId,
+        source: detailSourceId,
         filter: filterNone(),
         paint: {
           'fill-color': '#1c0f12',
@@ -341,9 +291,9 @@ export function BurgundyPage() {
       })
 
       map.addLayer({
-        id: burgundyCommuneLineLayerId,
+        id: communeLineLayerId,
         type: 'line',
-        source: burgundySourceId,
+        source: detailSourceId,
         paint: {
           'line-color': 'rgba(68, 48, 36, 0.64)',
           'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.45, 11, 0.85],
@@ -360,9 +310,9 @@ export function BurgundyPage() {
       })
 
       map.addLayer({
-        id: burgundyLineLayerId,
+        id: lineLayerId,
         type: 'line',
-        source: burgundySourceId,
+        source: detailSourceId,
         paint: {
           'line-color': [
             'case',
@@ -370,12 +320,7 @@ export function BurgundyPage() {
             '#261318',
             'rgba(255, 255, 255, 0.32)',
           ],
-          'line-width': [
-            'case',
-            ['boolean', ['feature-state', 'hover'], false],
-            2.4,
-            0.35,
-          ],
+          'line-width': ['case', ['boolean', ['feature-state', 'hover'], false], 2.4, 0.35],
           'line-opacity': [
             'interpolate',
             ['linear'],
@@ -383,24 +328,20 @@ export function BurgundyPage() {
             zoomTransitionStart,
             0,
             zoomTransitionEnd,
-            [
-              'case',
-              ['boolean', ['feature-state', 'hover'], false],
-              0.9,
-              0.36,
-            ],
+            ['case', ['boolean', ['feature-state', 'hover'], false], 0.9, 0.36],
           ],
         },
       })
 
       map.addLayer({
-        id: burgundyLabelLayerId,
+        id: labelLayerId,
         type: 'symbol',
-        source: burgundyLabelSourceId,
+        source: labelSourceId,
+        minzoom: labelMinZoom,
         layout: {
           'text-field': ['get', 'name'],
           'text-font': ['Noto Sans Bold'],
-          'text-size': ['interpolate', ['linear'], ['zoom'], 8, 9, 11, 13],
+          'text-size': ['interpolate', ['linear'], ['zoom'], 7, 9, 10.5, 12.5],
           'text-letter-spacing': 0.02,
           'text-variable-anchor': ['center', 'top', 'bottom', 'left', 'right'],
           'text-radial-offset': 0.25,
@@ -415,17 +356,17 @@ export function BurgundyPage() {
         },
       })
 
-      map.moveLayer(burgundyLabelLayerId)
-      map.moveLayer(burgundyLowZoomLayerId, burgundyLabelLayerId)
-      map.moveLayer(burgundyLowZoomShadeLayerId, burgundyLabelLayerId)
-      map.moveLayer(burgundyLowZoomBorderLayerId, burgundyLabelLayerId)
+      map.moveLayer(labelLayerId)
+      map.moveLayer(hullLayerId, labelLayerId)
+      map.moveLayer(hullShadeLayerId, labelLayerId)
+      map.moveLayer(hullBorderLayerId, labelLayerId)
 
-      map.on('mousemove', burgundyLowZoomLayerId, handleHullMouseMove)
-      map.on('mouseleave', burgundyLowZoomLayerId, handleMouseLeave)
-      map.on('mousemove', burgundyFillLayerId, handleMouseMove)
-      map.on('mouseleave', burgundyFillLayerId, handleDetailMouseLeave)
+      map.on('mousemove', hullLayerId, handleHullMouseMove)
+      map.on('mouseleave', hullLayerId, handleMouseLeave)
+      map.on('mousemove', detailFillLayerId, handleMouseMove)
+      map.on('mouseleave', detailFillLayerId, handleDetailMouseLeave)
 
-      const overviewBounds = getFeatureCollectionBounds(burgundyGeoJson)
+      const overviewBounds = getFeatureCollectionBounds(detailGeoJson)
       overviewBoundsRef.current = overviewBounds
       map.fitBounds(overviewBounds, {
         padding: OVERVIEW_PADDING,
@@ -442,7 +383,6 @@ export function BurgundyPage() {
       cancelled = true
       if (hoverLeaveTimeoutRef.current !== null) {
         window.clearTimeout(hoverLeaveTimeoutRef.current)
-        hoverLeaveTimeoutRef.current = null
       }
       clearHoverState()
       map.remove()
@@ -465,7 +405,7 @@ export function BurgundyPage() {
       map.getCanvas().style.cursor = 'pointer'
 
       if (hoveredFeatureIdRef.current !== null) {
-        setFeatureHover(map, hoveredFeatureIdRef.current, false)
+        setFeatureHover(map, detailSourceId, hoveredFeatureIdRef.current, false)
         hoveredFeatureIdRef.current = null
       }
 
@@ -483,11 +423,7 @@ export function BurgundyPage() {
       const id = getFeatureId(feature?.properties)
       const sourceFeatureId = getSourceFeatureId(feature)
 
-      if (!id || sourceFeatureId === null) {
-        return
-      }
-
-      if (!isDetailedZoomActive(map)) {
+      if (!id || sourceFeatureId === null || !isDetailedZoomActive(map)) {
         return
       }
 
@@ -500,11 +436,11 @@ export function BurgundyPage() {
 
       if (hoveredFeatureIdRef.current !== sourceFeatureId) {
         if (hoveredFeatureIdRef.current !== null) {
-          setFeatureHover(map, hoveredFeatureIdRef.current, false)
+          setFeatureHover(map, detailSourceId, hoveredFeatureIdRef.current, false)
         }
 
         hoveredFeatureIdRef.current = sourceFeatureId
-        setFeatureHover(map, sourceFeatureId, true)
+        setFeatureHover(map, detailSourceId, sourceFeatureId, true)
       }
 
       const nextRegion = getHoveredRegion(feature?.properties, id)
@@ -539,14 +475,33 @@ export function BurgundyPage() {
 
     function clearHoverState() {
       if (hoveredFeatureIdRef.current !== null) {
-        setFeatureHover(map, hoveredFeatureIdRef.current, false)
+        setFeatureHover(map, detailSourceId, hoveredFeatureIdRef.current, false)
         hoveredFeatureIdRef.current = null
       }
 
       hoveredRegionKeyRef.current = null
       setHoveredRegion(null)
     }
-  }, [])
+  }, [
+    appellations,
+    colors,
+    detailDataPath,
+    detailFillLayerId,
+    detailSourceId,
+    emptyCardTitle,
+    hullDataPath,
+    hullLayerId,
+    hullSourceId,
+    hullShadeLayerId,
+    hullBorderLayerId,
+    appellationShadeLayerId,
+    communeShadeLayerId,
+    communeLineLayerId,
+    lineLayerId,
+    labelLayerId,
+    labelMinZoom,
+    labelSourceId,
+  ])
 
   useEffect(() => {
     const map = mapRef.current
@@ -556,35 +511,44 @@ export function BurgundyPage() {
     }
 
     map.setFilter(
-      burgundyLowZoomShadeLayerId,
-      lowZoomHullShadeFilter(hoveredRegion, legendHoveredId),
+      hullShadeLayerId,
+      lowZoomHullShadeFilter(hoveredRegion, legendHoveredId, sharedGeometryIds),
     )
     map.setFilter(
-      burgundyAppellationShadeLayerId,
+      appellationShadeLayerId,
       hoveredRegion
-        ? ['==', ['get', 'id'], hoveredRegion.id]
+        ? ['==', ['get', 'id'], displayGeometryId(hoveredRegion.id, sharedGeometryIds)]
         : legendHoveredId
-          ? ['==', ['get', 'id'], legendHoveredId]
+          ? ['==', ['get', 'id'], displayGeometryId(legendHoveredId, sharedGeometryIds)]
           : filterNone(),
     )
     map.setFilter(
-      burgundyCommuneShadeLayerId,
+      communeShadeLayerId,
       hoveredRegion ? communeShadeFilter(hoveredRegion) : filterNone(),
     )
-  }, [hoveredRegion, isReady, legendHoveredId])
+  }, [
+    appellationShadeLayerId,
+    communeShadeLayerId,
+    hoveredRegion,
+    hullShadeLayerId,
+    isReady,
+    legendHoveredId,
+    sharedGeometryIds,
+  ])
 
   useEffect(() => {
     const map = mapRef.current
-    const lowZoomHullGeoJson = lowZoomHullGeoJsonRef.current
+    const hullGeoJson = hullGeoJsonRef.current
 
-    if (!map || !isReady || !lowZoomHullGeoJson || !subregionHoveredIds?.length) {
+    if (!map || !isReady || !hullGeoJson || !subregionHoveredIds?.length) {
       return
     }
 
-    const features = lowZoomHullGeoJson.features.filter(
+    const displayIds = subregionHoveredIds.map((id) => displayGeometryId(id, sharedGeometryIds))
+    const features = hullGeoJson.features.filter(
       (feature) =>
         typeof feature.properties?.id === 'string' &&
-        subregionHoveredIds.includes(feature.properties.id),
+        displayIds.includes(feature.properties.id),
     )
 
     if (features.length === 0) {
@@ -599,25 +563,26 @@ export function BurgundyPage() {
       }),
       {
         padding: LEGEND_PREVIEW_PADDING,
-        maxZoom: 10.15,
+        maxZoom: maxZoomForIds(subregionHoveredIds, legendFitMaxZoomById, sharedGeometryIds, 10.15),
         speed: 1.4,
       },
     )
-  }, [isReady, subregionHoveredIds])
+  }, [isReady, legendFitMaxZoomById, sharedGeometryIds, subregionHoveredIds])
 
   useEffect(() => {
     const map = mapRef.current
-    const lowZoomHullGeoJson = lowZoomHullGeoJsonRef.current
+    const hullGeoJson = hullGeoJsonRef.current
 
-    if (!map || !isReady || !lowZoomHullGeoJson || !legendHoveredId) {
+    if (!map || !isReady || !hullGeoJson || !legendHoveredId) {
       return
     }
 
-    const feature = lowZoomHullGeoJson.features.find(
-      (candidate) => candidate.properties?.id === legendHoveredId,
+    const displayId = displayGeometryId(legendHoveredId, sharedGeometryIds)
+    const features = hullGeoJson.features.filter(
+      (candidate) => candidate.properties?.id === displayId,
     )
 
-    if (!feature) {
+    if (features.length === 0) {
       return
     }
 
@@ -625,25 +590,26 @@ export function BurgundyPage() {
       map,
       getFeatureCollectionBounds({
         type: 'FeatureCollection',
-        features: [feature],
+        features,
       }),
       {
         padding: LEGEND_PREVIEW_PADDING,
-        maxZoom: 11.8,
+        maxZoom: maxZoomForIds([legendHoveredId], legendFitMaxZoomById, sharedGeometryIds, 11.8),
         speed: 1.5,
       },
     )
-  }, [isReady, legendHoveredId])
+  }, [isReady, legendFitMaxZoomById, legendHoveredId, sharedGeometryIds])
 
   return (
     <div className="map-only-shell">
       <div className="map-container" ref={containerRef} />
-      <BurgundyHoverCard appellation={activeAppellation} region={activeRegion} />
-      <div className="map-source-badge">
-        INAO/data.gouv.fr AOC viticole parcel delimitation extract. Online data
-        are informational; official plans remain with town halls or INAO.
-      </div>
-      <aside className="region-legend" aria-label="Burgundy appellation legend">
+      <StudyHoverCard
+        appellation={activeAppellation}
+        emptyCardTitle={emptyCardTitle}
+        region={activeRegion}
+      />
+      <div className="map-source-badge">{sourceBadge}</div>
+      <aside className="region-legend" aria-label={legendAriaLabel}>
         {legendGroups.map((group) => (
           <section className="region-legend-group" key={group.title}>
             <h2
@@ -669,7 +635,7 @@ export function BurgundyPage() {
                   >
                     <span
                       className="region-legend-swatch"
-                      style={{ backgroundColor: burgundyColors[appellation.id] }}
+                      style={{ backgroundColor: colors[appellation.id] }}
                     />
                     <span>{appellation.name}</span>
                   </div>
@@ -683,17 +649,19 @@ export function BurgundyPage() {
   )
 }
 
-function BurgundyHoverCard({
+function StudyHoverCard({
   appellation,
+  emptyCardTitle,
   region,
 }: {
-  appellation: BurgundyAppellationMetadata | null | undefined
-  region: HoveredBurgundyRegion | null
+  appellation: StudyRegionMetadata | null | undefined
+  emptyCardTitle: string
+  region: HoveredRegion | null
 }) {
   if (!appellation || !region) {
     return (
       <aside className="hover-region-card is-empty">
-        <span className="hover-card-kicker">Burgundy AOC Map</span>
+        <span className="hover-card-kicker">{emptyCardTitle}</span>
         <strong>Hover the map or legend to explore an appellation</strong>
       </aside>
     )
@@ -732,12 +700,6 @@ function BurgundyHoverCard({
           <span>Appellation / AOC</span>
           <strong>{appellation.name}</strong>
         </li>
-        {region.commune ? (
-          <li>
-            <span>Commune</span>
-            <strong>{region.commune}</strong>
-          </li>
-        ) : null}
       </ul>
       <dl>
         <div>
@@ -766,6 +728,18 @@ function BurgundyHoverCard({
         ))}
       </div>
       <p>{appellation.terroir.learningPoint}</p>
+      {appellation.notableProducers && appellation.notableProducers.length > 0 ? (
+        <section className="chateau-section">
+          <h3>Notable producers</h3>
+          <ul className="chateau-list">
+            {appellation.notableProducers.map((producer) => (
+              <li key={producer}>
+                <strong>{producer}</strong>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </aside>
   )
 }
@@ -780,18 +754,17 @@ async function loadGeoJson(path: string): Promise<FeatureCollection> {
   return (await response.json()) as FeatureCollection
 }
 
-function createLabelPoints(geoJson: FeatureCollection): FeatureCollection {
+function createLabelPoints(
+  geoJson: FeatureCollection,
+  appellations: StudyRegionMetadata[],
+): FeatureCollection {
   const largestFeatureById = new Map<string, Feature<Geometry>>()
 
   for (const feature of geoJson.features) {
-    const id = getFeatureId(feature.properties)
-
-    if (!id) {
-      continue
-    }
-
+    const id = getFeatureId(feature.properties) ?? String(feature.id)
     const largestFeature = largestFeatureById.get(id)
-    if (!largestFeature || area(feature) > area(largestFeature)) {
+
+    if (!largestFeature || getFeatureArea(feature) > getFeatureArea(largestFeature)) {
       largestFeatureById.set(id, feature as Feature<Geometry>)
     }
   }
@@ -799,34 +772,43 @@ function createLabelPoints(geoJson: FeatureCollection): FeatureCollection {
   return {
     type: 'FeatureCollection',
     features: [...largestFeatureById.entries()].map(([id, feature]) => ({
-      type: 'Feature',
-      id,
-      properties: {
+        type: 'Feature',
         id,
-        name: getMetadataName(id),
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: pointOnFeature(feature).geometry.coordinates,
-      },
-    })),
+        properties: {
+          id,
+          name: appellations.find((appellation) => appellation.id === id)?.name ?? id,
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: pointOnFeature(feature as Feature<Geometry>).geometry.coordinates,
+        },
+      })),
   }
 }
 
-function burgundyFillColorExpression(): ExpressionSpecification {
+function fillColorExpression(colors: Record<string, string>): ExpressionSpecification {
   return [
     'match',
     ['get', 'id'],
-    ...Object.entries(burgundyColors).flatMap(([id, color]) => [id, color]),
+    ...Object.entries(colors).flatMap(([id, color]) => [id, color]),
     '#8c6f4f',
   ] as unknown as ExpressionSpecification
 }
 
-function setFeatureHover(map: MapLibreMap, id: SourceFeatureId, isHovered: boolean) {
-  map.setFeatureState({ source: burgundySourceId, id }, { hover: isHovered })
+function getFeatureArea(feature: Feature<Geometry>) {
+  return area(feature)
 }
 
-function getHoveredRegion(properties: unknown, id: string): HoveredBurgundyRegion {
+function setFeatureHover(
+  map: MapLibreMap,
+  source: string,
+  id: SourceFeatureId,
+  isHovered: boolean,
+) {
+  map.setFeatureState({ source, id }, { hover: isHovered })
+}
+
+function getHoveredRegion(properties: unknown, id: string): HoveredRegion {
   return {
     id,
     commune: getStringProperty(properties, 'commune'),
@@ -834,11 +816,11 @@ function getHoveredRegion(properties: unknown, id: string): HoveredBurgundyRegio
   }
 }
 
-function hoveredRegionKey(region: HoveredBurgundyRegion) {
+function hoveredRegionKey(region: HoveredRegion) {
   return [region.id, region.insee ?? '', region.commune ?? ''].join('|')
 }
 
-function communeShadeFilter(region: HoveredBurgundyRegion): FilterSpecification {
+function communeShadeFilter(region: HoveredRegion): FilterSpecification {
   if (region.insee) {
     return [
       'all',
@@ -855,24 +837,36 @@ function communeShadeFilter(region: HoveredBurgundyRegion): FilterSpecification 
     ]
   }
 
-  if (burgundyIds.includes(region.id)) {
-    return filterNone()
-  }
-
-  return ['==', ['get', 'id'], region.id]
+  return filterNone()
 }
 
 function lowZoomHullShadeFilter(
-  region: HoveredBurgundyRegion | null,
+  region: HoveredRegion | null,
   legendHoveredId: string | null,
+  sharedGeometryIds: Record<string, string>,
 ): FilterSpecification {
   const activeId = region?.id ?? legendHoveredId
+  return activeId
+    ? ['==', ['get', 'id'], displayGeometryId(activeId, sharedGeometryIds)]
+    : filterNone()
+}
 
-  if (!activeId || !burgundyIds.includes(activeId)) {
-    return filterNone()
-  }
+function displayGeometryId(id: string, sharedGeometryIds: Record<string, string>) {
+  return sharedGeometryIds[id] ?? id
+}
 
-  return ['==', ['get', 'id'], activeId]
+function maxZoomForIds(
+  ids: string[],
+  maxZoomById: Record<string, number>,
+  sharedGeometryIds: Record<string, string>,
+  fallback: number,
+) {
+  const values = ids
+    .flatMap((id) => [id, displayGeometryId(id, sharedGeometryIds)])
+    .map((id) => maxZoomById[id])
+    .filter((value): value is number => typeof value === 'number')
+
+  return values.length > 0 ? Math.min(...values) : fallback
 }
 
 function isLowZoomHullActive(map: MapLibreMap) {
@@ -881,10 +875,6 @@ function isLowZoomHullActive(map: MapLibreMap) {
 
 function isDetailedZoomActive(map: MapLibreMap) {
   return map.getZoom() >= detailedHoverStart
-}
-
-function getMetadataName(id: string) {
-  return appellations.find((appellation) => appellation.id === id)?.name ?? id
 }
 
 function getFeatureId(properties: unknown) {
@@ -925,76 +915,60 @@ interface StudyCue {
   tasting: string
 }
 
-function studyCuesForAppellation(appellation: BurgundyAppellationMetadata): StudyCue[] {
+function studyCuesForAppellation(appellation: StudyRegionMetadata): StudyCue[] {
   const grapeCues = [...new Set([...appellation.dominantGrapes, ...appellation.importantGrapes])]
-    .slice(0, 2)
+    .slice(0, 3)
     .map((grape) => grapeStudyCue(grape, appellation))
 
   return [...grapeCues, wineStyleStudyCue(appellation)]
 }
 
-function grapeStudyCue(
-  grape: string,
-  appellation: BurgundyAppellationMetadata,
-): StudyCue {
-  if (grape === 'Chardonnay') {
+function grapeStudyCue(grape: string, appellation: StudyRegionMetadata): StudyCue {
+  const normalized = grape.toLowerCase()
+
+  if (normalized.includes('chardonnay')) {
     return {
       label: grape,
       visual: 'pale lemon to medium gold',
-      tasting: [
-        ...appellation.tastingProfile.fruit.slice(0, 2),
-        ...appellation.tastingProfile.nonFruit.slice(0, 2),
-        ...appellation.tastingProfile.structure.slice(0, 1),
-      ].join(', '),
+      tasting: cueTasting(appellation),
     }
   }
 
-  if (grape === 'Pinot Noir') {
+  if (normalized.includes('pinot noir')) {
     return {
       label: grape,
-      visual: 'pale ruby to medium ruby, garnet with age',
-      tasting: [
-        ...appellation.tastingProfile.fruit.slice(0, 2),
-        ...appellation.tastingProfile.nonFruit.slice(0, 2),
-        ...appellation.tastingProfile.structure.slice(0, 1),
-      ].join(', '),
+      visual: 'pale gold in blanc de noirs; salmon-pink for rosé',
+      tasting: cueTasting(appellation),
+    }
+  }
+
+  if (normalized.includes('meunier')) {
+    return {
+      label: grape,
+      visual: 'pale lemon to gold; rosé possible in blends',
+      tasting: cueTasting(appellation),
     }
   }
 
   return {
     label: grape,
     visual: 'variety-dependent color and intensity cue',
-    tasting: 'use fruit, structure, and aroma markers with local context',
+    tasting: cueTasting(appellation),
   }
 }
 
-function wineStyleStudyCue(appellation: BurgundyAppellationMetadata): StudyCue {
-  const style = appellation.primaryStyle.toLowerCase()
-  const tasting = [
+function wineStyleStudyCue(appellation: StudyRegionMetadata): StudyCue {
+  return {
+    label: 'Champagne method',
+    visual: 'persistent bubbles, pale lemon to gold; rosé varies salmon to pink',
+    tasting: cueTasting(appellation),
+  }
+}
+
+function cueTasting(appellation: StudyRegionMetadata) {
+  return [
     ...appellation.tastingProfile.fruit.slice(0, 2),
     ...appellation.tastingProfile.nonFruit.slice(0, 2),
     ...appellation.tastingProfile.structure.slice(0, 1),
   ].join(', ')
-
-  if (style.includes('white')) {
-    return {
-      label: 'Dry white Burgundy',
-      visual: 'pale lemon to medium gold, deeper with age or oak',
-      tasting,
-    }
-  }
-
-  if (style.includes('red')) {
-    return {
-      label: 'Dry red Burgundy',
-      visual: 'pale ruby to medium ruby, garnet with age',
-      tasting,
-    }
-  }
-
-  return {
-    label: appellation.primaryStyle,
-    visual: 'note intensity, hue, rim variation, clarity, and viscosity',
-    tasting,
-  }
 }

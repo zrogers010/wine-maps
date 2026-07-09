@@ -17,6 +17,12 @@ import type {
   LayerState,
 } from '../types/wine'
 import {
+  flyToBounds,
+  LEGEND_PREVIEW_PADDING,
+  OVERVIEW_PADDING,
+  OverviewControl,
+} from '../utils/camera'
+import {
   createHydrologyPlaceholder,
   createVineyardParcelPlaceholders,
   getFeatureCollectionBounds,
@@ -32,6 +38,7 @@ interface MapViewProps {
   appellations: AppellationMetadata[]
   filteredAppellationIds: AppellationId[]
   legendHoveredId: AppellationId | null
+  subregionHoveredIds: AppellationId[] | null
   layers: LayerState
   mode: ExperienceMode
   selectedId: AppellationId | null
@@ -113,12 +120,15 @@ export function MapView({
   appellations,
   filteredAppellationIds,
   legendHoveredId,
+  subregionHoveredIds,
   layers,
   mode,
   onSelectAppellation,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<Map | null>(null)
+  const overviewBoundsRef = useRef<[[number, number], [number, number]] | null>(null)
+  const lowZoomHullGeoJsonRef = useRef<FeatureCollection | null>(null)
   const hoveredFeatureIdRef = useRef<SourceFeatureId | null>(null)
   const hoveredRegionKeyRef = useRef<string | null>(null)
   const hoverLeaveTimeoutRef = useRef<number | null>(null)
@@ -156,11 +166,25 @@ export function MapView({
       minZoom: 7.6,
       maxZoom: 13.5,
       attributionControl: false,
+      fadeDuration: 180,
     })
 
-    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right')
+    // Gentler wheel steps make trackpad/mouse zooming feel fluid instead of jumpy.
+    map.scrollZoom.setWheelZoomRate(1 / 700)
+    map.scrollZoom.setZoomRate(1 / 140)
+
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-left')
     map.addControl(
-      new maplibregl.AttributionControl({ compact: true, customAttribution: 'CruTerrain dev data' }),
+      new OverviewControl(() => {
+        const bounds = overviewBoundsRef.current
+        if (bounds) {
+          flyToBounds(map, bounds, { padding: OVERVIEW_PADDING })
+        }
+      }),
+      'bottom-left',
+    )
+    map.addControl(
+      new maplibregl.AttributionControl({ compact: true, customAttribution: 'SommelierMaps dev data' }),
       'bottom-right',
     )
 
@@ -175,6 +199,7 @@ export function MapView({
       }
 
       setChateauxWithCommune(attachCommuneToChateaux(chateaux, bordeauxGeoJson))
+      lowZoomHullGeoJsonRef.current = lowZoomHullGeoJson
 
       map.addSource(appellationSourceId, {
         type: 'geojson',
@@ -297,28 +322,13 @@ export function MapView({
         source: appellationSourceId,
         paint: {
           'fill-color': detailedAppellationFillColorExpression(false),
+          // Detail parcels fade in across the same zoom span the hulls fade
+          // out, so the crossfade reads as one continuous transition.
           'fill-opacity': [
             'interpolate',
             ['linear'],
             ['zoom'],
             zoomTransitionStart,
-            [
-              'case',
-              ['in', ['get', 'id'], ['literal', lowZoomHullIds]],
-              0,
-              ['boolean', ['feature-state', 'selected'], false],
-              0.7,
-              ['boolean', ['feature-state', 'hover'], false],
-              0.8,
-              [
-                'match',
-                ['get', 'id'],
-                ['medoc', 'haut-medoc', 'entre-deux-mers'],
-                0.36,
-                0.64,
-              ],
-            ],
-            detailedHoverStart,
             [
               'case',
               ['in', ['get', 'id'], ['literal', lowZoomHullIds]],
@@ -376,18 +386,15 @@ export function MapView({
         filter: filterNone(),
         paint: {
           'fill-color': '#1c0f12',
+          // Zoom must be the top-level expression; the per-feature case moves
+          // into the stop outputs.
           'fill-opacity': [
-            'case',
-            ['in', ['get', 'id'], ['literal', lowZoomHullIds]],
-            [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              zoomTransitionStart,
-              0,
-              zoomTransitionEnd,
-              0.1,
-            ],
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            zoomTransitionStart,
+            ['case', ['in', ['get', 'id'], ['literal', lowZoomHullIds]], 0, 0.1],
+            zoomTransitionEnd,
             0.1,
           ],
         },
@@ -449,17 +456,6 @@ export function MapView({
             ['linear'],
             ['zoom'],
             zoomTransitionStart,
-            [
-              'case',
-              ['in', ['get', 'id'], ['literal', lowZoomHullIds]],
-              0,
-              ['boolean', ['feature-state', 'selected'], false],
-              0.95,
-              ['boolean', ['feature-state', 'hover'], false],
-              0.9,
-              0.36,
-            ],
-            detailedHoverStart,
             [
               'case',
               ['in', ['get', 'id'], ['literal', lowZoomHullIds]],
@@ -551,9 +547,12 @@ export function MapView({
       map.on('mouseleave', fillLayerId, handleDetailMouseLeave)
       map.on('click', fillLayerId, handleClick)
 
-      map.fitBounds(getFeatureCollectionBounds(bordeauxGeoJson), {
-        padding: { top: 90, right: 70, bottom: 80, left: 70 },
-        duration: 900,
+      const overviewBounds = getFeatureCollectionBounds(bordeauxGeoJson)
+      overviewBoundsRef.current = overviewBounds
+      map.fitBounds(overviewBounds, {
+        padding: OVERVIEW_PADDING,
+        duration: 1100,
+        essential: true,
       })
 
       setIsReady(true)
@@ -775,6 +774,72 @@ export function MapView({
     map.setFilter(outlineLayerId, filter)
     map.setFilter(labelLayerId, filter)
   }, [filteredAppellationIds, hoveredRegion, isReady, legendHoveredId])
+
+  useEffect(() => {
+    const map = mapRef.current
+    const lowZoomHullGeoJson = lowZoomHullGeoJsonRef.current
+
+    if (!map || !isReady || !lowZoomHullGeoJson || !subregionHoveredIds?.length) {
+      return
+    }
+
+    const features = lowZoomHullGeoJson.features.filter(
+      (feature) =>
+        typeof feature.properties?.id === 'string' &&
+        subregionHoveredIds.includes(feature.properties.id as AppellationId) &&
+        lowZoomRenderedHullIds.includes(feature.properties.id as AppellationId),
+    )
+
+    if (features.length === 0) {
+      return
+    }
+
+    flyToBounds(
+      map,
+      getFeatureCollectionBounds({
+        type: 'FeatureCollection',
+        features,
+      }),
+      {
+        padding: LEGEND_PREVIEW_PADDING,
+        maxZoom: 10.15,
+        speed: 1.4,
+      },
+    )
+  }, [isReady, subregionHoveredIds])
+
+  useEffect(() => {
+    const map = mapRef.current
+    const lowZoomHullGeoJson = lowZoomHullGeoJsonRef.current
+
+    if (!map || !isReady || !lowZoomHullGeoJson || !legendHoveredId) {
+      return
+    }
+
+    const displayId = legendHoveredId === 'cotes-de-bordeaux-cadillac'
+      ? 'cadillac'
+      : legendHoveredId
+    const feature = lowZoomHullGeoJson.features.find(
+      (candidate) => candidate.properties?.id === displayId,
+    )
+
+    if (!feature) {
+      return
+    }
+
+    flyToBounds(
+      map,
+      getFeatureCollectionBounds({
+        type: 'FeatureCollection',
+        features: [feature],
+      }),
+      {
+        padding: LEGEND_PREVIEW_PADDING,
+        maxZoom: 11.8,
+        speed: 1.5,
+      },
+    )
+  }, [isReady, legendHoveredId])
 
   return (
     <>
@@ -1173,12 +1238,8 @@ function HoverRegionCard({
   if (!appellation || !region) {
     return (
       <aside className="hover-region-card is-empty">
-        <span className="hover-card-kicker">Médoc AOC Map</span>
-        <strong>Hover a boundary</strong>
-        <p>
-          Move over an AOC/AOP production-area feature to see the geography
-          hierarchy and notable château points.
-        </p>
+        <span className="hover-card-kicker">Bordeaux AOC Map</span>
+        <strong>Hover the map or legend to explore an appellation</strong>
       </aside>
     )
   }
@@ -1222,14 +1283,12 @@ function HoverRegionCard({
             label="Appellation / AOC"
             value={`${appellation.name} AOC`}
           />
-          <HierarchyItem
-            label="Commune"
-            value={
-              region.commune
-                ? `${region.commune}${region.insee ? ` (${region.insee})` : ''}`
-                : ''
-            }
-          />
+          {region.commune ? (
+            <HierarchyItem
+              label="Commune"
+              value={`${region.commune}${region.insee ? ` (${region.insee})` : ''}`}
+            />
+          ) : null}
         </ol>
       </section>
       <dl>

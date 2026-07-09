@@ -49,10 +49,12 @@ export function createAtlasMapStyle(): StyleSpecification {
     sources: {
       'osm-raster': {
         type: 'raster',
+        // @2x tiles keep the basemap crisp on retina screens and during
+        // fractional-zoom animation instead of blurring between levels.
         tiles: [
-          'https://a.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png',
-          'https://b.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png',
-          'https://c.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png',
+          'https://a.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}@2x.png',
+          'https://b.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}@2x.png',
+          'https://c.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}@2x.png',
         ],
         tileSize: 256,
         attribution: '© OpenStreetMap contributors © CARTO',
@@ -63,7 +65,7 @@ export function createAtlasMapStyle(): StyleSpecification {
         id: 'atlas-background',
         type: 'background',
         paint: {
-          'background-color': '#ead9bd',
+          'background-color': '#f1e5cf',
         },
       },
       {
@@ -71,11 +73,11 @@ export function createAtlasMapStyle(): StyleSpecification {
         type: 'raster',
         source: 'osm-raster',
         paint: {
-          'raster-opacity': 0.92,
-          'raster-saturation': -0.28,
-          'raster-contrast': -0.16,
-          'raster-brightness-min': 0.1,
-          'raster-brightness-max': 0.98,
+          'raster-opacity': 0.82,
+          'raster-saturation': -0.46,
+          'raster-contrast': -0.22,
+          'raster-brightness-min': 0.16,
+          'raster-brightness-max': 1,
         },
       },
     ],
