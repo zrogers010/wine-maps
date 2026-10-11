@@ -9,7 +9,7 @@ import maplibregl, {
 } from 'maplibre-gl'
 import type { Feature, FeatureCollection, Geometry } from 'geojson'
 import appellationData from '../data/france/burgundy/appellations.json'
-import { registerPMTilesProtocol, createPMTilesSource, loadRegionMetadata } from '../utils/pmtiles'
+import { registerPMTilesProtocol, createPMTilesSource, loadRegionMetadata, initializePMTilesSource, getSourceLayer } from '../utils/pmtiles'
 import {
   flyToBounds,
   LEGEND_PREVIEW_PADDING,
@@ -317,9 +317,18 @@ export function BurgundyPage() {
       lowZoomHullGeoJsonRef.current = metadata
       detailGeoJsonRef.current = metadata
 
-      // Add PMTiles vector sources
-      map.addSource(burgundySourceId, createPMTilesSource('burgundy', 'detail'))
-      map.addSource(burgundyLowZoomSourceId, createPMTilesSource('burgundy', 'hull'))
+      // Add PMTiles vector sources with placeholder URLs
+      const detailSource = createPMTilesSource('burgundy', 'detail')
+      const hullSource = createPMTilesSource('burgundy', 'hull')
+      
+      map.addSource(burgundySourceId, detailSource)
+      map.addSource(burgundyLowZoomSourceId, hullSource)
+      
+      // Initialize sources with actual versioned URLs from manifest
+      await Promise.all([
+        initializePMTilesSource(map, burgundySourceId, 'burgundy', 'detail'),
+        initializePMTilesSource(map, burgundyLowZoomSourceId, 'burgundy', 'hull'),
+      ])
 
       // Label sources use GeoJSON from metadata
       map.addSource(burgundyGrandCruLabelSourceId, {
@@ -332,7 +341,7 @@ export function BurgundyPage() {
         data: createLabelPoints(metadata),
       } satisfies GeoJSONSourceSpecification)
 
-      const sourceLayer = 'burgundy'
+      const sourceLayer = getSourceLayer('burgundy')
       sourceLayerRef.current = sourceLayer
 
       map.addLayer({

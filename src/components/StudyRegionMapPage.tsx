@@ -17,7 +17,7 @@ import {
 import { getFeatureCollectionBounds } from '../utils/geo'
 import { createAtlasMapStyle } from '../utils/mapStyles'
 import { attachCameraHashSync, readCameraFromHash } from '../utils/urlHash'
-import { registerPMTilesProtocol, createPMTilesSource, loadRegionMetadata } from '../utils/pmtiles'
+import { registerPMTilesProtocol, createPMTilesSource, loadRegionMetadata, initializePMTilesSource, getSourceLayer } from '../utils/pmtiles'
 import { MapLoadingVeil } from './MapLoadingVeil'
 
 // Register PMTiles protocol
@@ -98,7 +98,6 @@ export function StudyRegionMapPage({
   sharedGeometryIds = {},
   sourceBadge,
 }: StudyRegionMapPageProps) {
-  const usePMTiles = detailDataPath.startsWith('pmtiles://')
   const sourcePrefix = emptyCardTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')
   const detailSourceId = `${sourcePrefix}-detail`
   const hullSourceId = `${sourcePrefix}-hulls`
@@ -179,62 +178,43 @@ export function StudyRegionMapPage({
     )
 
     map.on('load', async () => {
-      let detailGeoJson: FeatureCollection
-      let hullGeoJson: FeatureCollection
-
-      if (usePMTiles && regionId) {
-        // Load lightweight metadata for bounds and labels
-        const metadata = await loadRegionMetadata(regionId)
-        hullGeoJson = metadata
-        detailGeoJson = metadata
-
-        hullGeoJsonRef.current = hullGeoJson
-
-        // Add PMTiles vector sources
-        map.addSource(detailSourceId, createPMTilesSource(regionId, 'detail'))
-        map.addSource(hullSourceId, createPMTilesSource(regionId, 'hull'))
-        
-        // Label source still uses GeoJSON from metadata
-        map.addSource(labelSourceId, {
-          type: 'geojson',
-          data: createLabelPoints(hullGeoJson, appellations),
-        } satisfies GeoJSONSourceSpecification)
-      } else {
-        // Traditional GeoJSON loading
-        const [loadedDetail, loadedHull] = await Promise.all([
-          loadGeoJson(detailDataPath),
-          loadGeoJson(hullDataPath),
-        ])
-
-        if (cancelled) {
-          return
-        }
-
-        detailGeoJson = loadedDetail
-        hullGeoJson = loadedHull
-        hullGeoJsonRef.current = hullGeoJson
-
-        map.addSource(detailSourceId, {
-          type: 'geojson',
-          data: detailGeoJson,
-        } satisfies GeoJSONSourceSpecification)
-
-        map.addSource(hullSourceId, {
-          type: 'geojson',
-          data: hullGeoJson,
-        } satisfies GeoJSONSourceSpecification)
-
-        map.addSource(labelSourceId, {
-          type: 'geojson',
-          data: createLabelPoints(hullGeoJson, appellations),
-        } satisfies GeoJSONSourceSpecification)
+      if (!regionId) {
+        throw new Error('regionId is required for PMTiles mode')
       }
+
+      // Load lightweight metadata for bounds and labels
+      const metadata = await loadRegionMetadata(regionId)
+      
+      if (cancelled) {
+        return
+      }
+
+      hullGeoJsonRef.current = metadata
+
+      // Add PMTiles vector sources with placeholder URLs
+      const detailSource = createPMTilesSource(regionId, 'detail')
+      const hullSource = createPMTilesSource(regionId, 'hull')
+      
+      map.addSource(detailSourceId, detailSource)
+      map.addSource(hullSourceId, hullSource)
+      
+      // Initialize sources with actual versioned URLs from manifest
+      await Promise.all([
+        initializePMTilesSource(map, detailSourceId, regionId, 'detail'),
+        initializePMTilesSource(map, hullSourceId, regionId, 'hull'),
+      ])
+        
+      // Label source uses GeoJSON from metadata
+      map.addSource(labelSourceId, {
+        type: 'geojson',
+        data: createLabelPoints(metadata, appellations),
+      } satisfies GeoJSONSourceSpecification)
 
       if (cancelled) {
         return
       }
 
-      const sourceLayer = usePMTiles && regionId ? regionId : undefined
+      const sourceLayer = getSourceLayer(regionId)
       sourceLayerRef.current = sourceLayer
 
       map.addLayer({
@@ -428,7 +408,7 @@ export function StudyRegionMapPage({
       map.on('mousemove', detailFillLayerId, handleMouseMove)
       map.on('mouseleave', detailFillLayerId, handleDetailMouseLeave)
 
-      const overviewBounds = getFeatureCollectionBounds(detailGeoJson)
+      const overviewBounds = getFeatureCollectionBounds(metadata)
       overviewBoundsRef.current = overviewBounds
 
       // A camera deep link takes precedence over the intro overview flight.
@@ -810,16 +790,6 @@ function StudyHoverCard({
       ) : null}
     </aside>
   )
-}
-
-async function loadGeoJson(path: string): Promise<FeatureCollection> {
-  const response = await fetch(path)
-
-  if (!response.ok) {
-    throw new Error(`Failed to load GeoJSON ${path}: ${response.status}`)
-  }
-
-  return (await response.json()) as FeatureCollection
 }
 
 function createLabelPoints(

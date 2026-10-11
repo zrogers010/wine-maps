@@ -97,6 +97,7 @@ for REGION in burgundy champagne bordeaux alsace; do
   jq -c '.features[]' "$DETAIL_FILE" > "$TEMP_DIR/${REGION}-detail.geojsonl"
   
   # Build detail tiles with tippecanoe
+  # IMPORTANT: -l sets the source-layer name, must match getSourceLayer() in src/utils/pmtiles.ts
   tippecanoe \
     -o "$DETAIL_OUTPUT" \
     -z14 -Z11 \
@@ -116,6 +117,7 @@ for REGION in burgundy champagne bordeaux alsace; do
   # Build hull tiles (dissolved appellations for overview)
   jq -c '.features[]' "$HULL_FILE" > "$TEMP_DIR/${REGION}-hull.geojsonl"
   
+  # IMPORTANT: -l sets the source-layer name, must match getSourceLayer() in src/utils/pmtiles.ts
   tippecanoe \
     -o "$HULL_OUTPUT" \
     -z11 -Z7 \
@@ -200,15 +202,15 @@ echo "}" >> "$MANIFEST_FILE"
 # Clean up temp files
 rm -rf "$TEMP_DIR"
 
-# Create/update current symlink
-rm -f "$OUTPUT_BASE/current"
-ln -s "$VERSION" "$OUTPUT_BASE/current"
+# Copy manifest to current/ as a real file (not symlink) for dev server
+mkdir -p "$OUTPUT_BASE/current"
+cp "$MANIFEST_FILE" "$OUTPUT_BASE/current/manifest.json"
 
 echo "==> Build complete!"
 echo ""
 echo "Output: $OUTPUT_DIR"
 echo "Manifest: $MANIFEST_FILE"
-echo "Symlink: $OUTPUT_BASE/current -> $VERSION"
+echo "Current: $OUTPUT_BASE/current/manifest.json"
 echo ""
 
 if [ "$ANY_OVER_BUDGET" = true ]; then
@@ -223,16 +225,4 @@ if [ "$ANY_OVER_BUDGET" = true ]; then
 fi
 
 echo "✅ All regions within ${SIZE_BUDGET_MB} MB budget"
-echo ""
-echo "To deploy to S3:"
-echo ""
-echo "  # Upload versioned tiles (immutable)"
-echo "  aws s3 sync tiles/$VERSION/ s3://YOUR-BUCKET/tiles/$VERSION/ \\"
-echo "    --exclude 'manifest.json' \\"
-echo "    --cache-control 'public,max-age=31536000,immutable'"
-echo ""
-echo "  # Upload current manifest (short TTL)"
-echo "  aws s3 cp tiles/$VERSION/manifest.json s3://YOUR-BUCKET/tiles/current/manifest.json \\"
-echo "    --cache-control 'public,max-age=300'"
-echo ""
-echo "Set VITE_DATA_BASE_URL=https://YOUR-CDN/tiles/current"
+
