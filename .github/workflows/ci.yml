@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Check script syntax
+        run: |
+          for script in scripts/*.mjs; do
+            echo "Checking $script"
+            node --check "$script"
+          done
+      
+      - name: Typecheck
+        run: npm run build
+  
+  pmtiles-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install tippecanoe
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tippecanoe
+      
+      - name: Install pmtiles CLI
+        run: |
+          cd /tmp
+          wget https://github.com/protomaps/go-pmtiles/releases/download/v1.24.0/go-pmtiles_1.24.0_Linux_x86_64.tar.gz
+          tar xzf go-pmtiles_1.24.0_Linux_x86_64.tar.gz
+          sudo mv pmtiles /usr/local/bin/
+          pmtiles --version
+      
+      - name: Build tiles with fixtures
+        run: DATA_DIR=test/fixtures/data/france npm run tiles:build
+      
+      - name: Verify manifest
+        run: |
+          if [ ! -f tiles/current/manifest.json ]; then
+            echo "❌ manifest.json not created"
+            exit 1
+          fi
+          
+          # Check all expected regions are in manifest
+          for region in burgundy champagne alsace; do
+            if ! grep -q "\"$region\"" tiles/current/manifest.json; then
+              echo "❌ Region $region not in manifest"
+              exit 1
+            fi
+          done
+          
+          echo "✅ Manifest contains all expected regions"
+      
+      - name: Negative test - missing file should fail
+        run: |
+          mv test/fixtures/data/france/alsace/alsace-display-2026.geojson /tmp/backup.geojson
+          
+          if DATA_DIR=test/fixtures/data/france npm run tiles:build 2>&1; then
+            echo "❌ Build should have failed with missing file"
+            mv /tmp/backup.geojson test/fixtures/data/france/alsace/alsace-display-2026.geojson
+            exit 1
+          fi
+          
+          echo "✅ Build correctly failed with missing file"
+          mv /tmp/backup.geojson test/fixtures/data/france/alsace/alsace-display-2026.geojson
+  
+  smoke-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install tippecanoe
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tippecanoe
+      
+      - name: Install Chrome
+        run: |
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          google-chrome --version
+      
+      - name: Build tiles with fixtures
+        run: DATA_DIR=test/fixtures/data/france npm run tiles:build
+      
+      - name: Run smoke test
+        run: npm run smoke:tiles
+      
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-screenshots
+          path: tiles/.smoke-screenshots/
+          if-no-files-found: ignore

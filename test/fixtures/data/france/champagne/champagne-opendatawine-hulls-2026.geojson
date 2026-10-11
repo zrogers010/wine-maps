@@ -1,0 +1,16 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "champagne",
+      "properties": {
+        "name": "Champagne"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[4.0, 49.0], [4.5, 49.0], [4.5, 49.3], [4.0, 49.3], [4.0, 49.0]]]
+      }
+    }
+  ]
+}

@@ -57,6 +57,10 @@ function findChrome() {
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     '/Applications/Chromium.app/Contents/MacOS/Chromium',
     '/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary',
+    '/usr/local/bin/google-chrome',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
   ]
   
   for (const path of paths) {
@@ -395,8 +399,9 @@ try {
     }
   }
 
-    ws.close()
+  ws.close()
   }
+}
 } catch (error) {
   console.error('❌ Test error:', error.message)
   failed = true

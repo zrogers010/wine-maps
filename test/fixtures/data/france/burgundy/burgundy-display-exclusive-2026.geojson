@@ -1,0 +1,41 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "gevrey-chambertin",
+      "properties": {
+        "name": "Gevrey-Chambertin",
+        "cruLevel": "village"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[4.95, 47.22], [4.97, 47.22], [4.97, 47.24], [4.95, 47.24], [4.95, 47.22]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "chambertin",
+      "properties": {
+        "name": "Chambertin",
+        "cruLevel": "grand-cru"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[4.96, 47.23], [4.965, 47.23], [4.965, 47.235], [4.96, 47.235], [4.96, 47.23]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "clos-de-beze",
+      "properties": {
+        "name": "Clos de Bèze",
+        "cruLevel": "grand-cru"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[4.965, 47.23], [4.97, 47.23], [4.97, 47.235], [4.965, 47.235], [4.965, 47.23]]]
+      }
+    }
+  ]
+}

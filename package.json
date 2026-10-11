@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "tiles:build": "./scripts/build-tiles.sh",
+    "tiles:build": "node scripts/build-tiles.mjs",
     "smoke:tiles": "node scripts/smoke-pmtiles.mjs",
     "data:build-bordeaux-exclusive": "node scripts/build-exclusive-bordeaux-display.mjs",
     "data:build-burgundy-exclusive": "node scripts/build-exclusive-burgundy-display.mjs",
