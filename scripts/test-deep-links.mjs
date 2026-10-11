@@ -25,7 +25,7 @@ async function testDeepLinks() {
       viewport: { width: 1920, height: 1080 },
       checks: {
         title: 'Pauillac',
-        canonical: 'https://sommeliermaps.com/bordeaux/pauillac',
+        canonical: 'https://www.sommeliermaps.com/bordeaux/pauillac',
         h1: 'Pauillac',
       },
     },
@@ -36,7 +36,7 @@ async function testDeepLinks() {
       viewport: { width: 1920, height: 1080 },
       checks: {
         title: 'Bordeaux Wine Map',
-        canonical: 'https://sommeliermaps.com/bordeaux',
+        canonical: 'https://www.sommeliermaps.com/bordeaux',
         h1: 'Bordeaux Wine Region',
       },
     },
@@ -47,7 +47,7 @@ async function testDeepLinks() {
       viewport: { width: 1920, height: 1080 },
       checks: {
         title: 'SommelierMaps',
-        canonical: 'https://sommeliermaps.com/',
+        canonical: 'https://www.sommeliermaps.com/',
         h1: 'Interactive Wine Region Maps for WSET Study',
       },
     },

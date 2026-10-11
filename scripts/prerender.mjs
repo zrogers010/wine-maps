@@ -12,40 +12,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const distDir = path.resolve(__dirname, '../dist')
 const indexHtmlPath = path.join(distDir, 'index.html')
 
-const SITE_URL = 'https://sommeliermaps.com'
+const SITE_URL = process.env.SITE_URL || 'https://www.sommeliermaps.com'
 const DEFAULT_OG_IMAGE = '/images/og-default.png'
 
-// Region configurations (must match src/regions.ts)
-const regions = [
-  {
-    id: 'bordeaux',
-    path: '/bordeaux',
-    name: 'Bordeaux',
-    country: 'France',
-    hook: 'Left bank vs right bank at parcel level — Médoc communes, Saint-Émilion satellites, Graves, and the sweet wine country of Sauternes.',
-  },
-  {
-    id: 'burgundy',
-    path: '/burgundy',
-    name: 'Burgundy',
-    country: 'France',
-    hook: 'Village, Premier Cru climats, and all 32 Grands Crus of the Côte d\u2019Or — from Chablis down to Chassagne-Montrachet.',
-  },
-  {
-    id: 'champagne',
-    path: '/champagne',
-    name: 'Champagne',
-    country: 'France',
-    hook: 'The full AOC across Montagne de Reims, Vallée de la Marne, Côte des Blancs, and the Aube.',
-  },
-  {
-    id: 'alsace',
-    path: '/alsace',
-    name: 'Alsace',
-    country: 'France',
-    hook: 'Alsace and Crémant d\u2019Alsace AOCs with all 51 Grand Cru sites along the Vosges foothills.',
-  },
-]
+// Import regions from shared JSON source
+const regionsData = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, '../src/data/regions.json'), 'utf-8')
+)
+const regions = regionsData
 
 async function loadAppellations(regionId) {
   try {
@@ -88,12 +62,12 @@ function generateMetaTags(title, description, canonical, ogImage, ogImageAlt) {
     <meta property="og:image:alt" content="${escapeHtml(ogImageAlt)}" />
     
     <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="${canonical}" />
-    <meta property="twitter:title" content="${escapeHtml(title)}" />
-    <meta property="twitter:description" content="${escapeHtml(description)}" />
-    <meta property="twitter:image" content="${ogImage}" />
-    <meta property="twitter:image:alt" content="${escapeHtml(ogImageAlt)}" />`
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="${canonical}" />
+    <meta name="twitter:title" content="${escapeHtml(title)}" />
+    <meta name="twitter:description" content="${escapeHtml(description)}" />
+    <meta name="twitter:image" content="${ogImage}" />
+    <meta name="twitter:image:alt" content="${escapeHtml(ogImageAlt)}" />`
 }
 
 function countWords(text) {
@@ -139,11 +113,11 @@ function generateAppellationSummary(appellation, region) {
     const nonFruits = appellation.tastingProfile.nonFruit || []
 
     if (fruits.length > 0) {
-      parts.push(`Fruit characteristics include ${fruits.slice(0, 4).join(', ')}.`)
+      parts.push(`Typical fruit: ${fruits.slice(0, 4).join(', ')}.`)
     }
 
     if (nonFruits.length > 0) {
-      parts.push(`Other aromas and flavors include ${nonFruits.slice(0, 4).join(', ')}.`)
+      parts.push(`Other typical aromas: ${nonFruits.slice(0, 4).join(', ')}.`)
     }
 
     if (
@@ -300,7 +274,7 @@ async function generateSitemap(routes) {
 ${routes
   .map(
     (route) => `  <url>
-    <loc>https://sommeliermaps.com${route.path === '/' ? '' : route.path}</loc>
+    <loc>${SITE_URL}${route.path === '/' ? '' : route.path}</loc>
     <changefreq>monthly</changefreq>
     <priority>${route.path === '/' ? '1.0' : route.path.split('/').length === 2 ? '0.8' : '0.6'}</priority>
   </url>`,
@@ -317,7 +291,7 @@ async function generateRobotsTxt() {
 User-agent: *
 Allow: /
 
-Sitemap: https://sommeliermaps.com/sitemap.xml
+Sitemap: ${SITE_URL}/sitemap.xml
 `
 
   fs.writeFileSync(path.join(distDir, 'robots.txt'), robotsTxt, 'utf-8')
