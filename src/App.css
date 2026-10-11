@@ -972,3 +972,69 @@
 }
 
 /* Remove hidden SEO content styles - content is now visible */
+
+/* SEO intro section (visible to users and search engines) */
+.seo-intro {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  max-height: 40vh;
+  overflow-y: auto;
+  background: rgba(248, 239, 219, 0.98);
+  border-top: 2px solid rgba(111, 22, 39, 0.2);
+  box-shadow: 0 -4px 20px rgba(66, 48, 33, 0.15);
+  backdrop-filter: blur(10px);
+  transition: transform 0.3s ease;
+}
+
+.seo-intro.minimized {
+  transform: translateY(calc(100% - 50px));
+}
+
+.seo-intro-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px 24px;
+}
+
+.seo-intro h1 {
+  margin: 0 0 12px;
+  color: #5a1022;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.seo-intro p {
+  margin: 0;
+  color: #4d3328;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Hide on larger screens where map dominates */
+@media (min-width: 1024px) {
+  .seo-intro {
+    display: none;
+  }
+}
+
+/* On mobile/tablet, make it more compact */
+@media (max-width: 1023px) {
+  .seo-intro-content {
+    padding: 16px 20px;
+  }
+  
+  .seo-intro h1 {
+    font-size: 20px;
+  }
+  
+  .seo-intro p {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+}

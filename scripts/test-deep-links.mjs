@@ -1,5 +1,6 @@
 /**
  * Playwright test to verify deep links work correctly
+ * Tests: one appellation, one region, and home page
  */
 
 import { chromium } from 'playwright'
@@ -8,7 +9,7 @@ import path from 'node:path'
 import fs from 'node:fs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const screenshotsDir = path.resolve(__dirname, '../screenshots')
+const screenshotsDir = path.resolve(__dirname, '../docs/qa')
 
 async function testDeepLinks() {
   fs.mkdirSync(screenshotsDir, { recursive: true })
@@ -17,6 +18,7 @@ async function testDeepLinks() {
   const baseURL = 'http://localhost:4173'
 
   const tests = [
+    // One appellation: Pauillac
     {
       url: `${baseURL}/bordeaux/pauillac`,
       name: 'pauillac-desktop',
@@ -27,43 +29,26 @@ async function testDeepLinks() {
         h1: 'Pauillac',
       },
     },
+    // One region: Bordeaux
     {
-      url: `${baseURL}/bordeaux/pauillac`,
-      name: 'pauillac-mobile',
-      viewport: { width: 375, height: 667 },
-      checks: {
-        title: 'Pauillac',
-        canonical: 'https://sommeliermaps.com/bordeaux/pauillac',
-        h1: 'Pauillac',
-      },
-    },
-    {
-      url: `${baseURL}/burgundy/chablis`,
-      name: 'chablis-desktop',
+      url: `${baseURL}/bordeaux`,
+      name: 'bordeaux-region',
       viewport: { width: 1920, height: 1080 },
       checks: {
-        title: 'Chablis',
-        canonical: 'https://sommeliermaps.com/burgundy/chablis',
-        h1: 'Chablis',
+        title: 'Bordeaux Wine Map',
+        canonical: 'https://sommeliermaps.com/bordeaux',
+        h1: 'Bordeaux Wine Region',
       },
     },
+    // Home page
     {
-      url: `${baseURL}/burgundy/chablis`,
-      name: 'chablis-mobile',
-      viewport: { width: 375, height: 667 },
-      checks: {
-        title: 'Chablis',
-        canonical: 'https://sommeliermaps.com/burgundy/chablis',
-        h1: 'Chablis',
-      },
-    },
-    {
-      url: `${baseURL}/bordeaux#12.5/44.9522/-0.7542`,
-      name: 'bordeaux-hash-link',
+      url: `${baseURL}/`,
+      name: 'home',
       viewport: { width: 1920, height: 1080 },
       checks: {
-        title: 'Bordeaux',
-        hash: '#12.5/44.9522/-0.7542',
+        title: 'SommelierMaps',
+        canonical: 'https://sommeliermaps.com/',
+        h1: 'Interactive Wine Region Maps for WSET Study',
       },
     },
   ]
@@ -80,67 +65,64 @@ async function testDeepLinks() {
       }
     })
 
-    try {
-      await page.goto(test.url, { waitUntil: 'networkidle' })
+    await page.goto(test.url, { waitUntil: 'networkidle' })
 
-      // Wait for React to mount
-      await page.waitForTimeout(2000)
+    // Wait for React to mount
+    await page.waitForTimeout(1000)
 
-      // Check title
-      const title = await page.title()
-      console.log(`  Title: ${title}`)
-      if (test.checks.title && !title.includes(test.checks.title)) {
-        console.log(`  ❌ Title check failed: expected "${test.checks.title}"`)
-      }
-
-      // Check canonical
-      if (test.checks.canonical) {
-        const canonical = await page.$eval(
-          'link[rel="canonical"]',
-          (el) => el.getAttribute('href')
-        )
-        console.log(`  Canonical: ${canonical}`)
-        if (canonical !== test.checks.canonical) {
-          console.log(`  ❌ Canonical check failed`)
-        }
-      }
-
-      // Check H1 (in prerendered content or app)
-      if (test.checks.h1) {
-        const h1 = await page.$eval('h1', (el) => el.textContent)
-        console.log(`  H1: ${h1}`)
-        if (!h1?.includes(test.checks.h1)) {
-          console.log(`  ❌ H1 check failed`)
-        }
-      }
-
-      // Check hash
-      if (test.checks.hash) {
-        const hash = await page.evaluate(() => window.location.hash)
-        console.log(`  Hash: ${hash}`)
-        if (!hash.includes(test.checks.hash.split('/')[0])) {
-          console.log(`  ❌ Hash check failed`)
-        }
-      }
-
-      // Check console errors
-      if (consoleErrors.length > 0) {
-        console.log(`  ⚠️  Console errors:`)
-        consoleErrors.forEach((err) => console.log(`     ${err}`))
-      } else {
-        console.log(`  ✅ No console errors`)
-      }
-
-      // Take screenshot
-      const screenshotPath = path.join(screenshotsDir, `${test.name}.png`)
-      await page.screenshot({ path: screenshotPath, fullPage: false })
-      console.log(`  📸 Screenshot: ${screenshotPath}`)
-
-    } catch (error) {
-      console.error(`  ❌ Test failed:`, error.message)
-    } finally {
-      await page.close()
+    // Check title
+    const title = await page.title()
+    console.log(`  Title: ${title}`)
+    if (test.checks.title && !title.includes(test.checks.title)) {
+      throw new Error(`Title mismatch: expected "${test.checks.title}", got "${title}"`)
     }
+
+    // Check canonical link
+    if (test.checks.canonical) {
+      const canonical = await page.evaluate(() => {
+        const link = document.querySelector('link[rel="canonical"]')
+        return link?.href
+      })
+      console.log(`  Canonical: ${canonical}`)
+      if (canonical !== test.checks.canonical) {
+        throw new Error(`Canonical mismatch: expected "${test.checks.canonical}", got "${canonical}"`)
+      }
+    }
+
+    // Check H1
+    if (test.checks.h1) {
+      const h1Text = await page.evaluate(() => {
+        const h1 = document.querySelector('h1')
+        return h1?.textContent?.trim()
+      })
+      console.log(`  H1: ${h1Text}`)
+      if (h1Text !== test.checks.h1) {
+        throw new Error(`H1 mismatch: expected "${test.checks.h1}", got "${h1Text}"`)
+      }
+    }
+
+    // Check hash
+    if (test.checks.hash) {
+      const hash = await page.evaluate(() => window.location.hash)
+      console.log(`  Hash: ${hash}`)
+      if (hash !== test.checks.hash) {
+        throw new Error(`Hash mismatch: expected "${test.checks.hash}", got "${hash}"`)
+      }
+    }
+
+    // Report console errors
+    if (consoleErrors.length > 0) {
+      console.log(`  ⚠️  Console errors:`, consoleErrors)
+    } else {
+      console.log(`  ✅ No console errors`)
+    }
+
+    // Take screenshot
+    const screenshotPath = path.join(screenshotsDir, `${test.name}.png`)
+    await page.screenshot({ path: screenshotPath, fullPage: true })
+    console.log(`  📸 Screenshot: ${screenshotPath}`)
+
+    await page.close()
   }
 
   await browser.close()

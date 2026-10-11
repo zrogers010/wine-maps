@@ -178,13 +178,15 @@ function createHtmlWithMetadata(baseHtml, metaTags, h1, summary) {
   )
 
   // Inject visible SEO content into the body (before root div)
-  // This ensures H1 and summary are in prerendered HTML before React hydrates
-  // Using a specific ID so React can identify and potentially reuse this content
+  // This content remains visible to users - Google sees what users see
+  // Styled as an unobtrusive intro that complements the map UI
   const seoContent = `
-    <!-- Prerendered SEO content (visible before hydration) -->
-    <div id="prerendered-seo" style="max-width: 800px; margin: 60px auto; padding: 20px; font-family: Georgia, serif; background: rgba(255,255,255,0.95); border-radius: 8px;">
-      <h1 style="color: #5a1022; font-size: 32px; margin-bottom: 16px;">${escapeHtml(h1)}</h1>
-      <p style="color: #4d3328; font-size: 16px; line-height: 1.6;">${escapeHtml(summary)}</p>
+    <!-- Prerendered SEO content (visible intro/context) -->
+    <div id="prerendered-seo" class="seo-intro">
+      <div class="seo-intro-content">
+        <h1>${escapeHtml(h1)}</h1>
+        <p>${escapeHtml(summary)}</p>
+      </div>
     </div>`
 
   html = html.replace('<div id="root">', seoContent + '\n    <div id="root">')

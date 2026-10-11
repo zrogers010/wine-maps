@@ -10,7 +10,7 @@ import { getCanonicalRedirect, parseRoute } from './utils/routes'
 import type { ComponentType, ReactNode } from 'react'
 import './App.css'
 
-const regionComponents: Record<string, ComponentType<{ initialSelectedId?: any }>> = {
+const regionComponents: Record<string, ComponentType<{ initialSelectedId?: string }>> = {
   bordeaux: AppShell,
   burgundy: BurgundyPage,
   champagne: ChampagnePage,
