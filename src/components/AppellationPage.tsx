@@ -73,7 +73,7 @@ export function AppellationPage({ region, appellationId }: AppellationPageProps)
     return () => {
       cancelled = true
     }
-  }, [region.id, appellationId])
+  }, [region.id, region.name, appellationId])
 
   if (loading) {
     return (
