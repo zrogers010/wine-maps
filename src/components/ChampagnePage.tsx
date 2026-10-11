@@ -29,6 +29,8 @@ export function ChampagnePage() {
       hullDataPath="/data/france/champagne/champagne-opendatawine-hulls-2026.geojson"
       legendAriaLabel="Champagne appellation legend"
       legendGroups={legendGroups}
+      regionName="Champagne"
+      routePath="/champagne"
       sharedGeometryIds={{ 'coteaux-champenois': 'champagne' }}
       sourceBadge="OpenDataWine access to INAO Champagne AOC delimitation geometry. Online data are informational; official plans remain with town halls or INAO."
     />

@@ -1,82 +1,59 @@
+import { useEffect, useState } from 'react'
 import { AlsacePage } from './components/AlsacePage'
 import { AppShell } from './components/AppShell'
 import { BurgundyPage } from './components/BurgundyPage'
 import { ChampagnePage } from './components/ChampagnePage'
-import type { ReactNode } from 'react'
+import { Link } from './components/Link'
+import { findRegionByPath, regions, type RegionConfig } from './regions'
+import { navigate, usePathname } from './router'
+import type { ComponentType, ReactNode } from 'react'
 import './App.css'
 
-const bordeauxPaths = new Set(['/bordeaux', '/burdeux', '/bourdeux'])
-const burgundyPaths = new Set(['/burgundy', '/burgandy', '/bourgogne'])
-const champagnePaths = new Set(['/champagne', '/champage'])
-const alsacePaths = new Set(['/alsace'])
+const regionComponents: Record<string, ComponentType> = {
+  bordeaux: AppShell,
+  burgundy: BurgundyPage,
+  champagne: ChampagnePage,
+  alsace: AlsacePage,
+}
 
 function App() {
-  const pathname = normalizePath(window.location.pathname)
-  const activePath = bordeauxPaths.has(pathname)
-    ? '/bordeaux'
-    : burgundyPaths.has(pathname)
-      ? '/burgundy'
-      : champagnePaths.has(pathname)
-        ? '/champagne'
-        : alsacePaths.has(pathname)
-          ? '/alsace'
-          : pathname
+  const rawPathname = usePathname()
+  const pathname = normalizePath(rawPathname)
+  const region = findRegionByPath(pathname)
+  // Regions stay mounted after their first visit, so switching back is
+  // instant and each map keeps its camera, hover, and loaded data.
+  const [visitedRegionIds, setVisitedRegionIds] = useState<string[]>([])
 
-  if (bordeauxPaths.has(pathname)) {
-    if (pathname !== '/bordeaux') {
-      window.history.replaceState(null, '', '/bordeaux')
+  if (region && !visitedRegionIds.includes(region.id)) {
+    // Adjusting state during render (per React docs) so the newly visited
+    // region mounts in the same pass.
+    setVisitedRegionIds([...visitedRegionIds, region.id])
+  }
+
+  useEffect(() => {
+    if (rawPathname !== pathname || (region && pathname !== region.path)) {
+      navigate((region?.path ?? pathname) + window.location.hash, { replace: true })
     }
+  }, [pathname, rawPathname, region])
 
-    return (
-      <AppFrame activePath={activePath}>
-        <AppShell />
-      </AppFrame>
-    )
-  }
-
-  if (burgundyPaths.has(pathname)) {
-    if (pathname !== '/burgundy') {
-      window.history.replaceState(null, '', '/burgundy')
-    }
-
-    return (
-      <AppFrame activePath={activePath}>
-        <BurgundyPage />
-      </AppFrame>
-    )
-  }
-
-  if (champagnePaths.has(pathname)) {
-    if (pathname !== '/champagne') {
-      window.history.replaceState(null, '', '/champagne')
-    }
-
-    return (
-      <AppFrame activePath={activePath}>
-        <ChampagnePage />
-      </AppFrame>
-    )
-  }
-
-  if (alsacePaths.has(pathname)) {
-    return (
-      <AppFrame activePath={activePath}>
-        <AlsacePage />
-      </AppFrame>
-    )
-  }
-
-  if (pathname === '/') {
-    return (
-      <AppFrame activePath={activePath}>
-        <RegionIndexPage />
-      </AppFrame>
-    )
-  }
+  const visitedRegions = regions.filter((candidate) =>
+    visitedRegionIds.includes(candidate.id),
+  )
 
   return (
-    <AppFrame activePath={activePath}>
-      <NotFoundPage />
+    <AppFrame activePath={region?.path ?? pathname}>
+      {visitedRegions.map((candidate) => {
+        const RegionComponent = regionComponents[candidate.id]
+        const isActive = candidate.id === region?.id
+
+        return (
+          <div key={candidate.id} hidden={!isActive}>
+            <RegionComponent />
+          </div>
+        )
+      })}
+      {!region && pathname === '/' ? <RegionIndexPage /> : null}
+      {!region && pathname !== '/' ? <NotFoundPage /> : null}
     </AppFrame>
   )
 }
@@ -91,34 +68,19 @@ function AppFrame({
   return (
     <>
       <nav className="region-top-nav" aria-label="Wine region navigation">
-        <a className="region-top-nav-brand" href="/">
+        <Link className="region-top-nav-brand" href="/">
           SommelierMaps
-        </a>
+        </Link>
         <div className="region-top-nav-links">
-          <a
-            className={activePath === '/bordeaux' ? 'is-active' : undefined}
-            href="/bordeaux"
-          >
-            Bordeaux
-          </a>
-          <a
-            className={activePath === '/burgundy' ? 'is-active' : undefined}
-            href="/burgundy"
-          >
-            Burgundy
-          </a>
-          <a
-            className={activePath === '/champagne' ? 'is-active' : undefined}
-            href="/champagne"
-          >
-            Champagne
-          </a>
-          <a
-            className={activePath === '/alsace' ? 'is-active' : undefined}
-            href="/alsace"
-          >
-            Alsace
-          </a>
+          {regions.map((region) => (
+            <Link
+              key={region.id}
+              className={activePath === region.path ? 'is-active' : undefined}
+              href={region.path}
+            >
+              {region.name}
+            </Link>
+          ))}
         </div>
       </nav>
       {children}
@@ -127,46 +89,59 @@ function AppFrame({
 }
 
 function RegionIndexPage() {
+  const countries = [...new Set(regions.map((region) => region.country))]
+
   return (
     <main className="region-index-page">
-      <section className="region-index-card">
+      <section className="region-index-hero">
         <span className="region-index-kicker">SommelierMaps</span>
         <h1>Wine Region Maps</h1>
         <p>
-          Explore each wine region on its own focused map. Start with Bordeaux,
-          then expand country by country.
+          Official appellation boundaries, rendered beautifully. Hover any
+          parcel to study the hierarchy, grapes, soils, and exam cues behind
+          it.
         </p>
-        <div className="region-link-list">
-          <a href="/bordeaux">
-            <strong>Bordeaux</strong>
-            <span>Live map: Médoc, Right Bank, Entre-Deux-Mers, Graves, Sauternes.</span>
-          </a>
-          <a href="/burgundy">
-            <strong>Burgundy</strong>
-            <span>New map: Chablis, Côte de Nuits, and Côte de Beaune.</span>
-          </a>
-          <a href="/champagne">
-            <strong>Champagne</strong>
-            <span>Study map: Montagne de Reims, Marne Valley, Côte des Blancs, and Aube.</span>
-          </a>
-          <a href="/alsace">
-            <strong>Alsace</strong>
-            <span>New map: Alsace regional AOC, Crémant d&apos;Alsace, and Grand Cru sites.</span>
-          </a>
-        </div>
       </section>
+      {countries.map((country) => (
+        <section className="region-index-country" key={country}>
+          <h2>{country}</h2>
+          <div className="region-card-grid">
+            {regions
+              .filter((region) => region.country === country)
+              .map((region) => (
+                <RegionCard key={region.id} region={region} />
+              ))}
+          </div>
+        </section>
+      ))}
     </main>
+  )
+}
+
+function RegionCard({ region }: { region: RegionConfig }) {
+  return (
+    <Link className="region-card" href={region.path}>
+      <span className="region-card-media">
+        <img alt={`${region.name} appellation map`} loading="lazy" src={region.thumbnail} />
+      </span>
+      <span className="region-card-body">
+        <strong>{region.name}</strong>
+        <span>{region.hook}</span>
+      </span>
+    </Link>
   )
 }
 
 function NotFoundPage() {
   return (
     <main className="region-index-page">
-      <section className="region-index-card">
+      <section className="region-index-hero">
         <span className="region-index-kicker">SommelierMaps</span>
         <h1>Region Not Found</h1>
         <p>This wine-region map is not available yet.</p>
-        <a className="region-home-link" href="/bordeaux">Open Bordeaux</a>
+        <Link className="region-home-link" href="/">
+          Browse all regions
+        </Link>
       </section>
     </main>
   )
