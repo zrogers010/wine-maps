@@ -1,30 +1,22 @@
-#!/usr/bin/env bash
-#
-# build-tiles.sh
-#
-# Converts region GeoJSON to PMTiles for efficient mobile delivery.
-# Requires tippecanoe, pmtiles CLI, and jq.
-#
-# Usage:
-#   ./scripts/build-tiles.sh [--size-budget-mb SIZE]
-#
-# Options:
-#   --size-budget-mb SIZE    Max MB per region (default: 5)
-#
+#!/bin/bash
+set -e
 
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-DATA_DIR="$PROJECT_ROOT/public/data"
-OUTPUT_BASE="$PROJECT_ROOT/tiles"
-SIZE_BUDGET_MB=5
+# PMTiles tile builder for wine regions
+# Converts GeoJSON to PMTiles vector tiles with tippecanoe
+# Usage: ./scripts/build-tiles.sh [--size-budget-mb MB] [--metadata-budget-kb KB]
 
 # Parse arguments
+SIZE_BUDGET_MB=5
+METADATA_BUDGET_KB=300
+
 while [[ $# -gt 0 ]]; do
   case $1 in
     --size-budget-mb)
       SIZE_BUDGET_MB="$2"
+      shift 2
+      ;;
+    --metadata-budget-kb)
+      METADATA_BUDGET_KB="$2"
       shift 2
       ;;
     *)
@@ -34,35 +26,30 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-SIZE_BUDGET_BYTES=$((SIZE_BUDGET_MB * 1024 * 1024))
-
 echo "==> Building PMTiles for wine regions"
-echo "    Size budget: ${SIZE_BUDGET_MB} MB per region"
+echo "Region budget: ${SIZE_BUDGET_MB} MB"
+echo "Metadata budget: ${METADATA_BUDGET_KB} KB"
 echo ""
 
-# Check dependencies
-for cmd in tippecanoe pmtiles jq; do
-  if ! command -v $cmd &> /dev/null; then
-    echo "ERROR: $cmd not found. Install it first:"
-    echo ""
-    echo "  macOS:   brew install tippecanoe pmtiles jq"
-    echo "  Linux:"
-    echo "    - tippecanoe: Build from https://github.com/felt/tippecanoe"
-    echo "    - pmtiles: Download from https://github.com/protomaps/go-pmtiles/releases"
-    echo "    - jq: sudo apt-get install jq"
-    echo ""
-    exit 1
-  fi
-done
-
-# Create version hash from current timestamp
-VERSION=$(date -u +%Y%m%d-%H%M%S)
+# Paths
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+DATA_DIR="$PROJECT_ROOT/src/data"
+OUTPUT_BASE="$PROJECT_ROOT/tiles"
+VERSION=$(date -u +"%Y%m%d-%H%M%S")
 OUTPUT_DIR="$OUTPUT_BASE/$VERSION"
-TEMP_DIR="$OUTPUT_DIR/tmp"
-
-mkdir -p "$OUTPUT_DIR" "$TEMP_DIR"
-
+TEMP_DIR="$OUTPUT_BASE/.tmp-$$"
 MANIFEST_FILE="$OUTPUT_DIR/manifest.json"
+
+# Create output directories
+mkdir -p "$OUTPUT_DIR"
+mkdir -p "$TEMP_DIR"
+
+# Size budget in bytes
+SIZE_BUDGET_BYTES=$((SIZE_BUDGET_MB * 1024 * 1024))
+METADATA_BUDGET_BYTES=$((METADATA_BUDGET_KB * 1024))
+
+# Start manifest
 echo "{" > "$MANIFEST_FILE"
 echo "  \"version\": \"$VERSION\"," >> "$MANIFEST_FILE"
 echo "  \"tiles\": {" >> "$MANIFEST_FILE"
@@ -92,32 +79,55 @@ for REGION in burgundy champagne bordeaux alsace; do
   
   DETAIL_OUTPUT="$OUTPUT_DIR/${REGION}-detail.pmtiles"
   HULL_OUTPUT="$OUTPUT_DIR/${REGION}-hull.pmtiles"
+  METADATA_OUTPUT="$OUTPUT_DIR/${REGION}-metadata.json"
+  
+  # Copy feature.id to properties.id and strip top-level id to avoid tippecanoe warnings
+  TEMP_DETAIL_WITH_PROP_ID="$TEMP_DIR/${REGION}-detail-with-prop-id.geojson"
+  jq '.features |= map(
+    .properties.id = (.id // .properties.id) |
+    del(.id)
+  )' "$DETAIL_FILE" > "$TEMP_DETAIL_WITH_PROP_ID"
+  
+  TEMP_HULL_WITH_PROP_ID="$TEMP_DIR/${REGION}-hull-with-prop-id.geojson"
+  jq '.features |= map(
+    .properties.id = (.id // .properties.id) |
+    del(.id)
+  )' "$HULL_FILE" > "$TEMP_HULL_WITH_PROP_ID"
   
   # Convert detail GeoJSON to GeoJSONSeq for tippecanoe
-  jq -c '.features[]' "$DETAIL_FILE" > "$TEMP_DIR/${REGION}-detail.geojsonl"
+  jq -c '.features[]' "$TEMP_DETAIL_WITH_PROP_ID" > "$TEMP_DIR/${REGION}-detail.geojsonl"
+  
+  # Count input features
+  DETAIL_INPUT_COUNT=$(wc -l < "$TEMP_DIR/${REGION}-detail.geojsonl" | tr -d ' ')
   
   # Build detail tiles with tippecanoe
   # IMPORTANT: -l sets the source-layer name, must match getSourceLayer() in src/utils/pmtiles.ts
-  # Feature IDs are handled by promoteId in MapLibre; all properties kept by default
+  # Feature IDs via promoteId in MapLibre; properties kept by default
+  # maxzoom 15 for high-fidelity parcel/climat boundaries
+  # -r1 prevents feature dropping at intermediate zooms
+  # --coalesce-densest-as-needed preserves features while managing tile size
+  # --detect-shared-borders and --no-simplification-of-shared-nodes keep boundaries accurate
   tippecanoe \
     -o "$DETAIL_OUTPUT" \
-    -z14 -Z11 \
+    -z15 -Z11 \
     -r1 \
     -l "$REGION" \
-    --drop-densest-as-needed \
+    --coalesce-densest-as-needed \
+    --detect-shared-borders \
+    --no-simplification-of-shared-nodes \
     -P \
     "$TEMP_DIR/${REGION}-detail.geojsonl" 2>&1 | grep -v "^For layer" || true
   
   DETAIL_SIZE=$(stat -f%z "$DETAIL_OUTPUT" 2>/dev/null || stat -c%s "$DETAIL_OUTPUT")
   DETAIL_SIZE_MB=$(echo "scale=2; $DETAIL_SIZE / 1024 / 1024" | bc)
   
-  echo "  ✓ detail.pmtiles: ${DETAIL_SIZE_MB} MB"
+  echo "  ✓ detail.pmtiles: ${DETAIL_SIZE_MB} MB (input: $DETAIL_INPUT_COUNT features)"
   
   # Build hull tiles (dissolved appellations for overview)
-  jq -c '.features[]' "$HULL_FILE" > "$TEMP_DIR/${REGION}-hull.geojsonl"
+  jq -c '.features[]' "$TEMP_HULL_WITH_PROP_ID" > "$TEMP_DIR/${REGION}-hull.geojsonl"
   
   # IMPORTANT: -l sets the source-layer name, must match getSourceLayer() in src/utils/pmtiles.ts
-  # Feature IDs are handled by promoteId in MapLibre; all properties kept by default
+  # Feature IDs via promoteId in MapLibre; properties kept by default
   tippecanoe \
     -o "$HULL_OUTPUT" \
     -z11 -Z7 \
@@ -132,27 +142,128 @@ for REGION in burgundy champagne bordeaux alsace; do
   
   echo "  ✓ hull.pmtiles: ${HULL_SIZE_MB} MB"
   
-  # Create lightweight metadata GeoJSON for bounds and labels
-  METADATA_OUTPUT="$OUTPUT_DIR/${REGION}-metadata.json"
-  jq '{
-    type: "FeatureCollection",
-    features: [.features[] | {
-      type: "Feature",
-      id: .id,
-      properties: {
-        id: .properties.id,
-        name: .properties.name
-      },
-      geometry: .geometry
-    }]
-  }' "$HULL_FILE" > "$METADATA_OUTPUT"
+  # Create lightweight metadata GeoJSON: only centroids, bounds, and label properties
+  # Use node/turf if available, fallback to jq-only approximation
+  if command -v node &> /dev/null; then
+    node -e "
+      const fs = require('fs');
+      const turf = require('@turf/turf');
+      const hull = JSON.parse(fs.readFileSync('$TEMP_HULL_WITH_PROP_ID', 'utf8'));
+      
+      // Compute bbox
+      const bbox = turf.bbox(hull);
+      
+      // Group by id and find largest feature per id
+      const byId = new Map();
+      for (const feature of hull.features) {
+        const id = feature.properties.id;
+        if (!id) continue;
+        
+        const existing = byId.get(id);
+        const area = turf.area(feature);
+        
+        if (!existing || area > existing.area) {
+          byId.set(id, { feature, area });
+        }
+      }
+      
+      // Create centroid features
+      const features = Array.from(byId.values()).map(({ feature }) => {
+        const id = feature.properties.id;
+        const centroid = turf.centroid(feature);
+        
+        return {
+          type: 'Feature',
+          properties: {
+            id,
+            name: feature.properties.name || id
+          },
+          geometry: centroid.geometry
+        };
+      });
+      
+      const metadata = {
+        type: 'FeatureCollection',
+        bbox,
+        features
+      };
+      
+      fs.writeFileSync('$METADATA_OUTPUT', JSON.stringify(metadata, null, 2));
+    " 2>&1 || {
+      echo "  ⚠ Node.js metadata extraction failed, using jq fallback"
+      # Fallback: simplified jq-only version
+      jq '{
+        type: "FeatureCollection",
+        bbox: (
+          [.features[].geometry | .. | numbers?] as $nums |
+          [$nums | min, $nums | min, $nums | max, $nums | max]
+        ),
+        features: [
+          .features
+          | group_by(.properties.id)[]
+          | .[0]
+          | {
+              type: "Feature",
+              properties: { id: .properties.id, name: (.properties.name // .properties.id) },
+              geometry: {
+                type: "Point",
+                coordinates: (
+                  if .geometry.type == "Polygon" then
+                    [
+                      ([.geometry.coordinates[0][][0]] | add / length),
+                      ([.geometry.coordinates[0][][1]] | add / length)
+                    ]
+                  else [0, 0] end
+                )
+              }
+            }
+        ]
+      }' "$TEMP_HULL_WITH_PROP_ID" > "$METADATA_OUTPUT"
+    }
+  else
+    echo "  ⚠ Node.js not available, using jq-only metadata extraction"
+    jq '{
+      type: "FeatureCollection",
+      bbox: (
+        [.features[].geometry | .. | numbers?] as $nums |
+        [$nums | min, $nums | min, $nums | max, $nums | max]
+      ),
+      features: [
+        .features
+        | group_by(.properties.id)[]
+        | .[0]
+        | {
+            type: "Feature",
+            properties: { id: .properties.id, name: (.properties.name // .properties.id) },
+            geometry: {
+              type: "Point",
+              coordinates: (
+                if .geometry.type == "Polygon" then
+                  [
+                    ([.geometry.coordinates[0][][0]] | add / length),
+                    ([.geometry.coordinates[0][][1]] | add / length)
+                  ]
+                else [0, 0] end
+              )
+            }
+          }
+      ]
+    }' "$TEMP_HULL_WITH_PROP_ID" > "$METADATA_OUTPUT"
+  fi
   
   METADATA_SIZE=$(stat -f%z "$METADATA_OUTPUT" 2>/dev/null || stat -c%s "$METADATA_OUTPUT")
   METADATA_SIZE_KB=$(echo "scale=1; $METADATA_SIZE / 1024" | bc)
   
   echo "  ✓ metadata.json: ${METADATA_SIZE_KB} KB"
   
-  TOTAL_SIZE=$((DETAIL_SIZE + HULL_SIZE))
+  # Check metadata budget
+  if [ $METADATA_SIZE -gt $METADATA_BUDGET_BYTES ]; then
+    echo "  ⚠️  METADATA OVER BUDGET: ${METADATA_SIZE_KB} KB > ${METADATA_BUDGET_KB} KB"
+    ANY_OVER_BUDGET=true
+  fi
+  
+  # Total size includes tiles + metadata
+  TOTAL_SIZE=$((DETAIL_SIZE + HULL_SIZE + METADATA_SIZE))
   TOTAL_SIZE_MB=$(echo "scale=2; $TOTAL_SIZE / 1024 / 1024" | bc)
   
   echo "  → Total: ${TOTAL_SIZE_MB} MB"
@@ -212,15 +323,13 @@ echo "Current: $OUTPUT_BASE/current/manifest.json"
 echo ""
 
 if [ "$ANY_OVER_BUDGET" = true ]; then
-  echo "❌ ERROR: One or more regions exceeded ${SIZE_BUDGET_MB} MB budget"
+  echo "❌ ERROR: One or more regions exceeded budget"
   echo ""
   echo "To fix:"
-  echo "  - Increase simplification: -r1.5 → -r2.5"
-  echo "  - Reduce max zoom: -z14 → -z13"
-  echo "  - Drop more features: --drop-rate=1.5"
+  echo "  - For tile size: increase simplification (-r1 → -r1.5) or reduce max zoom (-z15 → -z14)"
+  echo "  - For metadata: check for geometry leaks or large property values"
   echo ""
   exit 1
 fi
 
-echo "✅ All regions within ${SIZE_BUDGET_MB} MB budget"
-
+echo "✅ All regions within budget"
