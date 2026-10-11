@@ -82,24 +82,22 @@ jobs:
       
       - name: Verify feature-drop check ran
         run: |
-          # Verify ids line appears for each region
-          for region in burgundy champagne alsace; do
-            if ! grep "ids: input=" /tmp/build.log | grep -q "Processing $region" -A 1; then
-              echo "❌ Feature-drop check did not run for $region"
-              echo "Build log:"
-              cat /tmp/build.log
-              exit 1
-            fi
-          done
-          
           # Count ids lines (should be exactly 3)
           IDS_COUNT=$(grep -c "ids: input=" /tmp/build.log || echo "0")
           if [ "$IDS_COUNT" != "3" ]; then
             echo "❌ Expected 3 'ids:' lines, found $IDS_COUNT"
+            echo "Build log:"
+            cat /tmp/build.log
             exit 1
           fi
           
-          echo "✅ Feature-drop check ran for all regions"
+          # Verify all ids lines show no drops (input=N z15=N)
+          if grep "ids: input=" /tmp/build.log | grep -v -E "input=([0-9]+) z15=\1"; then
+            echo "❌ Some features were dropped at max zoom"
+            exit 1
+          fi
+          
+          echo "✅ Feature-drop check ran for all regions (3 regions, no drops)"
       
       - name: Negative test - missing file should fail
         run: |
