@@ -9,7 +9,7 @@ import maplibregl, {
 } from 'maplibre-gl'
 import type { Feature, FeatureCollection, Geometry } from 'geojson'
 import appellationData from '../data/france/burgundy/appellations.json'
-import { registerPMTilesProtocol, createPMTilesSource, loadRegionMetadata, initializePMTilesSource, getSourceLayer } from '../utils/pmtiles'
+import { registerPMTilesProtocol, getPMTilesUrl, loadRegionMetadata, getSourceLayer } from '../utils/pmtiles'
 import {
   flyToBounds,
   LEGEND_PREVIEW_PADDING,
@@ -307,42 +307,47 @@ export function BurgundyPage() {
     )
 
     map.on('load', async () => {
-      // Load lightweight metadata for bounds and labels
-      const metadata = await loadRegionMetadata('burgundy')
-      
-      if (cancelled) {
-        return
-      }
+      try {
+        // Load metadata and resolve tile URLs before adding sources
+        const [metadata, detailUrl, hullUrl] = await Promise.all([
+          loadRegionMetadata('burgundy'),
+          getPMTilesUrl('burgundy', 'detail'),
+          getPMTilesUrl('burgundy', 'hull'),
+        ])
+        
+        if (cancelled) {
+          return
+        }
 
-      lowZoomHullGeoJsonRef.current = metadata
-      detailGeoJsonRef.current = metadata
+        lowZoomHullGeoJsonRef.current = metadata
+        detailGeoJsonRef.current = metadata
 
-      // Add PMTiles vector sources with placeholder URLs
-      const detailSource = createPMTilesSource('burgundy', 'detail')
-      const hullSource = createPMTilesSource('burgundy', 'hull')
-      
-      map.addSource(burgundySourceId, detailSource)
-      map.addSource(burgundyLowZoomSourceId, hullSource)
-      
-      // Initialize sources with actual versioned URLs from manifest
-      await Promise.all([
-        initializePMTilesSource(map, burgundySourceId, 'burgundy', 'detail'),
-        initializePMTilesSource(map, burgundyLowZoomSourceId, 'burgundy', 'hull'),
-      ])
+        // Add PMTiles vector sources with real URLs
+        const sourceLayer = getSourceLayer('burgundy')
+        sourceLayerRef.current = sourceLayer
 
-      // Label sources use GeoJSON from metadata
-      map.addSource(burgundyGrandCruLabelSourceId, {
-        type: 'geojson',
-        data: createGrandCruLabelPoints(metadata),
-      } satisfies GeoJSONSourceSpecification)
+        map.addSource(burgundySourceId, {
+          type: 'vector',
+          url: detailUrl,
+          promoteId: { [sourceLayer]: 'id' },
+        })
 
-      map.addSource(burgundyLabelSourceId, {
-        type: 'geojson',
-        data: createLabelPoints(metadata),
-      } satisfies GeoJSONSourceSpecification)
+        map.addSource(burgundyLowZoomSourceId, {
+          type: 'vector',
+          url: hullUrl,
+          promoteId: { [sourceLayer]: 'id' },
+        })
 
-      const sourceLayer = getSourceLayer('burgundy')
-      sourceLayerRef.current = sourceLayer
+        // Label sources use GeoJSON from metadata
+        map.addSource(burgundyGrandCruLabelSourceId, {
+          type: 'geojson',
+          data: createGrandCruLabelPoints(metadata),
+        } satisfies GeoJSONSourceSpecification)
+
+        map.addSource(burgundyLabelSourceId, {
+          type: 'geojson',
+          data: createLabelPoints(metadata),
+        } satisfies GeoJSONSourceSpecification)
 
       map.addLayer({
         id: burgundyLowZoomLayerId,
@@ -593,24 +598,29 @@ export function BurgundyPage() {
       map.moveLayer(burgundyLowZoomShadeLayerId, burgundyLabelLayerId)
       map.moveLayer(burgundyLowZoomBorderLayerId, burgundyLabelLayerId)
 
-      map.on('mousemove', burgundyLowZoomLayerId, handleHullMouseMove)
-      map.on('mouseleave', burgundyLowZoomLayerId, handleMouseLeave)
-      map.on('mousemove', burgundyFillLayerId, handleMouseMove)
-      map.on('mouseleave', burgundyFillLayerId, handleDetailMouseLeave)
+        map.on('mousemove', burgundyLowZoomLayerId, handleHullMouseMove)
+        map.on('mouseleave', burgundyLowZoomLayerId, handleMouseLeave)
+        map.on('mousemove', burgundyFillLayerId, handleMouseMove)
+        map.on('mouseleave', burgundyFillLayerId, handleDetailMouseLeave)
 
-      const overviewBounds = getFeatureCollectionBounds(metadata)
-      overviewBoundsRef.current = overviewBounds
+        const overviewBounds = getFeatureCollectionBounds(metadata)
+        overviewBoundsRef.current = overviewBounds
 
-      // A camera deep link takes precedence over the intro overview flight.
-      if (!hashCamera) {
-        map.fitBounds(overviewBounds, {
-          padding: OVERVIEW_PADDING,
-          duration: 1100,
-          essential: true,
-        })
+        // A camera deep link takes precedence over the intro overview flight.
+        if (!hashCamera) {
+          map.fitBounds(overviewBounds, {
+            padding: OVERVIEW_PADDING,
+            duration: 1100,
+            essential: true,
+          })
+        }
+
+        setIsReady(true)
+      } catch (error) {
+        console.error('Failed to load map data:', error)
+        // Map will show loading veil indefinitely, which is the graceful degradation
+        return
       }
-
-      setIsReady(true)
     })
 
     mapRef.current = map

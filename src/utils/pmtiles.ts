@@ -1,5 +1,4 @@
 import { Protocol } from 'pmtiles'
-import type maplibregl from 'maplibre-gl'
 
 let protocolRegistered = false
 let manifestPromise: Promise<TileManifest> | null = null
@@ -84,21 +83,6 @@ export async function getPMTilesUrl(region: string, type: 'detail' | 'hull'): Pr
 }
 
 /**
- * Create a vector tile source spec for a region's PMTiles.
- * The source-layer name matches tippecanoe's -l parameter (the region name).
- */
-export function createPMTilesSource(
-  region: string,
-  type: 'detail' | 'hull',
-): maplibregl.VectorSourceSpecification {
-  return {
-    type: 'vector',
-    url: `pmtiles://__PLACEHOLDER__/${region}-${type}.pmtiles`,
-    promoteId: { [region]: 'id' },
-  }
-}
-
-/**
  * Get the source-layer name for a region.
  * This must match the -l parameter passed to tippecanoe in build-tiles.sh.
  */
@@ -130,24 +114,6 @@ export async function loadRegionMetadata(region: string): Promise<any> {
   }
   
   return await response.json()
-}
-
-/**
- * Initialize PMTiles sources with actual URLs from the manifest.
- * Call this after adding the source to the map to update its URL.
- */
-export async function initializePMTilesSource(
-  map: maplibregl.Map,
-  sourceId: string,
-  region: string,
-  type: 'detail' | 'hull',
-): Promise<void> {
-  const url = await getPMTilesUrl(region, type)
-  const source = map.getSource(sourceId) as any
-  
-  if (source && source.setUrl) {
-    source.setUrl(url)
-  }
 }
 
 /**
