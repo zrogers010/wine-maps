@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && npm run prerender",
+    "prerender": "node scripts/prerender.mjs",
     "data:build-bordeaux-exclusive": "node scripts/build-exclusive-bordeaux-display.mjs",
     "data:build-burgundy-exclusive": "node scripts/build-exclusive-burgundy-display.mjs",
     "data:build-burgundy-hulls": "node scripts/build-burgundy-dissolve-trial.mjs",

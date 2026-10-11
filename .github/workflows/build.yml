@@ -1,0 +1,49 @@
+name: Build and Test
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc -b
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify prerendered files
+        run: |
+          echo "Checking for prerendered files..."
+          test -f dist/index.html || (echo "❌ dist/index.html not found" && exit 1)
+          test -f dist/bordeaux/pauillac/index.html || (echo "❌ dist/bordeaux/pauillac/index.html not found" && exit 1)
+          test -f dist/sitemap.xml || (echo "❌ dist/sitemap.xml not found" && exit 1)
+          test -f dist/robots.txt || (echo "❌ dist/robots.txt not found" && exit 1)
+          echo "✅ All critical prerendered files exist"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: github.event_name == 'pull_request'
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7

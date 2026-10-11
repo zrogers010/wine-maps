@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { AlsacePage } from './components/AlsacePage'
 import { AppShell } from './components/AppShell'
+import { AppellationPage } from './components/AppellationPage'
 import { BurgundyPage } from './components/BurgundyPage'
 import { ChampagnePage } from './components/ChampagnePage'
 import { Link } from './components/Link'
 import { findRegionByPath, regions, type RegionConfig } from './regions'
 import { navigate, usePathname } from './router'
+import { getCanonicalRedirect, parseRoute } from './utils/routes'
 import type { ComponentType, ReactNode } from 'react'
 import './App.css'
 
@@ -19,7 +21,12 @@ const regionComponents: Record<string, ComponentType> = {
 function App() {
   const rawPathname = usePathname()
   const pathname = normalizePath(rawPathname)
-  const region = findRegionByPath(pathname)
+  
+  // Parse route to check for region/appellation paths
+  const route = parseRoute(pathname)
+  const region = route?.region || findRegionByPath(pathname)
+  const appellationId = route?.appellationId || null
+  
   // Regions stay mounted after their first visit, so switching back is
   // instant and each map keeps its camera, hover, and loaded data.
   const [visitedRegionIds, setVisitedRegionIds] = useState<string[]>([])
@@ -31,10 +38,18 @@ function App() {
   }
 
   useEffect(() => {
-    if (rawPathname !== pathname || (region && pathname !== region.path)) {
-      navigate((region?.path ?? pathname) + window.location.hash, { replace: true })
+    // Check for canonical redirects (aliases)
+    const canonicalPath = getCanonicalRedirect(pathname)
+    if (canonicalPath) {
+      navigate(canonicalPath + window.location.hash, { replace: true })
+      return
     }
-  }, [pathname, rawPathname, region])
+
+    // Normalize trailing slashes
+    if (rawPathname !== pathname) {
+      navigate(pathname + window.location.hash, { replace: true })
+    }
+  }, [pathname, rawPathname])
 
   const visitedRegions = regions.filter((candidate) =>
     visitedRegionIds.includes(candidate.id),
@@ -44,7 +59,7 @@ function App() {
     <AppFrame activePath={region?.path ?? pathname}>
       {visitedRegions.map((candidate) => {
         const RegionComponent = regionComponents[candidate.id]
-        const isActive = candidate.id === region?.id
+        const isActive = candidate.id === region?.id && !appellationId
 
         return (
           <div key={candidate.id} hidden={!isActive}>
@@ -52,6 +67,9 @@ function App() {
           </div>
         )
       })}
+      {region && appellationId ? (
+        <AppellationPage region={region} appellationId={appellationId} />
+      ) : null}
       {!region && pathname === '/' ? <RegionIndexPage /> : null}
       {!region && pathname !== '/' ? <NotFoundPage /> : null}
     </AppFrame>
@@ -95,13 +113,35 @@ function RegionIndexPage() {
     <main className="region-index-page">
       <section className="region-index-hero">
         <span className="region-index-kicker">SommelierMaps</span>
-        <h1>Wine Region Maps</h1>
+        <h1>Interactive Wine Region Maps for WSET Study</h1>
+        <p className="hero-lead">
+          Master wine geography with interactive maps of the world's most important
+          wine regions. Built specifically for WSET Level 2 and Level 3 students.
+        </p>
         <p>
-          Official appellation boundaries, rendered beautifully. Hover any
-          parcel to study the hierarchy, grapes, soils, and exam cues behind
-          it.
+          Explore official appellation boundaries from INAO data. Hover any parcel to
+          study the hierarchy, grapes, soils, and exam cues behind it. Learn the
+          geography that matters for your wine exams.
         </p>
       </section>
+
+      <section className="wset-explainer">
+        <h2>Why SommelierMaps?</h2>
+        <p>
+          WSET exams test your knowledge of wine geography, appellations, and terroir.
+          SommelierMaps provides interactive study tools that bring these concepts to
+          life. Each map uses official INAO boundary data to show you exactly where
+          appellations are located, what makes them unique, and how they relate to
+          neighboring regions.
+        </p>
+        <p>
+          Whether you're studying Left Bank vs Right Bank in Bordeaux, memorizing
+          Burgundy's Grand Cru climats, or learning the geography of Champagne's
+          sub-regions, our maps help you visualize and remember the key details for
+          your WSET Level 2 or Level 3 exam.
+        </p>
+      </section>
+
       {countries.map((country) => (
         <section className="region-index-country" key={country}>
           <h2>{country}</h2>
@@ -114,6 +154,16 @@ function RegionIndexPage() {
           </div>
         </section>
       ))}
+
+      <section className="inao-attribution">
+        <p>
+          <small>
+            All maps use boundary data from INAO (Institut national de l'origine et
+            de la qualité). Boundaries are informational and not official survey-grade
+            data.
+          </small>
+        </p>
+      </section>
     </main>
   )
 }
