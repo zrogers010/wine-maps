@@ -93,6 +93,41 @@ PMTiles uses **feature-state** for hover via stable feature IDs:
 
 **Note**: IDs are **strings** (kebab-case like 'gevrey-chambertin'), not integers. The `promoteId` approach handles both string and integer IDs correctly.
 
+## Manifest JSON Format
+
+The build script generates `tiles/current/manifest.json` with version and file metadata.
+
+**Example structure (file sizes shown are illustrative, not measured):**
+
+```json
+{
+  "version": "20261011-160345",
+  "tiles": {
+    "burgundy": {
+      "detail": {
+        "file": "burgundy-detail.pmtiles",
+        "sizeBytes": 3355443,
+        "sizeMB": "3.20"
+      },
+      "hull": {
+        "file": "burgundy-hull.pmtiles",
+        "sizeBytes": 471040,
+        "sizeMB": "0.45"
+      },
+      "metadata": {
+        "file": "burgundy-metadata.json",
+        "sizeBytes": 28672,
+        "sizeKB": "28.0"
+      },
+      "totalSizeBytes": 3826483,
+      "totalSizeMB": "3.65"
+    }
+  }
+}
+```
+
+The app fetches `${VITE_DATA_BASE_URL}/current/manifest.json` once per page load and resolves tile URLs as `${VITE_DATA_BASE_URL}/${version}/${file}`.
+
 ## Troubleshooting
 
 ### Build fails: "tippecanoe not found"

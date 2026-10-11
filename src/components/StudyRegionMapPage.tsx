@@ -121,6 +121,7 @@ export function StudyRegionMapPage({
   const hoverLeaveTimeoutRef = useRef<number | null>(null)
   const sourceLayerRef = useRef<string | undefined>(undefined)
   const [isReady, setIsReady] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [hoveredRegion, setHoveredRegion] = useState<HoveredRegion | null>(null)
   const [legendHoveredId, setLegendHoveredId] = useState<string | null>(null)
   const [subregionHoveredIds, setSubregionHoveredIds] = useState<string[] | null>(null)
@@ -223,10 +224,10 @@ export function StudyRegionMapPage({
         }
 
         map.addLayer({
-        id: hullLayerId,
-        type: 'fill',
-        source: hullSourceId,
-        'source-layer': sourceLayer,
+          id: hullLayerId,
+          type: 'fill',
+          source: hullSourceId,
+          'source-layer': sourceLayer,
         paint: {
           'fill-color': fillColorExpression(colors),
           'fill-opacity': [
@@ -428,7 +429,12 @@ export function StudyRegionMapPage({
         setIsReady(true)
       } catch (error) {
         console.error('Failed to load map data:', error)
-        // Map will show loading veil indefinitely, which is the graceful degradation
+        const isDev = import.meta.env.DEV
+        setLoadError(
+          isDev
+            ? 'Map data not found. Run `npm run tiles:build` to generate tiles.'
+            : 'Unable to load map data. Please try again later.',
+        )
         return
       }
     })
@@ -660,7 +666,15 @@ export function StudyRegionMapPage({
   return (
     <div className="map-only-shell">
       <div className="map-container" ref={containerRef} />
-      <MapLoadingVeil isReady={isReady} regionName={regionName} />
+      <MapLoadingVeil isReady={isReady || loadError !== null} regionName={regionName} />
+      {loadError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#1a1410] text-[#d4c5b3] z-[1000]">
+          <div className="max-w-md text-center px-4">
+            <p className="text-2xl mb-3">⚠️</p>
+            <p>{loadError}</p>
+          </div>
+        </div>
+      )}
       <StudyHoverCard
         appellation={activeAppellation}
         emptyCardTitle={emptyCardTitle}
