@@ -1,8 +1,0 @@
-PLACEHOLDER: Create a branded OG image (1200x630px) with:
-- SommelierMaps branding
-- Wine-themed background
-- Text: "Interactive Wine Region Maps for WSET Study"
-- INAO attribution note
-
-For now, this file serves as documentation. The prerender script will work
-without actual images, but you should create proper OG images for production.

@@ -838,6 +838,22 @@
   font-style: italic;
 }
 
+.appellation-summary {
+  margin-bottom: 24px;
+  background: rgba(255, 255, 255, 0.5);
+  border-left: 3px solid #8d2439;
+  padding: 16px 20px;
+  border-radius: 4px;
+}
+
+.appellation-summary p {
+  margin: 0;
+  color: #4d3328;
+  font-size: 15px;
+  line-height: 1.7;
+  font-weight: 500;
+}
+
 .appellation-section {
   margin-bottom: 24px;
 }
@@ -955,12 +971,4 @@
   text-align: center;
 }
 
-/* Ensure SEO content is hidden visually but accessible to crawlers */
-#seo-content {
-  position: absolute !important;
-  left: -9999px !important;
-  top: -9999px !important;
-  width: 1px !important;
-  height: 1px !important;
-  overflow: hidden !important;
-}
+/* Remove hidden SEO content styles - content is now visible */

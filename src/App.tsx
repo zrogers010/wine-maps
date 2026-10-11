@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AlsacePage } from './components/AlsacePage'
 import { AppShell } from './components/AppShell'
-import { AppellationPage } from './components/AppellationPage'
 import { BurgundyPage } from './components/BurgundyPage'
 import { ChampagnePage } from './components/ChampagnePage'
 import { Link } from './components/Link'
@@ -11,7 +10,7 @@ import { getCanonicalRedirect, parseRoute } from './utils/routes'
 import type { ComponentType, ReactNode } from 'react'
 import './App.css'
 
-const regionComponents: Record<string, ComponentType> = {
+const regionComponents: Record<string, ComponentType<{ initialSelectedId?: any }>> = {
   bordeaux: AppShell,
   burgundy: BurgundyPage,
   champagne: ChampagnePage,
@@ -59,17 +58,14 @@ function App() {
     <AppFrame activePath={region?.path ?? pathname}>
       {visitedRegions.map((candidate) => {
         const RegionComponent = regionComponents[candidate.id]
-        const isActive = candidate.id === region?.id && !appellationId
+        const isActive = candidate.id === region?.id
 
         return (
           <div key={candidate.id} hidden={!isActive}>
-            <RegionComponent />
+            <RegionComponent initialSelectedId={isActive ? appellationId || undefined : undefined} />
           </div>
         )
       })}
-      {region && appellationId ? (
-        <AppellationPage region={region} appellationId={appellationId} />
-      ) : null}
       {!region && pathname === '/' ? <RegionIndexPage /> : null}
       {!region && pathname !== '/' ? <NotFoundPage /> : null}
     </AppFrame>
@@ -119,9 +115,9 @@ function RegionIndexPage() {
           wine regions. Built specifically for WSET Level 2 and Level 3 students.
         </p>
         <p>
-          Explore official appellation boundaries from INAO data. Hover any parcel to
-          study the hierarchy, grapes, soils, and exam cues behind it. Learn the
-          geography that matters for your wine exams.
+          Explore appellation boundaries from INAO data. Hover any parcel to study
+          the hierarchy, grapes, soils, and exam cues behind it. Learn the geography
+          that matters for your wine exams.
         </p>
       </section>
 
@@ -130,9 +126,9 @@ function RegionIndexPage() {
         <p>
           WSET exams test your knowledge of wine geography, appellations, and terroir.
           SommelierMaps provides interactive study tools that bring these concepts to
-          life. Each map uses official INAO boundary data to show you exactly where
-          appellations are located, what makes them unique, and how they relate to
-          neighboring regions.
+          life. Each map uses INAO boundary data to show you exactly where appellations
+          are located, what makes them unique, and how they relate to neighboring
+          regions.
         </p>
         <p>
           Whether you're studying Left Bank vs Right Bank in Bordeaux, memorizing
@@ -158,9 +154,8 @@ function RegionIndexPage() {
       <section className="inao-attribution">
         <p>
           <small>
-            All maps use boundary data from INAO (Institut national de l'origine et
-            de la qualité). Boundaries are informational and not official survey-grade
-            data.
+            Map boundary data from INAO (Institut national de l'origine et de la
+            qualité). Boundaries are informational and not official survey-grade data.
           </small>
         </p>
       </section>

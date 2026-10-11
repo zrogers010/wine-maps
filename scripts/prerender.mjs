@@ -13,7 +13,7 @@ const distDir = path.resolve(__dirname, '../dist')
 const indexHtmlPath = path.join(distDir, 'index.html')
 
 const SITE_URL = 'https://sommeliermaps.com'
-const DEFAULT_OG_IMAGE = '/images/og-default.png'
+const DEFAULT_OG_IMAGE = '/images/og-default.svg' // TODO: Convert to PNG (1200x630px) for production
 
 // Region configurations (must match src/regions.ts)
 const regions = [
@@ -92,6 +92,10 @@ function generateMetaTags(title, description, canonical, ogImage) {
     <meta property="twitter:image" content="${ogImage}" />`
 }
 
+function countWords(text) {
+  return text.trim().split(/\s+/).length
+}
+
 function generateAppellationSummary(appellation, region) {
   const parts = []
 
@@ -114,7 +118,12 @@ function generateAppellationSummary(appellation, region) {
 
   if (appellation.terroir) {
     if (appellation.terroir.keySoils && appellation.terroir.keySoils.length > 0) {
-      parts.push(`The terroir features ${appellation.terroir.keySoils.join(', ')} soils.`)
+      parts.push(`The key soils are ${appellation.terroir.keySoils.join(', ')}.`)
+    }
+    if (appellation.terroir.climate && appellation.terroir.climate.length > 0) {
+      parts.push(
+        `The climate is characterized by ${appellation.terroir.climate.slice(0, 3).join(', ')}.`,
+      )
     }
     if (appellation.terroir.learningPoint) {
       parts.push(appellation.terroir.learningPoint)
@@ -125,9 +134,12 @@ function generateAppellationSummary(appellation, region) {
     const fruits = appellation.tastingProfile.fruit || []
     const nonFruits = appellation.tastingProfile.nonFruit || []
 
-    if (fruits.length > 0 || nonFruits.length > 0) {
-      const flavorNotes = [...fruits.slice(0, 3), ...nonFruits.slice(0, 2)]
-      parts.push(`Typical tasting notes include ${flavorNotes.join(', ')}.`)
+    if (fruits.length > 0) {
+      parts.push(`Fruit characteristics include ${fruits.slice(0, 4).join(', ')}.`)
+    }
+
+    if (nonFruits.length > 0) {
+      parts.push(`Other aromas and flavors include ${nonFruits.slice(0, 4).join(', ')}.`)
     }
 
     if (
@@ -135,13 +147,20 @@ function generateAppellationSummary(appellation, region) {
       appellation.tastingProfile.structure.length > 0
     ) {
       parts.push(
-        `Wines typically show ${appellation.tastingProfile.structure.slice(0, 2).join(', ')}.`,
+        `Wines typically show ${appellation.tastingProfile.structure.slice(0, 3).join(', ')}.`,
       )
+    }
+
+    if (appellation.tastingProfile.ageingPotential) {
+      parts.push(`Ageing potential is ${appellation.tastingProfile.ageingPotential}.`)
     }
   }
 
   if (appellation.examNotes && appellation.examNotes.length > 0) {
-    parts.push(appellation.examNotes[0])
+    // Add up to 2 exam notes
+    appellation.examNotes.slice(0, 2).forEach((note) => {
+      parts.push(note)
+    })
   }
 
   return parts.join(' ')
@@ -155,16 +174,7 @@ function createHtmlWithMetadata(baseHtml, metaTags, h1, summary) {
     metaTags
   )
 
-  const seoContent = `
-    <!-- SEO content for prerendered pages -->
-    <div id="seo-content" style="position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden;">
-      <h1>${escapeHtml(h1)}</h1>
-      <p>${escapeHtml(summary)}</p>
-    </div>
-  `
-
-  html = html.replace('<div id="root">', seoContent + '\n    <div id="root">')
-
+  // No hidden SEO content - the AppellationPage component now shows this visibly
   return html
 }
 
@@ -185,8 +195,8 @@ async function generateRoutes() {
   // Home page
   const homeTitle = 'SommelierMaps - Interactive Wine Region Maps for WSET Study'
   const homeDescription =
-    'Master wine geography with interactive maps of Bordeaux, Burgundy, Champagne, and Alsace. Official INAO appellation boundaries for WSET Level 2 and Level 3 students.'
-  const homeSummary = `SommelierMaps provides interactive study maps of the world's most important wine regions, built specifically for WSET Level 2 and Level 3 students. Explore official appellation boundaries from INAO data, hover any parcel to study the hierarchy, grapes, soils, and exam cues behind it. Learn the geography that matters for your wine exams.`
+    'Interactive wine region maps for WSET Level 2 and Level 3 students. Explore appellation boundaries from INAO data for Bordeaux, Burgundy, Champagne, and Alsace.'
+  const homeSummary = `SommelierMaps provides interactive study maps of the world's most important wine regions, built specifically for WSET Level 2 and Level 3 students. Explore appellation boundaries from INAO data, hover any parcel to study the hierarchy, grapes, soils, and exam cues behind it. Learn the geography that matters for your wine exams.`
 
   const homeHtml = createHtmlWithMetadata(
     baseHtml,
@@ -199,9 +209,9 @@ async function generateRoutes() {
   // Region pages and appellations
   for (const region of regions) {
     // Region page
-    const regionTitle = `${region.name} Wine Map - Appellations & Study Guide | SommelierMaps`
-    const regionDescription = `Interactive ${region.name} wine region map with official INAO appellation boundaries. ${region.hook} Perfect for WSET Level 2 & 3 study.`
-    const regionSummary = `Study the ${region.name} wine region with an interactive map showing all official appellations. ${region.hook} This map uses official INAO boundary data and is designed specifically for WSET students preparing for Level 2 and Level 3 exams.`
+    const regionTitle = `${region.name} Wine Map - Appellation Study Guide | SommelierMaps`
+    const regionDescription = `Interactive ${region.name} wine region map with appellation boundaries from INAO data. ${region.hook} For WSET Level 2 & 3 study.`
+    const regionSummary = `Study the ${region.name} wine region with an interactive map showing appellations from INAO boundary data. ${region.hook} This map is designed for WSET students preparing for Level 2 and Level 3 exams.`
 
     const regionHtml = createHtmlWithMetadata(
       baseHtml,
@@ -209,7 +219,7 @@ async function generateRoutes() {
         regionTitle,
         regionDescription,
         `${SITE_URL}${region.path}`,
-        `${SITE_URL}/images/og-${region.id}.png`,
+        `${SITE_URL}${DEFAULT_OG_IMAGE}`, // Using default for all routes until region images are created
       ),
       `${region.name} Wine Region`,
       regionSummary,
@@ -223,9 +233,10 @@ async function generateRoutes() {
       const style = appellation.primaryStyle || 'wine'
       const subregion = appellation.subregion || region.name
 
-      const appellationTitle = `${appellation.name} AOC - ${region.name} Wine Study Guide | SommelierMaps`
-      const appellationDescription = `${appellation.name} appellation in ${subregion}, ${region.name}. ${style} from ${grapes}. Official boundaries, tasting notes, and exam study guide for WSET.`
+      const appellationTitle = `${appellation.name} - ${region.name} Wine Appellation Study Guide | SommelierMaps`
+      const appellationDescription = `${appellation.name} appellation in ${subregion}, ${region.name}. Study guide with grapes, terroir, and exam notes for WSET.`
       const appellationSummary = generateAppellationSummary(appellation, region)
+      const wordCount = countWords(appellationSummary)
 
       const appellationHtml = createHtmlWithMetadata(
         baseHtml,
@@ -233,7 +244,7 @@ async function generateRoutes() {
           appellationTitle,
           appellationDescription,
           `${SITE_URL}${region.path}/${appellation.id}`,
-          `${SITE_URL}/images/og-${region.id}.png`,
+          `${SITE_URL}${DEFAULT_OG_IMAGE}`, // Using default for all routes until region images are created
         ),
         appellation.name,
         appellationSummary,
@@ -244,14 +255,14 @@ async function generateRoutes() {
         html: appellationHtml,
       })
 
-      if (appellationSummary.length < 150) {
-        thinContentEntries.push(`${region.path}/${appellation.id}`)
+      if (wordCount < 150) {
+        thinContentEntries.push(`${region.path}/${appellation.id} (${wordCount} words)`)
       }
     }
   }
 
   if (thinContentEntries.length > 0) {
-    console.log('\n⚠️  Thin content entries (< 150 characters):')
+    console.log('\n⚠️  Thin content entries (< 150 words):')
     thinContentEntries.forEach((entry) => console.log(`  - ${entry}`))
     console.log(`\nTotal: ${thinContentEntries.length} entries need more content\n`)
   }

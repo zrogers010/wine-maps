@@ -75,8 +75,8 @@ const defaultLayers: LayerState = {
   studyLabels: true,
 }
 
-export function AppShell() {
-  const [selectedId, setSelectedId] = useState<AppellationId | null>(null)
+export function AppShell({ initialSelectedId }: { initialSelectedId?: AppellationId }) {
+  const [selectedId, setSelectedId] = useState<AppellationId | null>(initialSelectedId || null)
   const [legendHoveredId, setLegendHoveredId] = useState<AppellationId | null>(null)
   const [subregionHoveredIds, setSubregionHoveredIds] = useState<AppellationId[] | null>(null)
   const layers = defaultLayers
