@@ -41,6 +41,9 @@ src/data/**/*.geojson.gz
 *.kmz
 *.zip
 
+# Generated tiles output
+tiles/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

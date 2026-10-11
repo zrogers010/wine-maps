@@ -1,10 +1,15 @@
+import maplibregl from 'maplibre-gl'
 import appellationData from '../data/france/champagne/appellations.json'
+import { registerPMTilesProtocol } from '../utils/pmtiles'
 import {
   StudyRegionMapPage,
   type StudyRegionMetadata,
 } from './StudyRegionMapPage'
 
 const appellations = appellationData as StudyRegionMetadata[]
+
+// Register PMTiles protocol once at module load
+registerPMTilesProtocol(maplibregl)
 
 const champagneColors: Record<string, string> = {
   champagne: '#f2c94c',
@@ -24,12 +29,13 @@ export function ChampagnePage() {
     <StudyRegionMapPage
       appellations={appellations}
       colors={champagneColors}
-      detailDataPath="/data/france/champagne/champagne-opendatawine-display-2026.geojson"
+      detailDataPath="pmtiles://champagne-detail"
       emptyCardTitle="Champagne AOC Map"
-      hullDataPath="/data/france/champagne/champagne-opendatawine-hulls-2026.geojson"
+      hullDataPath="pmtiles://champagne-hull"
       legendAriaLabel="Champagne appellation legend"
       legendGroups={legendGroups}
       regionName="Champagne"
+      regionId="champagne"
       routePath="/champagne"
       sharedGeometryIds={{ 'coteaux-champenois': 'champagne' }}
       sourceBadge="OpenDataWine access to INAO Champagne AOC delimitation geometry. Online data are informational; official plans remain with town halls or INAO."
