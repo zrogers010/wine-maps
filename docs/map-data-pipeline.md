@@ -85,11 +85,13 @@ aws cloudfront create-invalidation \
 
 PMTiles uses **feature-state** for hover via stable feature IDs:
 
-1. `tippecanoe -l <region>` sets the source-layer name (must match `getSourceLayer()` in code)
-2. `tippecanoe --use-attribute-for-id=id` promotes `id` property to `feature.id`
-3. MapLibre `promoteId: { [region]: 'id' }` ensures stable IDs
+1. `tippecanoe -l <region>` sets source-layer name (must match `getSourceLayer()` helper)
+2. `tippecanoe -y id` preserves the `id` property (string values like 'petit-chablis', 'gevrey-chambertin')
+3. MapLibre `promoteId: { [region]: 'id' }` uses `properties.id` as `feature.id` for feature-state
 4. `map.setFeatureState({ source, sourceLayer, id }, { hover: true })` highlights features
 5. All properties preserved (`-pk` flag): `id`, `commune`, `insee`, `climat`, `cruLevel`, etc.
+
+**Note**: IDs are **strings** (kebab-case like 'gevrey-chambertin'), not integers. The `promoteId` approach handles both string and integer IDs correctly.
 
 ## Troubleshooting
 
