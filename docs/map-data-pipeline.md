@@ -11,7 +11,7 @@ SommelierMaps uses **PMTiles** (Protomaps vector tiles) to deliver map data effi
 - **Versioned paths**: Tiles stored under `tiles/<timestamp>/` for safe immutable caching
 - **Manifest**: `current/manifest.json` (fetched with `no-cache`) points to current version
 
-**Note**: Bordeaux has processed data (0.44 MB detail, 0.07 MB hull, 272 KB metadata) but no dedicated map page yet. The data is prepared for future use.
+**Note**: Bordeaux has processed data but no PMTiles page yet (uses old MapView). Excluded from default build; add `--regions burgundy,champagne,alsace,bordeaux` to include it.
 
 ## Performance Targets
 
@@ -44,16 +44,23 @@ npm run tiles:build
 # Or with custom budgets
 ./scripts/build-tiles.sh --size-budget-mb 6 --metadata-budget-kb 500
 
+# Include Bordeaux (not included by default)
+./scripts/build-tiles.sh --regions burgundy,champagne,alsace,bordeaux
+
 # Output: tiles/<timestamp>/ and tiles/current/manifest.json
 ```
 
-The script:
-- Validates that each region stays under the size budget (default 5 MB per region)
-- Validates that metadata stays under its budget (default 300 KB per region)
-- Copies `feature.id` to `properties.id` to avoid tippecanoe non-numeric ID warnings
-- Extracts lightweight metadata with only centroids, bbox, and label properties
-- Prints feature counts to detect dropped features
-- Fails with suggestions if budgets are exceeded
+**Per-region input configuration** (in `scripts/build-tiles.sh`):
+- **Burgundy**: `burgundy-display-exclusive-2026.geojson` (detail), `burgundy-display-hulls-2026.geojson` (hull)
+- **Champagne**: `champagne-opendatawine-display-2026.geojson` (detail), `champagne-opendatawine-hulls-2026.geojson` (hull) — uses opendatawine version per ChampagnePage.tsx
+- **Alsace**: `alsace-display-2026.geojson` (detail), `alsace-display-hulls-2026.geojson` (hull)
+- **Bordeaux**: `bordeaux-display-exclusive-2026.geojson` (detail), `bordeaux-display-cadillac-dissolve-trial-2026.geojson` (hull) — excluded by default until PMTiles page exists
+
+The script **fails closed**:
+- Exits non-zero if any configured region's input is missing (prints expected path)
+- Exits non-zero if zero regions are built
+- Exits non-zero if any region exceeds size budget or features are dropped at max zoom
+- No silent "skipping" — all failures are hard errors
 
 ### Run Smoke Test
 
@@ -62,18 +69,21 @@ The script:
 npm run smoke:tiles
 ```
 
-The smoke test:
-- Starts Vite dev server and headless Chrome automatically
-- Loads each region page (Burgundy, Alsace, Champagne)
-- Chooses test feature: preferred ID (`gevrey-chambertin` for Burgundy) or largest bbox
-- Verifies tiles load and features render with correct IDs
-- Hovers features and checks hover cards show correct names
-- Tests legend hover zoom for Burgundy
-- Captures console errors about tiles/manifest
-- Saves screenshots to `tiles/.smoke-screenshots/`
-- Tears down server and browser
-- Skips gracefully if `tiles/current/manifest.json` is missing (CI-safe)
-- Exits non-zero on any failure
+The smoke test **fails closed**:
+- Tests exactly 3 expected regions: burgundy, champagne, alsace
+- Exits non-zero if any expected region is missing from manifest
+- Exits non-zero if any region is skipped or has no test cases
+- Exits non-zero if zero regions are tested
+- Only prints "SKIPPED (no data)" and exits 0 when `tiles/current/manifest.json` is entirely absent (CI case)
+- Never prints "passed" when regions are skipped
+
+Per-region assertions:
+- Map loads and `window.__wineMap` exists
+- Test feature found in rendered tiles (uses `gevrey-chambertin` for Burgundy, or largest bbox)
+- Hover card appears with correct feature name
+- Legend hover zoom works (Burgundy only)
+- No console errors about tiles/manifest
+- Screenshot saved to `tiles/.smoke-screenshots/<region>.png`
 
 ### Deploy to Production
 
