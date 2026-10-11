@@ -18,7 +18,9 @@ import {
 import { getFeatureCollectionBounds } from '../utils/geo'
 import { createAtlasMapStyle } from '../utils/mapStyles'
 import { attachCameraHashSync, readCameraFromHash } from '../utils/urlHash'
+import { trackAppellationSelect } from '../utils/analytics'
 import { MapLoadingVeil } from './MapLoadingVeil'
+import { EmailSignupCard } from './EmailSignupCard'
 
 type SourceFeatureId = string | number
 
@@ -811,10 +813,17 @@ export function BurgundyPage() {
     )
   }, [isReady, legendHoveredId])
 
+  useEffect(() => {
+    if (hoveredRegion && activeAppellation) {
+      trackAppellationSelect('burgundy', activeAppellation.id)
+    }
+  }, [hoveredRegion, activeAppellation])
+
   return (
     <div className="map-only-shell">
       <div className="map-container" ref={containerRef} />
       <MapLoadingVeil isReady={isReady} regionName="Burgundy" />
+      <EmailSignupCard regionName="Burgundy" regionSlug="burgundy" />
       <BurgundyHoverCard
         appellation={activeAppellation}
         grandCru={activeGrandCru}

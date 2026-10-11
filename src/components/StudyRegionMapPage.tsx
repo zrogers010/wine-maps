@@ -17,7 +17,9 @@ import {
 import { getFeatureCollectionBounds } from '../utils/geo'
 import { createAtlasMapStyle } from '../utils/mapStyles'
 import { attachCameraHashSync, readCameraFromHash } from '../utils/urlHash'
+import { trackAppellationSelect } from '../utils/analytics'
 import { MapLoadingVeil } from './MapLoadingVeil'
+import { EmailSignupCard } from './EmailSignupCard'
 
 type SourceFeatureId = string | number
 
@@ -619,10 +621,18 @@ export function StudyRegionMapPage({
     )
   }, [isReady, legendFitMaxZoomById, legendHoveredId, sharedGeometryIds])
 
+  useEffect(() => {
+    if (hoveredRegion && activeAppellation) {
+      const regionSlug = routePath.replace('/', '')
+      trackAppellationSelect(regionSlug, activeAppellation.id)
+    }
+  }, [hoveredRegion, activeAppellation, routePath])
+
   return (
     <div className="map-only-shell">
       <div className="map-container" ref={containerRef} />
       <MapLoadingVeil isReady={isReady} regionName={regionName} />
+      <EmailSignupCard regionName={regionName} regionSlug={routePath.replace('/', '')} />
       <StudyHoverCard
         appellation={activeAppellation}
         emptyCardTitle={emptyCardTitle}

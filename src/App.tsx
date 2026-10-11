@@ -6,6 +6,7 @@ import { ChampagnePage } from './components/ChampagnePage'
 import { Link } from './components/Link'
 import { findRegionByPath, regions, type RegionConfig } from './regions'
 import { navigate, usePathname } from './router'
+import { trackRegionView } from './utils/analytics'
 import type { ComponentType, ReactNode } from 'react'
 import './App.css'
 
@@ -35,6 +36,12 @@ function App() {
       navigate((region?.path ?? pathname) + window.location.hash, { replace: true })
     }
   }, [pathname, rawPathname, region])
+
+  useEffect(() => {
+    if (region) {
+      trackRegionView(region.id)
+    }
+  }, [region])
 
   const visitedRegions = regions.filter((candidate) =>
     visitedRegionIds.includes(candidate.id),

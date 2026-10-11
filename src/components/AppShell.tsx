@@ -7,7 +7,9 @@ import type {
   LayerState,
 } from '../types/wine'
 import { APPELLATION_COLORS } from '../utils/mapStyles'
+import { trackAppellationSelect } from '../utils/analytics'
 import { MapView } from './MapView'
+import { EmailSignupCard } from './EmailSignupCard'
 
 const appellations = appellationData as AppellationMetadata[]
 const hiddenMapIds: AppellationId[] = ['graves-superieures']
@@ -87,6 +89,7 @@ export function AppShell() {
 
   const handleSelectAppellation = useCallback((id: AppellationId) => {
     setSelectedId(id)
+    trackAppellationSelect('bordeaux', id)
   }, [])
 
   return (
@@ -101,6 +104,7 @@ export function AppShell() {
         subregionHoveredIds={subregionHoveredIds}
         onSelectAppellation={handleSelectAppellation}
       />
+      <EmailSignupCard regionName="Bordeaux" regionSlug="bordeaux" />
       <div className="map-source-badge">
         INAO/data.gouv.fr AOC viticole parcel delimitation extract. Online data
         are informational; official plans remain with town halls or INAO.
