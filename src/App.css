@@ -792,7 +792,7 @@
 }
 
 .email-signup-card {
-  position: absolute;
+  position: fixed;
   z-index: 3;
   right: 12px;
   bottom: 80px;
@@ -808,6 +808,53 @@
     0 1px 0 rgba(255, 255, 255, 0.6) inset,
     0 12px 34px rgba(66, 48, 33, 0.18);
   backdrop-filter: blur(14px) saturate(1.15);
+}
+
+.email-signup-pill {
+  position: fixed;
+  z-index: 3;
+  right: 12px;
+  bottom: 80px;
+  border: 1px solid rgba(111, 22, 39, 0.12);
+  border-radius: 999px;
+  padding: 10px 16px;
+  color: #5a1022;
+  background:
+    linear-gradient(rgba(255, 252, 244, 0.82), rgba(255, 248, 232, 0.6)),
+    rgba(253, 246, 231, 0.95);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 8px 20px rgba(66, 48, 33, 0.14);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  backdrop-filter: blur(14px) saturate(1.15);
+  transition: transform 130ms ease, box-shadow 130ms ease;
+}
+
+.email-signup-pill:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 12px 28px rgba(66, 48, 33, 0.2);
+}
+
+.email-signup-pill:active {
+  transform: translateY(0);
+}
+
+@media (min-width: 560px) {
+  .email-signup-card {
+    max-width: 320px;
+  }
+}
+
+@media (max-width: 559px) {
+  .email-signup-card {
+    bottom: 60px;
+  }
 }
 
 .email-signup-card.success {

@@ -11,8 +11,10 @@ const futureModes: ExperienceMode[] = ['Blind Tasting', 'Compare']
 
 export function StudyModeToggle({ mode, onModeChange }: StudyModeToggleProps) {
   const handleModeChange = (newMode: ExperienceMode) => {
-    onModeChange(newMode)
-    trackStudyModeToggle(newMode)
+    if (newMode !== mode) {
+      trackStudyModeToggle(newMode)
+      onModeChange(newMode)
+    }
   }
 
   return (

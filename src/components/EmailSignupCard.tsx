@@ -1,13 +1,24 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { trackEmailCapture } from '../utils/analytics'
-import { getEmailCaptureProvider } from '../services/emailCapture'
+import type { EmailCaptureProvider } from '../services/emailCapture'
 
 const DISMISSAL_KEY = 'sommeliermaps-email-signup-dismissed'
 const DISMISSAL_DURATION_DAYS = 30
 
+// Centralized copy that's easy to update when assets are ready
+const COPY = {
+  title: (region: string) => `Get the free ${region} study pack when it launches`,
+  subtitle: 'Be first in line for the complete study materials',
+  buttonIdle: 'Join Waitlist',
+  buttonSubmitting: 'Joining...',
+  successMessage: "You're on the list! We'll email you when it's ready.",
+  collapsedPill: 'Free study pack',
+}
+
 interface EmailSignupCardProps {
   regionName: string
   regionSlug: string
+  provider: EmailCaptureProvider
 }
 
 function checkDismissed(): boolean {
@@ -21,12 +32,39 @@ function checkDismissed(): boolean {
   return false
 }
 
-export function EmailSignupCard({ regionName, regionSlug }: EmailSignupCardProps) {
+export function EmailSignupCard({ regionName, regionSlug, provider }: EmailSignupCardProps) {
   const [isDismissed, setIsDismissed] = useState(checkDismissed)
+  const [isExpanded, setIsExpanded] = useState(false)
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState<string>('')
+
+  useEffect(() => {
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === DISMISSAL_KEY) {
+        setIsDismissed(checkDismissed())
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+
+  useEffect(() => {
+    const checkWidth = () => {
+      const isNarrow = window.innerWidth < 560
+      if (!isNarrow) {
+        setIsExpanded(true)
+      } else {
+        setIsExpanded(false)
+      }
+    }
+
+    checkWidth()
+    window.addEventListener('resize', checkWidth)
+    return () => window.removeEventListener('resize', checkWidth)
+  }, [])
 
   const handleDismiss = () => {
     const dismissUntil = new Date()
@@ -49,7 +87,6 @@ export function EmailSignupCard({ regionName, regionSlug }: EmailSignupCardProps
     setErrorMessage('')
 
     try {
-      const provider = getEmailCaptureProvider()
       const result = await provider.subscribe({
         email,
         region: regionSlug,
@@ -59,7 +96,6 @@ export function EmailSignupCard({ regionName, regionSlug }: EmailSignupCardProps
       if (result.success) {
         setSubmitStatus('success')
         trackEmailCapture(regionSlug, 'region-map-card')
-        // Auto-dismiss after success
         setTimeout(() => {
           handleDismiss()
         }, 3000)
@@ -92,10 +128,22 @@ export function EmailSignupCard({ regionName, regionSlug }: EmailSignupCardProps
           ×
         </button>
         <div className="email-signup-content">
-          <h3>✓ You're on the list!</h3>
-          <p>Check your email for your free {regionName} study resources.</p>
+          <h3>✓ {COPY.successMessage}</h3>
         </div>
       </aside>
+    )
+  }
+
+  if (!isExpanded) {
+    return (
+      <button
+        className="email-signup-pill"
+        type="button"
+        onClick={() => setIsExpanded(true)}
+        aria-label={`Expand to join ${regionName} study pack waitlist`}
+      >
+        {COPY.collapsedPill}
+      </button>
     )
   }
 
@@ -111,8 +159,8 @@ export function EmailSignupCard({ regionName, regionSlug }: EmailSignupCardProps
       </button>
       <form className="email-signup-content" onSubmit={handleSubmit}>
         <div className="email-signup-header">
-          <h3>Free {regionName} Study Pack</h3>
-          <p>Printable map + flashcards for WSET prep</p>
+          <h3>{COPY.title(regionName)}</h3>
+          <p>{COPY.subtitle}</p>
         </div>
         <div className="email-signup-form-group">
           <label htmlFor="email-signup-input" className="visually-hidden">
@@ -131,7 +179,7 @@ export function EmailSignupCard({ regionName, regionSlug }: EmailSignupCardProps
             aria-describedby={submitStatus === 'error' ? 'email-signup-error' : undefined}
           />
           <button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Sending...' : 'Get Free Pack'}
+            {isSubmitting ? COPY.buttonSubmitting : COPY.buttonIdle}
           </button>
         </div>
         {submitStatus === 'error' && errorMessage && (

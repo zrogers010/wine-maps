@@ -25,15 +25,13 @@ export interface EmailCaptureProvider {
 }
 
 /**
- * Stub email capture provider for development.
- * Logs to console in dev mode and always returns success.
- * Replace this with a real provider implementation when ready.
+ * Stub email capture provider for development and testing.
+ * Logs to console and always returns success.
+ * Should ONLY be used when explicitly opted in via VITE_EMAIL_PROVIDER=stub.
  */
 export class StubEmailCaptureProvider implements EmailCaptureProvider {
   async subscribe(submission: EmailCaptureSubmission): Promise<EmailCaptureResult> {
-    if (import.meta.env.DEV) {
-      console.log('[EmailCapture] Stub subscription:', submission)
-    }
+    console.log('[EmailCapture] Stub subscription:', submission)
 
     // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 800))
@@ -44,19 +42,29 @@ export class StubEmailCaptureProvider implements EmailCaptureProvider {
 
 /**
  * Get the configured email capture provider.
- * Currently returns the stub provider.
+ * Returns null when no ESP is configured to prevent discarding real signups.
  * 
  * To integrate a real ESP:
  * 1. Implement EmailCaptureProvider interface
- * 2. Add environment variables for API keys
- * 3. Update this function to return the real provider based on env config
+ * 2. Set VITE_EMAIL_PROVIDER and any required API keys in environment
+ * 3. Add provider case in this function
  */
-export function getEmailCaptureProvider(): EmailCaptureProvider {
-  // TODO: Replace with real provider based on environment config
-  // Example:
-  // if (import.meta.env.VITE_EMAIL_PROVIDER === 'mailchimp') {
+export function getEmailCaptureProvider(): EmailCaptureProvider | null {
+  const provider = import.meta.env.VITE_EMAIL_PROVIDER
+
+  if (!provider) {
+    return null
+  }
+
+  if (provider === 'stub') {
+    return new StubEmailCaptureProvider()
+  }
+
+  // Add real provider implementations here:
+  // if (provider === 'mailchimp') {
   //   return new MailchimpProvider(import.meta.env.VITE_MAILCHIMP_API_KEY)
   // }
-  
-  return new StubEmailCaptureProvider()
+
+  console.warn(`[EmailCapture] Unknown provider: ${provider}`)
+  return null
 }

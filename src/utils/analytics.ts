@@ -20,11 +20,19 @@ interface EmailCaptureEvent {
   source: string
 }
 
+interface PageViewEvent {
+  event: 'page_view'
+  page_path: string
+  page_location: string
+  page_title: string
+}
+
 type AnalyticsEvent =
   | RegionViewEvent
   | AppellationSelectEvent
   | StudyModeToggleEvent
   | EmailCaptureEvent
+  | PageViewEvent
 
 declare global {
   interface Window {
@@ -131,4 +139,16 @@ export function trackStudyModeToggle(mode: string) {
  */
 export function trackEmailCapture(regionSlug: string, source: string) {
   track({ event: 'email_capture', region_slug: regionSlug, source })
+}
+
+/**
+ * Track a page view event.
+ */
+export function trackPageView(pagePath: string, pageTitle: string) {
+  track({
+    event: 'page_view',
+    page_path: pagePath,
+    page_location: window.location.href,
+    page_title: pageTitle,
+  })
 }
