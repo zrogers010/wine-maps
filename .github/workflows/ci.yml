@@ -142,6 +142,8 @@ jobs:
           mv test/fixtures/data/france/burgundy/burgundy-display-exclusive-2026.geojson /tmp/backup-burgundy.geojson
           mv test/fixtures/data/france/burgundy/burgundy-test-drop.geojson test/fixtures/data/france/burgundy/burgundy-display-exclusive-2026.geojson
           
+          # Use set -o pipefail to preserve exit code through pipe
+          set -o pipefail
           if DATA_DIR=test/fixtures/data/france npm run tiles:build 2>&1 | tee /tmp/drop-test.log; then
             echo "❌ Build should have failed when features were dropped"
             cat /tmp/drop-test.log
