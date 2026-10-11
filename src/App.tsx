@@ -7,14 +7,15 @@ import { Link } from './components/Link'
 import { findRegionByPath, regions, type RegionConfig } from './regions'
 import { navigate, usePathname } from './router'
 import { getCanonicalRedirect, parseRoute } from './utils/routes'
+import type { AppellationId } from './types/wine'
 import type { ComponentType, ReactNode } from 'react'
 import './App.css'
 
-const regionComponents: Record<string, ComponentType<{ initialSelectedId?: string }>> = {
+const regionComponents: Record<string, ComponentType<{ initialSelectedId?: AppellationId }>> = {
   bordeaux: AppShell,
-  burgundy: BurgundyPage,
-  champagne: ChampagnePage,
-  alsace: AlsacePage,
+  burgundy: BurgundyPage as ComponentType<{ initialSelectedId?: AppellationId }>,
+  champagne: ChampagnePage as ComponentType<{ initialSelectedId?: AppellationId }>,
+  alsace: AlsacePage as ComponentType<{ initialSelectedId?: AppellationId }>,
 }
 
 function App() {
@@ -59,10 +60,12 @@ function App() {
       {visitedRegions.map((candidate) => {
         const RegionComponent = regionComponents[candidate.id]
         const isActive = candidate.id === region?.id
+        const selectedId: AppellationId | undefined = 
+          isActive && appellationId ? (appellationId as AppellationId) : undefined
 
         return (
           <div key={candidate.id} hidden={!isActive}>
-            <RegionComponent initialSelectedId={isActive ? appellationId || undefined : undefined} />
+            <RegionComponent initialSelectedId={selectedId} />
           </div>
         )
       })}
