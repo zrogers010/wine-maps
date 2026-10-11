@@ -3,11 +3,43 @@ set -e
 
 # PMTiles tile builder for wine regions
 # Converts GeoJSON to PMTiles vector tiles with tippecanoe
-# Usage: ./scripts/build-tiles.sh [--size-budget-mb MB] [--metadata-budget-kb KB]
+# Usage: ./scripts/build-tiles.sh [--size-budget-mb MB] [--metadata-budget-kb KB] [--regions region1,region2,...]
+
+# ============================================================================
+# REGION CONFIGURATION - Exact paths the app uses (from main/02e9f16)
+# ============================================================================
+# 
+# These paths match what the app loaded before this PR:
+# - Burgundy: StudyRegionMapPage (converted to PMTiles)
+# - Alsace: StudyRegionMapPage (converted to PMTiles)  
+# - Champagne: StudyRegionMapPage (converted to PMTiles)
+#   Uses opendatawine version (not display-dev) per ChampagnePage.tsx L28-29
+# - Bordeaux: MapView (has page, but not yet converted to PMTiles)
+#   Uses exclusive for detail, cadillac-dissolve for hull per MapView.tsx L147-148
+# ============================================================================
+
+# Default regions to build (Bordeaux excluded until its page uses PMTiles)
+DEFAULT_REGIONS="burgundy,champagne,alsace"
+
+# Explicit per-region input config
+declare -A REGION_DETAIL=(
+  [burgundy]="public/data/france/burgundy/burgundy-display-exclusive-2026.geojson"
+  [champagne]="public/data/france/champagne/champagne-opendatawine-display-2026.geojson"
+  [alsace]="public/data/france/alsace/alsace-display-2026.geojson"
+  [bordeaux]="public/data/france/bordeaux/bordeaux-display-exclusive-2026.geojson"
+)
+
+declare -A REGION_HULL=(
+  [burgundy]="public/data/france/burgundy/burgundy-display-hulls-2026.geojson"
+  [champagne]="public/data/france/champagne/champagne-opendatawine-hulls-2026.geojson"
+  [alsace]="public/data/france/alsace/alsace-display-hulls-2026.geojson"
+  [bordeaux]="public/data/france/bordeaux/bordeaux-display-cadillac-dissolve-trial-2026.geojson"
+)
 
 # Parse arguments
 SIZE_BUDGET_MB=5
 METADATA_BUDGET_KB=300
+REGIONS="$DEFAULT_REGIONS"
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -17,6 +49,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --metadata-budget-kb)
       METADATA_BUDGET_KB="$2"
+      shift 2
+      ;;
+    --regions)
+      REGIONS="$2"
       shift 2
       ;;
     *)
@@ -29,14 +65,14 @@ done
 echo "==> Building PMTiles for wine regions"
 echo "Region budget: ${SIZE_BUDGET_MB} MB"
 echo "Metadata budget: ${METADATA_BUDGET_KB} KB"
+echo "Regions: ${REGIONS}"
 echo ""
 
 # Paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-DATA_DIR="$PROJECT_ROOT/src/data"
-OUTPUT_BASE="$PROJECT_ROOT/tiles"
 VERSION=$(date -u +"%Y%m%d-%H%M%S")
+OUTPUT_BASE="$PROJECT_ROOT/tiles"
 OUTPUT_DIR="$OUTPUT_BASE/$VERSION"
 TEMP_DIR="$OUTPUT_BASE/.tmp-$$"
 MANIFEST_FILE="$OUTPUT_DIR/manifest.json"
@@ -56,25 +92,38 @@ echo "  \"tiles\": {" >> "$MANIFEST_FILE"
 
 FIRST_REGION=true
 ANY_OVER_BUDGET=false
+BUILT_COUNT=0
+
+# Split regions by comma
+IFS=',' read -ra REGION_ARRAY <<< "$REGIONS"
 
 # Build tiles for each region
-for REGION in burgundy champagne bordeaux alsace; do
+for REGION in "${REGION_ARRAY[@]}"; do
+  REGION=$(echo "$REGION" | xargs)  # trim whitespace
+  
   echo "Processing $REGION..."
   
-  REGION_DIR="$DATA_DIR/france/$REGION"
-  
-  # Find detail and hull GeoJSON files
-  DETAIL_FILE=$(find "$REGION_DIR" -name "*-display-*.geojson" -o -name "*-exclusive-*.geojson" 2>/dev/null | head -1 || echo "")
-  HULL_FILE=$(find "$REGION_DIR" -name "*-hulls-*.geojson" -o -name "*-dissolve-*.geojson" 2>/dev/null | head -1 || echo "")
+  # Get configured paths
+  DETAIL_FILE="${REGION_DETAIL[$REGION]}"
+  HULL_FILE="${REGION_HULL[$REGION]}"
   
   if [ -z "$DETAIL_FILE" ]; then
-    echo "  ⚠ No detail file found for $REGION, skipping"
-    continue
+    echo "❌ ERROR: Region '$REGION' not configured"
+    echo "   Valid regions: ${!REGION_DETAIL[@]}"
+    exit 1
   fi
   
-  if [ -z "$HULL_FILE" ]; then
-    echo "  ⚠ No hull file found for $REGION, using detail only"
-    HULL_FILE="$DETAIL_FILE"
+  # Check files exist (fail-closed)
+  if [ ! -f "$PROJECT_ROOT/$DETAIL_FILE" ]; then
+    echo "❌ ERROR: Detail file not found for $REGION"
+    echo "   Expected: $PROJECT_ROOT/$DETAIL_FILE"
+    exit 1
+  fi
+  
+  if [ ! -f "$PROJECT_ROOT/$HULL_FILE" ]; then
+    echo "❌ ERROR: Hull file not found for $REGION"
+    echo "   Expected: $PROJECT_ROOT/$HULL_FILE"
+    exit 1
   fi
   
   DETAIL_OUTPUT="$OUTPUT_DIR/${REGION}-detail.pmtiles"
@@ -86,13 +135,13 @@ for REGION in burgundy champagne bordeaux alsace; do
   jq '.features |= map(
     .properties.id = (.id // .properties.id) |
     del(.id)
-  )' "$DETAIL_FILE" > "$TEMP_DETAIL_WITH_PROP_ID"
+  )' "$PROJECT_ROOT/$DETAIL_FILE" > "$TEMP_DETAIL_WITH_PROP_ID"
   
   TEMP_HULL_WITH_PROP_ID="$TEMP_DIR/${REGION}-hull-with-prop-id.geojson"
   jq '.features |= map(
     .properties.id = (.id // .properties.id) |
     del(.id)
-  )' "$HULL_FILE" > "$TEMP_HULL_WITH_PROP_ID"
+  )' "$PROJECT_ROOT/$HULL_FILE" > "$TEMP_HULL_WITH_PROP_ID"
   
   # Convert detail GeoJSON to GeoJSONSeq for tippecanoe
   jq -c '.features[]' "$TEMP_DETAIL_WITH_PROP_ID" > "$TEMP_DIR/${REGION}-detail.geojsonl"
@@ -100,13 +149,7 @@ for REGION in burgundy champagne bordeaux alsace; do
   # Count input features
   DETAIL_INPUT_COUNT=$(wc -l < "$TEMP_DIR/${REGION}-detail.geojsonl" | tr -d ' ')
   
-  # Build detail tiles with tippecanoe
-  # IMPORTANT: -l sets the source-layer name, must match getSourceLayer() in src/utils/pmtiles.ts
-  # Feature IDs via promoteId in MapLibre; properties kept by default
-  # maxzoom 15 for high-fidelity parcel/climat boundaries
-  # -r1 prevents feature dropping at intermediate zooms
-  # --coalesce-densest-as-needed preserves features while managing tile size
-  # --detect-shared-borders and --no-simplification-of-shared-nodes keep boundaries accurate
+  # Build detail tiles
   tippecanoe \
     -o "$DETAIL_OUTPUT" \
     -z15 -Z11 \
@@ -123,11 +166,32 @@ for REGION in burgundy champagne bordeaux alsace; do
   
   echo "  ✓ detail.pmtiles: ${DETAIL_SIZE_MB} MB (input: $DETAIL_INPUT_COUNT features)"
   
-  # Build hull tiles (dissolved appellations for overview)
+  # Verify no features were dropped at max zoom
+  if command -v tippecanoe-decode &> /dev/null; then
+    jq -r '.features[].properties.id' "$TEMP_DETAIL_WITH_PROP_ID" | sort -u > "$TEMP_DIR/${REGION}-input-ids.txt"
+    INPUT_ID_COUNT=$(wc -l < "$TEMP_DIR/${REGION}-input-ids.txt" | tr -d ' ')
+    
+    tippecanoe-decode "$DETAIL_OUTPUT" 15 2>/dev/null | \
+      jq -r 'select(.properties.id != null) | .properties.id' | \
+      sort -u > "$TEMP_DIR/${REGION}-output-ids.txt" 2>/dev/null || echo "" > "$TEMP_DIR/${REGION}-output-ids.txt"
+    
+    OUTPUT_ID_COUNT=$(wc -l < "$TEMP_DIR/${REGION}-output-ids.txt" | tr -d ' ')
+    
+    if [ "$OUTPUT_ID_COUNT" -gt 0 ] && [ "$OUTPUT_ID_COUNT" -lt "$INPUT_ID_COUNT" ]; then
+      MISSING_COUNT=$((INPUT_ID_COUNT - OUTPUT_ID_COUNT))
+      echo "  ❌ FEATURES DROPPED: $MISSING_COUNT features missing at max zoom"
+      
+      comm -23 "$TEMP_DIR/${REGION}-input-ids.txt" "$TEMP_DIR/${REGION}-output-ids.txt" | head -5 | while read id; do
+        echo "     Missing: $id"
+      done
+      
+      ANY_OVER_BUDGET=true
+    fi
+  fi
+  
+  # Build hull tiles
   jq -c '.features[]' "$TEMP_HULL_WITH_PROP_ID" > "$TEMP_DIR/${REGION}-hull.geojsonl"
   
-  # IMPORTANT: -l sets the source-layer name, must match getSourceLayer() in src/utils/pmtiles.ts
-  # Feature IDs via promoteId in MapLibre; properties kept by default
   tippecanoe \
     -o "$HULL_OUTPUT" \
     -z11 -Z7 \
@@ -142,19 +206,16 @@ for REGION in burgundy champagne bordeaux alsace; do
   
   echo "  ✓ hull.pmtiles: ${HULL_SIZE_MB} MB"
   
-  # Create lightweight metadata JSON: only bboxes and label points
-  # Structure: { type: "FeatureCollection", bbox: [w,s,e,n], features: [{ properties, labelPoint, bbox }] }
+  # Create metadata with node + turf (fail if unavailable)
   echo "  Building metadata..."
   node -e "
     const fs = require('fs');
     const turf = require('@turf/turf');
     const hull = JSON.parse(fs.readFileSync('$TEMP_HULL_WITH_PROP_ID', 'utf8'));
     
-    // Compute overall bbox
     const overallBbox = turf.bbox(hull);
-    
-    // Group by id and process each feature
     const byId = new Map();
+    
     for (const feature of hull.features) {
       const id = feature.properties.id;
       if (!id) continue;
@@ -167,20 +228,17 @@ for REGION in burgundy champagne bordeaux alsace; do
       }
     }
     
-    // Create metadata features with bbox and labelPoint
     const features = Array.from(byId.values()).map(({ feature }) => {
       const id = feature.properties.id;
       const name = feature.properties.name || id;
       const centroid = turf.centroid(feature);
       const featureBbox = turf.bbox(feature);
       
-      // Extract properties that label/legend code might need
-      const metadata = {
+      return {
         type: 'Feature',
         properties: {
           id,
           name,
-          // Include other properties if they exist (commune, insee, cruLevel, etc)
           ...(feature.properties.commune ? { commune: feature.properties.commune } : {}),
           ...(feature.properties.insee ? { insee: feature.properties.insee } : {}),
           ...(feature.properties.cruLevel ? { cruLevel: feature.properties.cruLevel } : {}),
@@ -190,8 +248,6 @@ for REGION in burgundy champagne bordeaux alsace; do
         bbox: featureBbox,
         geometry: centroid.geometry
       };
-      
-      return metadata;
     });
     
     const metadata = {
@@ -201,9 +257,8 @@ for REGION in burgundy champagne bordeaux alsace; do
     };
     
     fs.writeFileSync('$METADATA_OUTPUT', JSON.stringify(metadata, null, 2));
-    console.log('  ✓ Metadata generated with', features.length, 'features');
   " || {
-    echo "  ❌ ERROR: Node.js metadata extraction failed"
+    echo "  ❌ ERROR: Metadata generation failed"
     echo "     Ensure node and @turf/turf are available"
     exit 1
   }
@@ -213,58 +268,19 @@ for REGION in burgundy champagne bordeaux alsace; do
   
   echo "  ✓ metadata.json: ${METADATA_SIZE_KB} KB"
   
-  # Check metadata budget
+  # Check budgets
   if [ $METADATA_SIZE -gt $METADATA_BUDGET_BYTES ]; then
-    echo "  ⚠️  METADATA OVER BUDGET: ${METADATA_SIZE_KB} KB > ${METADATA_BUDGET_KB} KB"
+    echo "  ❌ METADATA OVER BUDGET: ${METADATA_SIZE_KB} KB > ${METADATA_BUDGET_KB} KB"
     ANY_OVER_BUDGET=true
   fi
   
-  # Verify no features were dropped at max zoom
-  echo "  Checking feature completeness..."
-  
-  # Get input IDs
-  jq -r '.features[].properties.id' "$TEMP_DETAIL_WITH_PROP_ID" | sort -u > "$TEMP_DIR/${REGION}-input-ids.txt"
-  INPUT_ID_COUNT=$(wc -l < "$TEMP_DIR/${REGION}-input-ids.txt" | tr -d ' ')
-  
-  # Get output IDs from max zoom tiles
-  # Use tippecanoe-decode to extract features at z15
-  if command -v tippecanoe-decode &> /dev/null; then
-    tippecanoe-decode "$DETAIL_OUTPUT" 15 2>/dev/null | \
-      jq -r 'select(.properties.id != null) | .properties.id' | \
-      sort -u > "$TEMP_DIR/${REGION}-output-ids.txt" 2>/dev/null || echo "" > "$TEMP_DIR/${REGION}-output-ids.txt"
-    
-    OUTPUT_ID_COUNT=$(wc -l < "$TEMP_DIR/${REGION}-output-ids.txt" | tr -d ' ')
-    
-    if [ "$OUTPUT_ID_COUNT" -gt 0 ]; then
-      echo "  → Features: input $INPUT_ID_COUNT, at z15: $OUTPUT_ID_COUNT"
-      
-      if [ "$OUTPUT_ID_COUNT" -lt "$INPUT_ID_COUNT" ]; then
-        MISSING_COUNT=$((INPUT_ID_COUNT - OUTPUT_ID_COUNT))
-        echo "  ⚠️  FEATURES DROPPED: $MISSING_COUNT features missing at max zoom"
-        
-        # Show which IDs were dropped
-        comm -23 "$TEMP_DIR/${REGION}-input-ids.txt" "$TEMP_DIR/${REGION}-output-ids.txt" | head -5 | while read id; do
-          echo "     Missing: $id"
-        done
-        
-        ANY_OVER_BUDGET=true
-      fi
-    else
-      echo "  → Features: input $INPUT_ID_COUNT (output verification skipped)"
-    fi
-  else
-    echo "  → Features: input $INPUT_ID_COUNT (tippecanoe-decode not available for verification)"
-  fi
-  
-  # Total size includes tiles + metadata
   TOTAL_SIZE=$((DETAIL_SIZE + HULL_SIZE + METADATA_SIZE))
   TOTAL_SIZE_MB=$(echo "scale=2; $TOTAL_SIZE / 1024 / 1024" | bc)
   
   echo "  → Total: ${TOTAL_SIZE_MB} MB"
   
-  # Check budget
   if [ $TOTAL_SIZE -gt $SIZE_BUDGET_BYTES ]; then
-    echo "  ⚠️  OVER BUDGET: ${TOTAL_SIZE_MB} MB > ${SIZE_BUDGET_MB} MB"
+    echo "  ❌ OVER BUDGET: ${TOTAL_SIZE_MB} MB > ${SIZE_BUDGET_MB} MB"
     ANY_OVER_BUDGET=true
   fi
   
@@ -296,14 +312,24 @@ for REGION in burgundy champagne bordeaux alsace; do
   echo "      \"totalSizeBytes\": $TOTAL_SIZE," >> "$MANIFEST_FILE"
   echo "      \"totalSizeMB\": \"$TOTAL_SIZE_MB\"" >> "$MANIFEST_FILE"
   echo -n "    }" >> "$MANIFEST_FILE"
+  
+  BUILT_COUNT=$((BUILT_COUNT + 1))
 done
 
+# Finish manifest
 echo "" >> "$MANIFEST_FILE"
 echo "  }" >> "$MANIFEST_FILE"
 echo "}" >> "$MANIFEST_FILE"
 
 # Clean up temp files
 rm -rf "$TEMP_DIR"
+
+# Fail if no regions were built
+if [ $BUILT_COUNT -eq 0 ]; then
+  echo "❌ ERROR: No regions were built"
+  rm -rf "$OUTPUT_DIR"
+  exit 1
+fi
 
 # Copy manifest to current/ as a real file (not symlink) for dev server
 mkdir -p "$OUTPUT_BASE/current"
@@ -326,4 +352,4 @@ if [ "$ANY_OVER_BUDGET" = true ]; then
   exit 1
 fi
 
-echo "✅ All regions within budget"
+echo "✅ All regions within budget ($BUILT_COUNT built)"

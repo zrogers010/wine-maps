@@ -25,6 +25,9 @@ const CDP_PORT = 9333
 const OUTPUT_DIR = join(process.cwd(), 'tiles', '.smoke-screenshots')
 const MANIFEST_PATH = join(process.cwd(), 'tiles', 'current', 'manifest.json')
 
+// Expected regions that must be tested (fail if missing)
+const EXPECTED_REGIONS = ['burgundy', 'champagne', 'alsace']
+
 // Preferred test IDs per region (fallback to largest bbox if not found)
 const PREFERRED_IDS = {
   burgundy: 'gevrey-chambertin',
@@ -35,8 +38,8 @@ const PREFERRED_IDS = {
 // Check if manifest exists
 if (!existsSync(MANIFEST_PATH)) {
   console.log('⊘  tiles/current/manifest.json not found')
-  console.log('   Run `npm run tiles:build` to generate tiles before running smoke tests')
-  console.log('   Skipping smoke test (CI without data is OK)')
+  console.log('   Run `npm run tiles:build` to generate tiles')
+  console.log('   SKIPPED (no data)')
   process.exit(0)
 }
 
@@ -170,19 +173,28 @@ try {
       mobile: false,
     })
 
-    // Load test metadata for all regions
+    // Load test metadata for all EXPECTED regions
     const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8'))
     const testCases = []
     
-    for (const region of ['burgundy', 'alsace', 'champagne']) {
+    // Verify all expected regions are in manifest
+    for (const region of EXPECTED_REGIONS) {
       if (!manifest.tiles[region]) {
-        console.log(`⊘  ${region} not in manifest, skipping`)
-        continue
+        console.error(`❌ Expected region "${region}" not in manifest`)
+        failed = true
       }
+    }
+    
+    if (failed) {
+      console.error('❌ Manifest missing expected regions')
+      ws.close()
+    } else {
+      for (const region of EXPECTED_REGIONS) {
       
       const metadataPath = join(process.cwd(), 'tiles', manifest.version, `${region}-metadata.json`)
       if (!existsSync(metadataPath)) {
-        console.log(`⊘  ${region} metadata not found, skipping`)
+        console.error(`❌ ${region} metadata not found at ${metadataPath}`)
+        failed = true
         continue
       }
       
@@ -211,7 +223,8 @@ try {
       }
       
       if (!testFeature) {
-        console.log(`⊘  ${region} has no testable features, skipping`)
+        console.error(`❌ ${region} has no testable features`)
+        failed = true
         continue
       }
       
@@ -223,6 +236,17 @@ try {
         bbox: testFeature.bbox,
       })
     }
+    
+    // Fail if we don't have test cases for all expected regions
+    if (testCases.length < EXPECTED_REGIONS.length) {
+      console.error(`❌ Only ${testCases.length}/${EXPECTED_REGIONS.length} expected regions have test cases`)
+      failed = true
+    }
+    
+    if (failed) {
+      console.error('❌ Pre-flight checks failed')
+      ws.close()
+    } else {
 
     // Run tests for each region
     for (const testCase of testCases) {
@@ -360,6 +384,16 @@ try {
       
       console.log('')
     }
+    
+    // Final check: must have tested all expected regions
+    if (testCases.length === 0) {
+      console.error('❌ No regions were tested')
+      failed = true
+    } else if (testCases.length < EXPECTED_REGIONS.length) {
+      console.error(`❌ Only tested ${testCases.length}/${EXPECTED_REGIONS.length} expected regions`)
+      failed = true
+    }
+  }
 
     ws.close()
   }
