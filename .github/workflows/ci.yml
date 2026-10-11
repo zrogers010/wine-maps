@@ -84,7 +84,7 @@ jobs:
         run: |
           # Verify ids line appears for each region
           for region in burgundy champagne alsace; do
-            if ! grep -q "ids: input=" /tmp/build.log | grep -q "$region"; then
+            if ! grep "ids: input=" /tmp/build.log | grep -q "Processing $region" -A 1; then
               echo "❌ Feature-drop check did not run for $region"
               echo "Build log:"
               cat /tmp/build.log
@@ -187,6 +187,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y tippecanoe
+      
+      - name: Install pmtiles CLI
+        run: |
+          cd /tmp
+          wget https://github.com/protomaps/go-pmtiles/releases/download/v1.24.0/go-pmtiles_1.24.0_Linux_x86_64.tar.gz
+          tar xzf go-pmtiles_1.24.0_Linux_x86_64.tar.gz
+          sudo mv pmtiles /usr/local/bin/
+          which pmtiles
       
       - name: Install Chrome
         run: |
