@@ -19,11 +19,13 @@ export function registerPMTilesProtocol(maplibregl: typeof import('maplibre-gl')
 
 /**
  * Get the base URL for map data assets.
- * Defaults to serving locally from /tiles/ in development.
- * In production, set VITE_DATA_BASE_URL to your CDN/S3 URL.
+ * Points to the 'current' symlink which references the active version.
+ * Defaults to serving locally from /tiles/current in development.
+ * In production, set VITE_DATA_BASE_URL to your CDN URL (e.g. https://cdn.example.com/tiles/current).
  */
 export function getDataBaseUrl(): string {
-  return import.meta.env.VITE_DATA_BASE_URL ?? '/tiles'
+  const base = import.meta.env.VITE_DATA_BASE_URL ?? '/tiles/current'
+  return base
 }
 
 /**

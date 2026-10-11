@@ -9,6 +9,7 @@ import maplibregl, {
 } from 'maplibre-gl'
 import type { Feature, FeatureCollection, Geometry } from 'geojson'
 import appellationData from '../data/france/burgundy/appellations.json'
+import { registerPMTilesProtocol, createPMTilesSource, loadRegionMetadata } from '../utils/pmtiles'
 import {
   flyToBounds,
   LEGEND_PREVIEW_PADDING,
@@ -19,6 +20,9 @@ import { getFeatureCollectionBounds } from '../utils/geo'
 import { createAtlasMapStyle } from '../utils/mapStyles'
 import { attachCameraHashSync, readCameraFromHash } from '../utils/urlHash'
 import { MapLoadingVeil } from './MapLoadingVeil'
+
+// Register PMTiles protocol
+registerPMTilesProtocol(maplibregl)
 
 type SourceFeatureId = string | number
 
@@ -245,6 +249,7 @@ export function BurgundyPage() {
   const hoveredFeatureIdRef = useRef<SourceFeatureId | null>(null)
   const hoveredRegionKeyRef = useRef<string | null>(null)
   const hoverLeaveTimeoutRef = useRef<number | null>(null)
+  const sourceLayerRef = useRef<string | undefined>(undefined)
   const [isReady, setIsReady] = useState(false)
   const [hoveredRegion, setHoveredRegion] = useState<HoveredBurgundyRegion | null>(null)
   const [legendHoveredId, setLegendHoveredId] = useState<string | null>(null)
@@ -302,42 +307,39 @@ export function BurgundyPage() {
     )
 
     map.on('load', async () => {
-      const [burgundyGeoJson, burgundyLowZoomGeoJson] = await Promise.all([
-        loadGeoJson('/data/france/burgundy/burgundy-display-exclusive-2026.geojson'),
-        loadGeoJson('/data/france/burgundy/burgundy-display-hulls-2026.geojson'),
-      ])
-
+      // Load lightweight metadata for bounds and labels
+      const metadata = await loadRegionMetadata('burgundy')
+      
       if (cancelled) {
         return
       }
 
-      lowZoomHullGeoJsonRef.current = burgundyLowZoomGeoJson
-      detailGeoJsonRef.current = burgundyGeoJson
+      lowZoomHullGeoJsonRef.current = metadata
+      detailGeoJsonRef.current = metadata
 
-      map.addSource(burgundySourceId, {
-        type: 'geojson',
-        data: burgundyGeoJson,
-      } satisfies GeoJSONSourceSpecification)
+      // Add PMTiles vector sources
+      map.addSource(burgundySourceId, createPMTilesSource('burgundy', 'detail'))
+      map.addSource(burgundyLowZoomSourceId, createPMTilesSource('burgundy', 'hull'))
 
+      // Label sources use GeoJSON from metadata
       map.addSource(burgundyGrandCruLabelSourceId, {
         type: 'geojson',
-        data: createGrandCruLabelPoints(burgundyGeoJson),
-      } satisfies GeoJSONSourceSpecification)
-
-      map.addSource(burgundyLowZoomSourceId, {
-        type: 'geojson',
-        data: burgundyLowZoomGeoJson,
+        data: createGrandCruLabelPoints(metadata),
       } satisfies GeoJSONSourceSpecification)
 
       map.addSource(burgundyLabelSourceId, {
         type: 'geojson',
-        data: createLabelPoints(burgundyLowZoomGeoJson),
+        data: createLabelPoints(metadata),
       } satisfies GeoJSONSourceSpecification)
+
+      const sourceLayer = 'burgundy'
+      sourceLayerRef.current = sourceLayer
 
       map.addLayer({
         id: burgundyLowZoomLayerId,
         type: 'fill',
         source: burgundyLowZoomSourceId,
+        'source-layer': sourceLayer,
         paint: {
           'fill-color': burgundyFillColorExpression(),
           'fill-opacity': [
@@ -356,6 +358,7 @@ export function BurgundyPage() {
         id: burgundyLowZoomShadeLayerId,
         type: 'fill',
         source: burgundyLowZoomSourceId,
+        'source-layer': sourceLayer,
         filter: filterNone(),
         paint: {
           'fill-color': '#1c0f12',
@@ -375,6 +378,7 @@ export function BurgundyPage() {
         id: burgundyLowZoomBorderLayerId,
         type: 'line',
         source: burgundyLowZoomSourceId,
+        'source-layer': sourceLayer,
         paint: {
           'line-color': 'rgba(96, 65, 45, 0.52)',
           'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.65, 11, 1.15],
@@ -394,6 +398,7 @@ export function BurgundyPage() {
         id: burgundyFillLayerId,
         type: 'fill',
         source: burgundySourceId,
+        'source-layer': sourceLayer,
         paint: {
           'fill-color': burgundyFillColorExpression(),
           // Fade in across the same span the hulls fade out for one smooth crossfade.
@@ -425,6 +430,7 @@ export function BurgundyPage() {
         id: burgundyAppellationShadeLayerId,
         type: 'fill',
         source: burgundySourceId,
+        'source-layer': sourceLayer,
         filter: filterNone(),
         paint: {
           'fill-color': '#1c0f12',
@@ -444,6 +450,7 @@ export function BurgundyPage() {
         id: burgundyCommuneShadeLayerId,
         type: 'fill',
         source: burgundySourceId,
+        'source-layer': sourceLayer,
         filter: filterNone(),
         paint: {
           'fill-color': '#1c0f12',
@@ -455,6 +462,7 @@ export function BurgundyPage() {
         id: burgundyCommuneLineLayerId,
         type: 'line',
         source: burgundySourceId,
+        'source-layer': sourceLayer,
         paint: {
           'line-color': 'rgba(68, 48, 36, 0.64)',
           'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.45, 11, 0.85],
@@ -474,6 +482,7 @@ export function BurgundyPage() {
         id: burgundyLineLayerId,
         type: 'line',
         source: burgundySourceId,
+        'source-layer': sourceLayer,
         paint: {
           'line-color': [
             'case',
@@ -510,6 +519,7 @@ export function BurgundyPage() {
         id: burgundyPremierCruTintLayerId,
         type: 'fill',
         source: burgundySourceId,
+        'source-layer': sourceLayer,
         filter: ['==', ['get', 'cruLevel'], 'premier-cru'],
         paint: {
           'fill-color': '#43112b',
@@ -579,7 +589,7 @@ export function BurgundyPage() {
       map.on('mousemove', burgundyFillLayerId, handleMouseMove)
       map.on('mouseleave', burgundyFillLayerId, handleDetailMouseLeave)
 
-      const overviewBounds = getFeatureCollectionBounds(burgundyGeoJson)
+      const overviewBounds = getFeatureCollectionBounds(metadata)
       overviewBoundsRef.current = overviewBounds
 
       // A camera deep link takes precedence over the intro overview flight.
@@ -628,7 +638,7 @@ export function BurgundyPage() {
       map.getCanvas().style.cursor = 'pointer'
 
       if (hoveredFeatureIdRef.current !== null) {
-        setFeatureHover(map, hoveredFeatureIdRef.current, false)
+        setFeatureHover(map, hoveredFeatureIdRef.current, false, sourceLayerRef.current)
         hoveredFeatureIdRef.current = null
       }
 
@@ -663,11 +673,11 @@ export function BurgundyPage() {
 
       if (hoveredFeatureIdRef.current !== sourceFeatureId) {
         if (hoveredFeatureIdRef.current !== null) {
-          setFeatureHover(map, hoveredFeatureIdRef.current, false)
+          setFeatureHover(map, hoveredFeatureIdRef.current, false, sourceLayerRef.current)
         }
 
         hoveredFeatureIdRef.current = sourceFeatureId
-        setFeatureHover(map, sourceFeatureId, true)
+        setFeatureHover(map, sourceFeatureId, true, sourceLayerRef.current)
       }
 
       const nextRegion = getHoveredRegion(feature?.properties, id)
@@ -702,7 +712,7 @@ export function BurgundyPage() {
 
     function clearHoverState() {
       if (hoveredFeatureIdRef.current !== null) {
-        setFeatureHover(map, hoveredFeatureIdRef.current, false)
+        setFeatureHover(map, hoveredFeatureIdRef.current, false, sourceLayerRef.current)
         hoveredFeatureIdRef.current = null
       }
 
@@ -1018,16 +1028,6 @@ function BurgundyHoverCard({
   )
 }
 
-async function loadGeoJson(path: string): Promise<FeatureCollection> {
-  const response = await fetch(path)
-
-  if (!response.ok) {
-    throw new Error(`Failed to load GeoJSON ${path}: ${response.status}`)
-  }
-
-  return (await response.json()) as FeatureCollection
-}
-
 function createLabelPoints(geoJson: FeatureCollection): FeatureCollection {
   const largestFeatureById = new Map<string, Feature<Geometry>>()
 
@@ -1072,8 +1072,17 @@ function burgundyFillColorExpression(): ExpressionSpecification {
   ] as unknown as ExpressionSpecification
 }
 
-function setFeatureHover(map: MapLibreMap, id: SourceFeatureId, isHovered: boolean) {
-  map.setFeatureState({ source: burgundySourceId, id }, { hover: isHovered })
+function setFeatureHover(
+  map: MapLibreMap,
+  id: SourceFeatureId,
+  isHovered: boolean,
+  sourceLayer?: string,
+) {
+  if (sourceLayer) {
+    map.setFeatureState({ source: burgundySourceId, sourceLayer, id }, { hover: isHovered })
+  } else {
+    map.setFeatureState({ source: burgundySourceId, id }, { hover: isHovered })
+  }
 }
 
 function getHoveredRegion(properties: unknown, id: string): HoveredBurgundyRegion {
