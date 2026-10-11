@@ -61,7 +61,7 @@ jobs:
           which pmtiles
       
       - name: Build tiles with fixtures
-        run: DATA_DIR=test/fixtures/data/france npm run tiles:build
+        run: DATA_DIR=test/fixtures/data/france npm run tiles:build | tee /tmp/build.log
       
       - name: Verify manifest
         run: |
@@ -80,6 +80,27 @@ jobs:
           
           echo "✅ Manifest contains all expected regions"
       
+      - name: Verify feature-drop check ran
+        run: |
+          # Verify ids line appears for each region
+          for region in burgundy champagne alsace; do
+            if ! grep -q "ids: input=" /tmp/build.log | grep -q "$region"; then
+              echo "❌ Feature-drop check did not run for $region"
+              echo "Build log:"
+              cat /tmp/build.log
+              exit 1
+            fi
+          done
+          
+          # Count ids lines (should be exactly 3)
+          IDS_COUNT=$(grep -c "ids: input=" /tmp/build.log || echo "0")
+          if [ "$IDS_COUNT" != "3" ]; then
+            echo "❌ Expected 3 'ids:' lines, found $IDS_COUNT"
+            exit 1
+          fi
+          
+          echo "✅ Feature-drop check ran for all regions"
+      
       - name: Negative test - missing file should fail
         run: |
           mv test/fixtures/data/france/alsace/alsace-display-2026.geojson /tmp/backup.geojson
@@ -92,6 +113,60 @@ jobs:
           
           echo "✅ Build correctly failed with missing file"
           mv /tmp/backup.geojson test/fixtures/data/france/alsace/alsace-display-2026.geojson
+      
+      - name: Negative test - feature drop should fail
+        run: |
+          # Create a tiny sliver polygon that tippecanoe will drop
+          cat > test/fixtures/data/france/burgundy/burgundy-test-drop.geojson << 'EOF'
+          {
+            "type": "FeatureCollection",
+            "features": [
+              {
+                "type": "Feature",
+                "id": "should-drop",
+                "properties": {
+                  "name": "Tiny Sliver"
+                },
+                "geometry": {
+                  "type": "Polygon",
+                  "coordinates": [[[4.95, 47.22], [4.9500001, 47.22], [4.9500001, 47.2200001], [4.95, 47.2200001], [4.95, 47.22]]]
+                }
+              },
+              {
+                "type": "Feature",
+                "id": "normal-feature",
+                "properties": {
+                  "name": "Normal Feature"
+                },
+                "geometry": {
+                  "type": "Polygon",
+                  "coordinates": [[[4.95, 47.22], [4.97, 47.22], [4.97, 47.24], [4.95, 47.24], [4.95, 47.22]]]
+                }
+              }
+            ]
+          }
+          EOF
+          
+          mv test/fixtures/data/france/burgundy/burgundy-display-exclusive-2026.geojson /tmp/backup-burgundy.geojson
+          mv test/fixtures/data/france/burgundy/burgundy-test-drop.geojson test/fixtures/data/france/burgundy/burgundy-display-exclusive-2026.geojson
+          
+          if DATA_DIR=test/fixtures/data/france npm run tiles:build 2>&1 | tee /tmp/drop-test.log; then
+            echo "❌ Build should have failed when features were dropped"
+            cat /tmp/drop-test.log
+            mv /tmp/backup-burgundy.geojson test/fixtures/data/france/burgundy/burgundy-display-exclusive-2026.geojson
+            exit 1
+          fi
+          
+          # Verify the error message mentions dropped features
+          if ! grep -q "FEATURES DROPPED" /tmp/drop-test.log; then
+            echo "❌ Error message should mention 'FEATURES DROPPED'"
+            cat /tmp/drop-test.log
+            mv /tmp/backup-burgundy.geojson test/fixtures/data/france/burgundy/burgundy-display-exclusive-2026.geojson
+            exit 1
+          fi
+          
+          echo "✅ Build correctly failed when features were dropped"
+          mv /tmp/backup-burgundy.geojson test/fixtures/data/france/burgundy/burgundy-display-exclusive-2026.geojson
   
   smoke-test:
     runs-on: ubuntu-latest

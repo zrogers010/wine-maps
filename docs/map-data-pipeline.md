@@ -27,12 +27,11 @@ SommelierMaps uses **PMTiles** (Protomaps vector tiles) to deliver map data effi
 
 ```bash
 # macOS
-brew install tippecanoe pmtiles jq
+brew install tippecanoe pmtiles
 
-# Linux
-# tippecanoe: Build from https://github.com/felt/tippecanoe
+# Linux (Ubuntu/Debian)
+sudo apt-get install tippecanoe
 # pmtiles: Download from https://github.com/protomaps/go-pmtiles/releases
-# jq: sudo apt-get install jq
 ```
 
 ### Build Tiles (on Mac with raw data)
@@ -42,15 +41,15 @@ brew install tippecanoe pmtiles jq
 npm run tiles:build
 
 # Or with custom budgets
-./scripts/build-tiles.sh --size-budget-mb 6 --metadata-budget-kb 500
+node scripts/build-tiles.mjs --size-budget-mb 6 --metadata-budget-kb 500
 
 # Include Bordeaux (not included by default)
-./scripts/build-tiles.sh --regions burgundy,champagne,alsace,bordeaux
+node scripts/build-tiles.mjs --regions burgundy,champagne,alsace,bordeaux
 
 # Output: tiles/<timestamp>/ and tiles/current/manifest.json
 ```
 
-**Per-region input configuration** (in `scripts/build-tiles.sh`):
+**Per-region input configuration** (in `scripts/build-tiles.mjs`):
 - **Burgundy**: `burgundy-display-exclusive-2026.geojson` (detail), `burgundy-display-hulls-2026.geojson` (hull)
 - **Champagne**: `champagne-opendatawine-display-2026.geojson` (detail), `champagne-opendatawine-hulls-2026.geojson` (hull) — uses opendatawine version per ChampagnePage.tsx
 - **Alsace**: `alsace-display-2026.geojson` (detail), `alsace-display-hulls-2026.geojson` (hull)
@@ -59,8 +58,18 @@ npm run tiles:build
 The script **fails closed**:
 - Exits non-zero if any configured region's input is missing (prints expected path)
 - Exits non-zero if zero regions are built
-- Exits non-zero if any region exceeds size budget or features are dropped at max zoom
+- Exits non-zero if any region exceeds size budget
+- **Exits non-zero if features are dropped at max zoom** (prints `ids: input=N z15=M` per region)
 - No silent "skipping" — all failures are hard errors
+
+**Build process**:
+1. Converts GeoJSON to GeoJSONSeq (newline-delimited)
+2. Copies `feature.id` to `properties.id`, strips top-level `id` (avoids tippecanoe warnings)
+3. Runs tippecanoe to create mbtiles (detail and hull separately)
+4. **Decodes detail tiles at max zoom (15)** using `tippecanoe-decode` to verify no features dropped
+5. Converts mbtiles to pmtiles using `pmtiles convert`
+6. Generates lightweight metadata JSON with centroids and bboxes (Node + turf)
+7. Validates size budgets and writes manifest
 
 ### Run Smoke Test
 
@@ -173,11 +182,17 @@ Install tippecanoe (see Prerequisites).
 
 ### Build fails: "OVER BUDGET"
 The script reports which region exceeded the limit and suggests fixes:
-- Increase simplification: `-r1.5` → `-r2.5`
-- Reduce max zoom: `-z14` → `-z13`
-- Drop more features: add `--drop-rate=1.5`
+- Increase simplification: `-r1` → `-r1.5`
+- Reduce max zoom: `-z15` → `-z14`
 
-Edit `scripts/build-tiles.sh` and adjust tippecanoe parameters.
+Edit `scripts/build-tiles.mjs` and adjust tippecanoe parameters.
+
+### Build fails: "FEATURES DROPPED"
+Tippecanoe dropped features at max zoom (usually sub-pixel slivers):
+- Check the printed `ids: input=N z15=M` line to see how many were dropped
+- Script lists up to 5 missing feature IDs
+- To fix: increase simplification (`-r1` → `-r2`) or use `--drop-smallest-as-needed`
+- Or clean input data to remove tiny slivers before build
 
 ### Map shows "data not available"
 1. Check `tiles/current/manifest.json` exists

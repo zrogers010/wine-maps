@@ -185,9 +185,11 @@ for (const region of regionArray) {
   
   const detailInputCount = detailGeoJSON.features.length
   
-  // Build detail tiles
+  // Build detail tiles to mbtiles first (for verification)
+  const tempMbtilesPath = join(tempDir, `${region}-detail.mbtiles`)
+  
   await runCommand('tippecanoe', [
-    '-o', detailOutput,
+    '-o', tempMbtilesPath,
     '-z15', '-Z11',
     '-r1',
     '-l', region,
@@ -198,51 +200,53 @@ for (const region of regionArray) {
     tempDetailSeqPath,
   ])
   
+  // Verify no features dropped at max zoom
+  try {
+    await runCommand('which', ['tippecanoe-decode'])
+  } catch {
+    console.error(`❌ ERROR: tippecanoe-decode not found`)
+    console.error(`   Install: brew install tippecanoe (macOS) or apt install tippecanoe (Linux)`)
+    process.exit(1)
+  }
+  
+  const inputIds = detailGeoJSON.features
+    .map(f => f.properties.id)
+    .filter(Boolean)
+    .sort()
+  
+  const { stdout } = await runCommand('tippecanoe-decode', ['-z', '15', '-Z', '15', tempMbtilesPath])
+  const outputIds = []
+  const lines = stdout.split('\n').filter(line => line.trim())
+  
+  for (const line of lines) {
+    try {
+      const feature = JSON.parse(line)
+      if (feature.properties?.id) {
+        outputIds.push(feature.properties.id)
+      }
+    } catch {
+      // Skip non-JSON lines
+    }
+  }
+  
+  const uniqueOutputIds = [...new Set(outputIds)].sort()
+  
+  console.log(`  ids: input=${inputIds.length} z15=${uniqueOutputIds.length}`)
+  
+  if (uniqueOutputIds.length < inputIds.length) {
+    const missing = inputIds.filter(id => !uniqueOutputIds.includes(id))
+    console.error(`  ❌ FEATURES DROPPED: ${missing.length} features missing at max zoom`)
+    missing.slice(0, 5).forEach(id => console.error(`     Missing: ${id}`))
+    anyOverBudget = true
+  }
+  
+  // Convert mbtiles to pmtiles
+  await runCommand('pmtiles', ['convert', tempMbtilesPath, detailOutput])
+  
   const detailSize = statSync(detailOutput).size
   const detailSizeMB = (detailSize / 1024 / 1024).toFixed(2)
   
-  console.log(`  ✓ detail.pmtiles: ${detailSizeMB} MB (input: ${detailInputCount} features)`)
-  
-  // Verify no features dropped at max zoom
-  if (await commandExists('tippecanoe-decode')) {
-    const tempInputIds = join(tempDir, `${region}-input-ids.txt`)
-    const tempOutputIds = join(tempDir, `${region}-output-ids.txt`)
-    
-    const inputIds = detailGeoJSON.features
-      .map(f => f.properties.id)
-      .filter(Boolean)
-      .sort()
-    writeFileSync(tempInputIds, inputIds.join('\n'))
-    
-    try {
-      const { stdout } = await runCommand('tippecanoe-decode', [detailOutput, '15'], { ignoreError: true })
-      const outputIds = stdout
-        .split('\n')
-        .filter(line => line.trim())
-        .map(line => {
-          try {
-            const feature = JSON.parse(line)
-            return feature.properties?.id
-          } catch {
-            return null
-          }
-        })
-        .filter(Boolean)
-        .filter((v, i, a) => a.indexOf(v) === i)
-        .sort()
-      
-      writeFileSync(tempOutputIds, outputIds.join('\n'))
-      
-      if (outputIds.length > 0 && outputIds.length < inputIds.length) {
-        const missing = inputIds.filter(id => !outputIds.includes(id))
-        console.error(`  ❌ FEATURES DROPPED: ${missing.length} features missing at max zoom`)
-        missing.slice(0, 5).forEach(id => console.error(`     Missing: ${id}`))
-        anyOverBudget = true
-      }
-    } catch (err) {
-      // tippecanoe-decode failed, skip check
-    }
-  }
+  console.log(`  ✓ detail.pmtiles: ${detailSizeMB} MB`)
   
   // Build hull tiles
   await runCommand('tippecanoe', [
@@ -390,13 +394,3 @@ if (anyOverBudget) {
 }
 
 console.log(`✅ All regions within budget (${builtCount} built)`)
-
-// Helper to check if command exists
-async function commandExists(cmd) {
-  try {
-    await runCommand('which', [cmd], { ignoreError: true })
-    return true
-  } catch {
-    return false
-  }
-}
