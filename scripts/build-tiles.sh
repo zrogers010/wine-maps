@@ -98,12 +98,11 @@ for REGION in burgundy champagne bordeaux alsace; do
   
   # Build detail tiles with tippecanoe
   # IMPORTANT: -l sets the source-layer name, must match getSourceLayer() in src/utils/pmtiles.ts
-  # Feature IDs are handled by promoteId in MapLibre; -pk preserves all properties
+  # Feature IDs are handled by promoteId in MapLibre; all properties kept by default
   tippecanoe \
     -o "$DETAIL_OUTPUT" \
     -z14 -Z11 \
-    -r1.5 \
-    -pk \
+    -r1 \
     -l "$REGION" \
     --drop-densest-as-needed \
     -P \
@@ -118,12 +117,11 @@ for REGION in burgundy champagne bordeaux alsace; do
   jq -c '.features[]' "$HULL_FILE" > "$TEMP_DIR/${REGION}-hull.geojsonl"
   
   # IMPORTANT: -l sets the source-layer name, must match getSourceLayer() in src/utils/pmtiles.ts
-  # Feature IDs are handled by promoteId in MapLibre; -pk preserves all properties
+  # Feature IDs are handled by promoteId in MapLibre; all properties kept by default
   tippecanoe \
     -o "$HULL_OUTPUT" \
     -z11 -Z7 \
     -r2 \
-    -pk \
     -l "$REGION" \
     --drop-densest-as-needed \
     -P \
