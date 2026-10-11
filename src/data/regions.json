@@ -5,7 +5,7 @@
     "aliases": ["/burdeux", "/bourdeux"],
     "name": "Bordeaux",
     "country": "France",
-    "hook": "Left bank vs right bank at parcel level — Médoc communes, Saint-Émilion satellites, Graves, and the sweet wine country of Sauternes.",
+    "hook": "Left Bank vs Right Bank, mapped from INAO parcel data: the Médoc communes, Saint-Émilion and Pomerol, Graves, Entre-Deux-Mers, and the sweet wines of Sauternes.",
     "thumbnail": "/images/home/bordeaux.jpg"
   },
   {
@@ -14,7 +14,7 @@
     "aliases": ["/burgandy", "/bourgogne"],
     "name": "Burgundy",
     "country": "France",
-    "hook": "Village and Premier Cru appellations and the Grands Crus, from Chablis through the Côte d'Or.",
+    "hook": "Village, Premier Cru, and Grand Cru appellations of Chablis and the Côte d'Or, covering the Côte de Nuits and Côte de Beaune.",
     "thumbnail": "/images/home/burgundy.jpg"
   },
   {
@@ -23,7 +23,7 @@
     "aliases": ["/champage"],
     "name": "Champagne",
     "country": "France",
-    "hook": "The full AOC across Montagne de Reims, Vallée de la Marne, Côte des Blancs, and the Aube.",
+    "hook": "The Champagne AOC and its main subregions: Montagne de Reims, Vallée de la Marne, Côte des Blancs, and the Côte des Bar in the Aube.",
     "thumbnail": "/images/home/champagne.jpg"
   },
   {
@@ -32,7 +32,7 @@
     "aliases": [],
     "name": "Alsace",
     "country": "France",
-    "hook": "Alsace and Crémant d'Alsace AOCs with Grand Cru sites along the Vosges foothills.",
+    "hook": "Alsace, Alsace Grand Cru, and Crémant d'Alsace AOCs along the Vosges foothills.",
     "thumbnail": "/images/home/alsace.jpg"
   }
 ]

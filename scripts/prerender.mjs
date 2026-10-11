@@ -117,7 +117,7 @@ function generateAppellationSummary(appellation, region) {
     }
 
     if (nonFruits.length > 0) {
-      parts.push(`Other typical aromas: ${nonFruits.slice(0, 4).join(', ')}.`)
+      parts.push(`Other typical notes: ${nonFruits.slice(0, 4).join(', ')}.`)
     }
 
     if (
