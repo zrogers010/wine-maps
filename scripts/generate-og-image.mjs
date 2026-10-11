@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 /**
- * Generate a simple default OG image SVG (1200x630px)
+ * Generate default OG image (1200x630 PNG)
  */
 
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import sharp from 'sharp'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const outputDir = path.resolve(__dirname, '../public/images')
 
 // SVG template
-const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+const svg = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
   <!-- Background gradient -->
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -47,11 +47,22 @@ const svg = `<?xml version="1.0" encoding="UTF-8"?>
   </text>
 </svg>`
 
-// Write SVG
-fs.mkdirSync(outputDir, { recursive: true })
-const svgPath = path.join(outputDir, 'og-default.svg')
-fs.writeFileSync(svgPath, svg)
+// Generate PNG
+async function generatePNG() {
+  fs.mkdirSync(outputDir, { recursive: true })
+  
+  const outputPath = path.join(outputDir, 'og-default.png')
+  
+  await sharp(Buffer.from(svg))
+    .resize(1200, 630)
+    .png()
+    .toFile(outputPath)
+  
+  console.log('✅ Generated og-default.png at', outputPath)
+  console.log('ℹ️  Size: 1200x630px')
+}
 
-console.log('✅ Generated og-default.svg at', svgPath)
-console.log('ℹ️  Convert to PNG (1200x630px) for production use')
-console.log('ℹ️  For now, using SVG as fallback OG image')
+generatePNG().catch((error) => {
+  console.error('❌ Failed to generate OG image:', error)
+  process.exit(1)
+})

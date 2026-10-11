@@ -13,7 +13,7 @@ const distDir = path.resolve(__dirname, '../dist')
 const indexHtmlPath = path.join(distDir, 'index.html')
 
 const SITE_URL = 'https://sommeliermaps.com'
-const DEFAULT_OG_IMAGE = '/images/og-default.svg' // TODO: Convert to PNG (1200x630px) for production
+const DEFAULT_OG_IMAGE = '/images/og-default.png'
 
 // Region configurations (must match src/regions.ts)
 const regions = [
@@ -72,7 +72,7 @@ function escapeHtml(text) {
   return text.replace(/[&<>"']/g, (m) => map[m] || m)
 }
 
-function generateMetaTags(title, description, canonical, ogImage) {
+function generateMetaTags(title, description, canonical, ogImage, ogImageAlt) {
   return `    <title>${escapeHtml(title)}</title>
     <meta name="description" content="${escapeHtml(description)}" />
     <link rel="canonical" href="${canonical}" />
@@ -83,13 +83,17 @@ function generateMetaTags(title, description, canonical, ogImage) {
     <meta property="og:title" content="${escapeHtml(title)}" />
     <meta property="og:description" content="${escapeHtml(description)}" />
     <meta property="og:image" content="${ogImage}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="${escapeHtml(ogImageAlt)}" />
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content="${canonical}" />
     <meta property="twitter:title" content="${escapeHtml(title)}" />
     <meta property="twitter:description" content="${escapeHtml(description)}" />
-    <meta property="twitter:image" content="${ogImage}" />`
+    <meta property="twitter:image" content="${ogImage}" />
+    <meta property="twitter:image:alt" content="${escapeHtml(ogImageAlt)}" />`
 }
 
 function countWords(text) {
@@ -168,13 +172,23 @@ function generateAppellationSummary(appellation, region) {
 
 function createHtmlWithMetadata(baseHtml, metaTags, h1, summary) {
   // Replace the existing title and description with the full metadata
-  // The pattern needs to match from title through the description meta tag
   let html = baseHtml.replace(
     /<title>.*?<\/title>\s*<meta name="description"[^>]*>/,
     metaTags
   )
 
-  // No hidden SEO content - the AppellationPage component now shows this visibly
+  // Inject visible SEO content into the body (before root div)
+  // This ensures H1 and summary are in prerendered HTML before React hydrates
+  // Using a specific ID so React can identify and potentially reuse this content
+  const seoContent = `
+    <!-- Prerendered SEO content (visible before hydration) -->
+    <div id="prerendered-seo" style="max-width: 800px; margin: 60px auto; padding: 20px; font-family: Georgia, serif; background: rgba(255,255,255,0.95); border-radius: 8px;">
+      <h1 style="color: #5a1022; font-size: 32px; margin-bottom: 16px;">${escapeHtml(h1)}</h1>
+      <p style="color: #4d3328; font-size: 16px; line-height: 1.6;">${escapeHtml(summary)}</p>
+    </div>`
+
+  html = html.replace('<div id="root">', seoContent + '\n    <div id="root">')
+
   return html
 }
 
@@ -200,7 +214,13 @@ async function generateRoutes() {
 
   const homeHtml = createHtmlWithMetadata(
     baseHtml,
-    generateMetaTags(homeTitle, homeDescription, SITE_URL, `${SITE_URL}${DEFAULT_OG_IMAGE}`),
+    generateMetaTags(
+      homeTitle,
+      homeDescription,
+      SITE_URL,
+      `${SITE_URL}${DEFAULT_OG_IMAGE}`,
+      'SommelierMaps - Interactive Wine Region Maps for WSET Study'
+    ),
     'Interactive Wine Region Maps for WSET Study',
     homeSummary,
   )
@@ -219,7 +239,8 @@ async function generateRoutes() {
         regionTitle,
         regionDescription,
         `${SITE_URL}${region.path}`,
-        `${SITE_URL}${DEFAULT_OG_IMAGE}`, // Using default for all routes until region images are created
+        `${SITE_URL}${DEFAULT_OG_IMAGE}`,
+        `${region.name} Wine Region Map`
       ),
       `${region.name} Wine Region`,
       regionSummary,
@@ -244,7 +265,8 @@ async function generateRoutes() {
           appellationTitle,
           appellationDescription,
           `${SITE_URL}${region.path}/${appellation.id}`,
-          `${SITE_URL}${DEFAULT_OG_IMAGE}`, // Using default for all routes until region images are created
+          `${SITE_URL}${DEFAULT_OG_IMAGE}`,
+          `${appellation.name} - ${region.name} Wine Appellation`
         ),
         appellation.name,
         appellationSummary,
