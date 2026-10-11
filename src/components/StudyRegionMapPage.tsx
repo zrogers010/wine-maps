@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { area, pointOnFeature } from '@turf/turf'
 import maplibregl, {
   type ExpressionSpecification,
   type FilterSpecification,
@@ -7,7 +6,7 @@ import maplibregl, {
   type Map as MapLibreMap,
   type MapLayerMouseEvent,
 } from 'maplibre-gl'
-import type { Feature, FeatureCollection, Geometry } from 'geojson'
+import type { FeatureCollection } from 'geojson'
 import {
   flyToBounds,
   LEGEND_PREVIEW_PADDING,
@@ -414,7 +413,9 @@ export function StudyRegionMapPage({
         map.on('mousemove', detailFillLayerId, handleMouseMove)
         map.on('mouseleave', detailFillLayerId, handleDetailMouseLeave)
 
-        const overviewBounds = getFeatureCollectionBounds(metadata)
+        const overviewBounds = metadata.bbox
+          ? ([[metadata.bbox[0], metadata.bbox[1]], [metadata.bbox[2], metadata.bbox[3]]] as [[number, number], [number, number]])
+          : getFeatureCollectionBounds(metadata)
         overviewBoundsRef.current = overviewBounds
 
         // A camera deep link takes precedence over the intro overview flight.
@@ -601,29 +602,40 @@ export function StudyRegionMapPage({
 
   useEffect(() => {
     const map = mapRef.current
-    const hullGeoJson = hullGeoJsonRef.current
+    const metadata = hullGeoJsonRef.current
 
-    if (!map || !isReady || !hullGeoJson || !subregionHoveredIds?.length) {
+    if (!map || !isReady || !metadata || !subregionHoveredIds?.length) {
       return
     }
 
     const displayIds = subregionHoveredIds.map((id) => displayGeometryId(id, sharedGeometryIds))
-    const features = hullGeoJson.features.filter(
-      (feature) =>
-        typeof feature.properties?.id === 'string' &&
-        displayIds.includes(feature.properties.id),
+    
+    // Find metadata features by ID to get their bboxes
+    const matchingFeatures = metadata.features.filter((feature: any) =>
+      typeof feature.properties?.id === 'string' &&
+      displayIds.includes(feature.properties.id)
     )
 
-    if (features.length === 0) {
+    if (matchingFeatures.length === 0) {
       return
     }
+    
+    // Compute combined bbox from feature bboxes
+    const bboxes = matchingFeatures.map((f: any) => f.bbox).filter(Boolean)
+    if (bboxes.length === 0) {
+      return
+    }
+    
+    const combinedBbox = [
+      Math.min(...bboxes.map((b: number[]) => b[0])),
+      Math.min(...bboxes.map((b: number[]) => b[1])),
+      Math.max(...bboxes.map((b: number[]) => b[2])),
+      Math.max(...bboxes.map((b: number[]) => b[3])),
+    ]
 
     flyToBounds(
       map,
-      getFeatureCollectionBounds({
-        type: 'FeatureCollection',
-        features,
-      }),
+      [[combinedBbox[0], combinedBbox[1]], [combinedBbox[2], combinedBbox[3]]] as [[number, number], [number, number]],
       {
         padding: LEGEND_PREVIEW_PADDING,
         maxZoom: maxZoomForIds(subregionHoveredIds, legendFitMaxZoomById, sharedGeometryIds, 10.15),
@@ -634,27 +646,26 @@ export function StudyRegionMapPage({
 
   useEffect(() => {
     const map = mapRef.current
-    const hullGeoJson = hullGeoJsonRef.current
+    const metadata = hullGeoJsonRef.current
 
-    if (!map || !isReady || !hullGeoJson || !legendHoveredId) {
+    if (!map || !isReady || !metadata || !legendHoveredId) {
       return
     }
 
     const displayId = displayGeometryId(legendHoveredId, sharedGeometryIds)
-    const features = hullGeoJson.features.filter(
-      (candidate) => candidate.properties?.id === displayId,
+    const matchingFeature = metadata.features.find(
+      (candidate: any) => candidate.properties?.id === displayId,
     )
 
-    if (features.length === 0) {
+    if (!matchingFeature || !(matchingFeature as any).bbox) {
       return
     }
+    
+    const bbox = (matchingFeature as any).bbox
 
     flyToBounds(
       map,
-      getFeatureCollectionBounds({
-        type: 'FeatureCollection',
-        features,
-      }),
+      [[bbox[0], bbox[1]], [bbox[2], bbox[3]]] as [[number, number], [number, number]],
       {
         padding: LEGEND_PREVIEW_PADDING,
         maxZoom: maxZoomForIds([legendHoveredId], legendFitMaxZoomById, sharedGeometryIds, 11.8),
@@ -820,31 +831,27 @@ function createLabelPoints(
   geoJson: FeatureCollection,
   appellations: StudyRegionMetadata[],
 ): FeatureCollection {
-  const largestFeatureById = new Map<string, Feature<Geometry>>()
-
-  for (const feature of geoJson.features) {
-    const id = getFeatureId(feature.properties) ?? String(feature.id)
-    const largestFeature = largestFeatureById.get(id)
-
-    if (!largestFeature || getFeatureArea(feature) > getFeatureArea(largestFeature)) {
-      largestFeatureById.set(id, feature as Feature<Geometry>)
-    }
-  }
-
+  // Metadata now includes precomputed labelPoint per feature
   return {
     type: 'FeatureCollection',
-    features: [...largestFeatureById.entries()].map(([id, feature]) => ({
+    features: geoJson.features.map((feature) => {
+      const id = feature.properties?.id as string
+      const labelPoint = (feature as any).labelPoint || 
+        (feature.geometry.type === 'Point' ? (feature.geometry as any).coordinates : [0, 0])
+      
+      return {
         type: 'Feature',
         id,
         properties: {
           id,
-          name: appellations.find((appellation) => appellation.id === id)?.name ?? id,
+          name: appellations.find((appellation) => appellation.id === id)?.name ?? feature.properties?.name ?? id,
         },
         geometry: {
           type: 'Point',
-          coordinates: pointOnFeature(feature as Feature<Geometry>).geometry.coordinates,
+          coordinates: labelPoint,
         },
-      })),
+      }
+    }),
   }
 }
 
@@ -855,10 +862,6 @@ function fillColorExpression(colors: Record<string, string>): ExpressionSpecific
     ...Object.entries(colors).flatMap(([id, color]) => [id, color]),
     '#8c6f4f',
   ] as unknown as ExpressionSpecification
-}
-
-function getFeatureArea(feature: Feature<Geometry>) {
-  return area(feature)
 }
 
 function setFeatureHover(

@@ -5,11 +5,13 @@
 SommelierMaps uses **PMTiles** (Protomaps vector tiles) to deliver map data efficiently to mobile devices. PMTiles enables ~3-second load times on 4G networks while preserving all interactive features (hover, labels, legend).
 
 **Architecture:**
-- **Detail tiles** (zoom 11-14): Full parcel geometry with all properties
+- **Detail tiles** (zoom 11-15): Full parcel geometry with all properties
 - **Hull tiles** (zoom 7-11): Dissolved appellation boundaries  
-- **Metadata JSON** (~10-50 KB): Lightweight GeoJSON for bounds and labels
+- **Metadata JSON** (~10-50 KB): Centroids, bbox, and label properties only
 - **Versioned paths**: Tiles stored under `tiles/<timestamp>/` for safe immutable caching
 - **Manifest**: `current/manifest.json` (fetched with `no-cache`) points to current version
+
+**Note**: Bordeaux has processed data (0.44 MB detail, 0.07 MB hull, 272 KB metadata) but no dedicated map page yet. The data is prepared for future use.
 
 ## Performance Targets
 
@@ -39,13 +41,39 @@ brew install tippecanoe pmtiles jq
 # From project root
 npm run tiles:build
 
-# Or with custom budget
-./scripts/build-tiles.sh --size-budget-mb 6
+# Or with custom budgets
+./scripts/build-tiles.sh --size-budget-mb 6 --metadata-budget-kb 500
 
 # Output: tiles/<timestamp>/ and tiles/current/manifest.json
 ```
 
-The script validates that each region stays under the size budget (default 5 MB) and fails with suggestions if exceeded.
+The script:
+- Validates that each region stays under the size budget (default 5 MB per region)
+- Validates that metadata stays under its budget (default 300 KB per region)
+- Copies `feature.id` to `properties.id` to avoid tippecanoe non-numeric ID warnings
+- Extracts lightweight metadata with only centroids, bbox, and label properties
+- Prints feature counts to detect dropped features
+- Fails with suggestions if budgets are exceeded
+
+### Run Smoke Test
+
+```bash
+# Self-contained: starts dev server and Chrome automatically
+npm run smoke:tiles
+```
+
+The smoke test:
+- Starts Vite dev server and headless Chrome automatically
+- Loads each region page (Burgundy, Alsace, Champagne)
+- Chooses test feature: preferred ID (`gevrey-chambertin` for Burgundy) or largest bbox
+- Verifies tiles load and features render with correct IDs
+- Hovers features and checks hover cards show correct names
+- Tests legend hover zoom for Burgundy
+- Captures console errors about tiles/manifest
+- Saves screenshots to `tiles/.smoke-screenshots/`
+- Tears down server and browser
+- Skips gracefully if `tiles/current/manifest.json` is missing (CI-safe)
+- Exits non-zero on any failure
 
 ### Deploy to Production
 
@@ -86,9 +114,10 @@ aws cloudfront create-invalidation \
 PMTiles uses **feature-state** for hover via stable feature IDs:
 
 1. `tippecanoe -l <region>` sets source-layer name (must match `getSourceLayer()` helper)
-2. All properties (`id`, `name`, `commune`, `insee`, `cruLevel`, `climat`) are kept by default
-3. MapLibre `promoteId: { [region]: 'id' }` uses `properties.id` as `feature.id` for feature-state
-4. `map.setFeatureState({ source, sourceLayer, id }, { hover: true })` highlights features
+2. Build script copies `feature.id` → `properties.id` before tippecanoe (avoids non-numeric ID warnings)
+3. All properties (`id`, `name`, `commune`, `insee`, `cruLevel`, `climat`) are kept by default
+4. MapLibre `promoteId: { [region]: 'id' }` uses `properties.id` as `feature.id` for feature-state
+5. `map.setFeatureState({ source, sourceLayer, id }, { hover: true })` highlights features
 
 **Note**: IDs are **strings** (kebab-case like 'gevrey-chambertin'), not integers. The `promoteId` approach handles both string and integer IDs correctly.
 

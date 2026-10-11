@@ -142,114 +142,71 @@ for REGION in burgundy champagne bordeaux alsace; do
   
   echo "  ✓ hull.pmtiles: ${HULL_SIZE_MB} MB"
   
-  # Create lightweight metadata GeoJSON: only centroids, bounds, and label properties
-  # Use node/turf if available, fallback to jq-only approximation
-  if command -v node &> /dev/null; then
-    node -e "
-      const fs = require('fs');
-      const turf = require('@turf/turf');
-      const hull = JSON.parse(fs.readFileSync('$TEMP_HULL_WITH_PROP_ID', 'utf8'));
+  # Create lightweight metadata JSON: only bboxes and label points
+  # Structure: { type: "FeatureCollection", bbox: [w,s,e,n], features: [{ properties, labelPoint, bbox }] }
+  echo "  Building metadata..."
+  node -e "
+    const fs = require('fs');
+    const turf = require('@turf/turf');
+    const hull = JSON.parse(fs.readFileSync('$TEMP_HULL_WITH_PROP_ID', 'utf8'));
+    
+    // Compute overall bbox
+    const overallBbox = turf.bbox(hull);
+    
+    // Group by id and process each feature
+    const byId = new Map();
+    for (const feature of hull.features) {
+      const id = feature.properties.id;
+      if (!id) continue;
       
-      // Compute bbox
-      const bbox = turf.bbox(hull);
+      const existing = byId.get(id);
+      const area = turf.area(feature);
       
-      // Group by id and find largest feature per id
-      const byId = new Map();
-      for (const feature of hull.features) {
-        const id = feature.properties.id;
-        if (!id) continue;
-        
-        const existing = byId.get(id);
-        const area = turf.area(feature);
-        
-        if (!existing || area > existing.area) {
-          byId.set(id, { feature, area });
-        }
+      if (!existing || area > existing.area) {
+        byId.set(id, { feature, area });
       }
+    }
+    
+    // Create metadata features with bbox and labelPoint
+    const features = Array.from(byId.values()).map(({ feature }) => {
+      const id = feature.properties.id;
+      const name = feature.properties.name || id;
+      const centroid = turf.centroid(feature);
+      const featureBbox = turf.bbox(feature);
       
-      // Create centroid features
-      const features = Array.from(byId.values()).map(({ feature }) => {
-        const id = feature.properties.id;
-        const centroid = turf.centroid(feature);
-        
-        return {
-          type: 'Feature',
-          properties: {
-            id,
-            name: feature.properties.name || id
-          },
-          geometry: centroid.geometry
-        };
-      });
-      
+      // Extract properties that label/legend code might need
       const metadata = {
-        type: 'FeatureCollection',
-        bbox,
-        features
+        type: 'Feature',
+        properties: {
+          id,
+          name,
+          // Include other properties if they exist (commune, insee, cruLevel, etc)
+          ...(feature.properties.commune ? { commune: feature.properties.commune } : {}),
+          ...(feature.properties.insee ? { insee: feature.properties.insee } : {}),
+          ...(feature.properties.cruLevel ? { cruLevel: feature.properties.cruLevel } : {}),
+          ...(feature.properties.climat ? { climat: feature.properties.climat } : {}),
+        },
+        labelPoint: centroid.geometry.coordinates,
+        bbox: featureBbox,
+        geometry: centroid.geometry
       };
       
-      fs.writeFileSync('$METADATA_OUTPUT', JSON.stringify(metadata, null, 2));
-    " 2>&1 || {
-      echo "  ⚠ Node.js metadata extraction failed, using jq fallback"
-      # Fallback: simplified jq-only version
-      jq '{
-        type: "FeatureCollection",
-        bbox: (
-          [.features[].geometry | .. | numbers?] as $nums |
-          [$nums | min, $nums | min, $nums | max, $nums | max]
-        ),
-        features: [
-          .features
-          | group_by(.properties.id)[]
-          | .[0]
-          | {
-              type: "Feature",
-              properties: { id: .properties.id, name: (.properties.name // .properties.id) },
-              geometry: {
-                type: "Point",
-                coordinates: (
-                  if .geometry.type == "Polygon" then
-                    [
-                      ([.geometry.coordinates[0][][0]] | add / length),
-                      ([.geometry.coordinates[0][][1]] | add / length)
-                    ]
-                  else [0, 0] end
-                )
-              }
-            }
-        ]
-      }' "$TEMP_HULL_WITH_PROP_ID" > "$METADATA_OUTPUT"
-    }
-  else
-    echo "  ⚠ Node.js not available, using jq-only metadata extraction"
-    jq '{
-      type: "FeatureCollection",
-      bbox: (
-        [.features[].geometry | .. | numbers?] as $nums |
-        [$nums | min, $nums | min, $nums | max, $nums | max]
-      ),
-      features: [
-        .features
-        | group_by(.properties.id)[]
-        | .[0]
-        | {
-            type: "Feature",
-            properties: { id: .properties.id, name: (.properties.name // .properties.id) },
-            geometry: {
-              type: "Point",
-              coordinates: (
-                if .geometry.type == "Polygon" then
-                  [
-                    ([.geometry.coordinates[0][][0]] | add / length),
-                    ([.geometry.coordinates[0][][1]] | add / length)
-                  ]
-                else [0, 0] end
-              )
-            }
-          }
-      ]
-    }' "$TEMP_HULL_WITH_PROP_ID" > "$METADATA_OUTPUT"
-  fi
+      return metadata;
+    });
+    
+    const metadata = {
+      type: 'FeatureCollection',
+      bbox: overallBbox,
+      features
+    };
+    
+    fs.writeFileSync('$METADATA_OUTPUT', JSON.stringify(metadata, null, 2));
+    console.log('  ✓ Metadata generated with', features.length, 'features');
+  " || {
+    echo "  ❌ ERROR: Node.js metadata extraction failed"
+    echo "     Ensure node and @turf/turf are available"
+    exit 1
+  }
   
   METADATA_SIZE=$(stat -f%z "$METADATA_OUTPUT" 2>/dev/null || stat -c%s "$METADATA_OUTPUT")
   METADATA_SIZE_KB=$(echo "scale=1; $METADATA_SIZE / 1024" | bc)
@@ -260,6 +217,43 @@ for REGION in burgundy champagne bordeaux alsace; do
   if [ $METADATA_SIZE -gt $METADATA_BUDGET_BYTES ]; then
     echo "  ⚠️  METADATA OVER BUDGET: ${METADATA_SIZE_KB} KB > ${METADATA_BUDGET_KB} KB"
     ANY_OVER_BUDGET=true
+  fi
+  
+  # Verify no features were dropped at max zoom
+  echo "  Checking feature completeness..."
+  
+  # Get input IDs
+  jq -r '.features[].properties.id' "$TEMP_DETAIL_WITH_PROP_ID" | sort -u > "$TEMP_DIR/${REGION}-input-ids.txt"
+  INPUT_ID_COUNT=$(wc -l < "$TEMP_DIR/${REGION}-input-ids.txt" | tr -d ' ')
+  
+  # Get output IDs from max zoom tiles
+  # Use tippecanoe-decode to extract features at z15
+  if command -v tippecanoe-decode &> /dev/null; then
+    tippecanoe-decode "$DETAIL_OUTPUT" 15 2>/dev/null | \
+      jq -r 'select(.properties.id != null) | .properties.id' | \
+      sort -u > "$TEMP_DIR/${REGION}-output-ids.txt" 2>/dev/null || echo "" > "$TEMP_DIR/${REGION}-output-ids.txt"
+    
+    OUTPUT_ID_COUNT=$(wc -l < "$TEMP_DIR/${REGION}-output-ids.txt" | tr -d ' ')
+    
+    if [ "$OUTPUT_ID_COUNT" -gt 0 ]; then
+      echo "  → Features: input $INPUT_ID_COUNT, at z15: $OUTPUT_ID_COUNT"
+      
+      if [ "$OUTPUT_ID_COUNT" -lt "$INPUT_ID_COUNT" ]; then
+        MISSING_COUNT=$((INPUT_ID_COUNT - OUTPUT_ID_COUNT))
+        echo "  ⚠️  FEATURES DROPPED: $MISSING_COUNT features missing at max zoom"
+        
+        # Show which IDs were dropped
+        comm -23 "$TEMP_DIR/${REGION}-input-ids.txt" "$TEMP_DIR/${REGION}-output-ids.txt" | head -5 | while read id; do
+          echo "     Missing: $id"
+        done
+        
+        ANY_OVER_BUDGET=true
+      fi
+    else
+      echo "  → Features: input $INPUT_ID_COUNT (output verification skipped)"
+    fi
+  else
+    echo "  → Features: input $INPUT_ID_COUNT (tippecanoe-decode not available for verification)"
   fi
   
   # Total size includes tiles + metadata

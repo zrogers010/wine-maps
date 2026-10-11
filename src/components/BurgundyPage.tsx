@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { area, pointOnFeature } from '@turf/turf'
 import maplibregl, {
   type ExpressionSpecification,
   type FilterSpecification,
@@ -7,7 +6,7 @@ import maplibregl, {
   type Map as MapLibreMap,
   type MapLayerMouseEvent,
 } from 'maplibre-gl'
-import type { Feature, FeatureCollection, Geometry } from 'geojson'
+import type { FeatureCollection } from 'geojson'
 import appellationData from '../data/france/burgundy/appellations.json'
 import { registerPMTilesProtocol, getPMTilesUrl, loadRegionMetadata, getSourceLayer } from '../utils/pmtiles'
 import {
@@ -604,7 +603,9 @@ export function BurgundyPage() {
         map.on('mousemove', burgundyFillLayerId, handleMouseMove)
         map.on('mouseleave', burgundyFillLayerId, handleDetailMouseLeave)
 
-        const overviewBounds = getFeatureCollectionBounds(metadata)
+        const overviewBounds = metadata.bbox
+          ? ([[metadata.bbox[0], metadata.bbox[1]], [metadata.bbox[2], metadata.bbox[3]]] as [[number, number], [number, number]])
+          : getFeatureCollectionBounds(metadata)
         overviewBoundsRef.current = overviewBounds
 
         // A camera deep link takes precedence over the intro overview flight.
@@ -779,28 +780,38 @@ export function BurgundyPage() {
 
   useEffect(() => {
     const map = mapRef.current
-    const lowZoomHullGeoJson = lowZoomHullGeoJsonRef.current
+    const metadata = lowZoomHullGeoJsonRef.current
 
-    if (!map || !isReady || !lowZoomHullGeoJson || !subregionHoveredIds?.length) {
+    if (!map || !isReady || !metadata || !subregionHoveredIds?.length) {
       return
     }
 
-    const features = lowZoomHullGeoJson.features.filter(
-      (feature) =>
-        typeof feature.properties?.id === 'string' &&
-        subregionHoveredIds.includes(feature.properties.id),
+    // Find metadata features by ID to get their bboxes
+    const matchingFeatures = metadata.features.filter((feature: any) =>
+      typeof feature.properties?.id === 'string' &&
+      subregionHoveredIds.includes(feature.properties.id)
     )
 
-    if (features.length === 0) {
+    if (matchingFeatures.length === 0) {
       return
     }
+    
+    // Compute combined bbox from feature bboxes
+    const bboxes = matchingFeatures.map((f: any) => f.bbox).filter(Boolean)
+    if (bboxes.length === 0) {
+      return
+    }
+    
+    const combinedBbox = [
+      Math.min(...bboxes.map((b: number[]) => b[0])),
+      Math.min(...bboxes.map((b: number[]) => b[1])),
+      Math.max(...bboxes.map((b: number[]) => b[2])),
+      Math.max(...bboxes.map((b: number[]) => b[3])),
+    ]
 
     flyToBounds(
       map,
-      getFeatureCollectionBounds({
-        type: 'FeatureCollection',
-        features,
-      }),
+      [[combinedBbox[0], combinedBbox[1]], [combinedBbox[2], combinedBbox[3]]] as [[number, number], [number, number]],
       {
         padding: LEGEND_PREVIEW_PADDING,
         maxZoom: 10.15,
@@ -811,36 +822,48 @@ export function BurgundyPage() {
 
   useEffect(() => {
     const map = mapRef.current
-    const lowZoomHullGeoJson = lowZoomHullGeoJsonRef.current
-    const detailGeoJson = detailGeoJsonRef.current
+    const metadata = lowZoomHullGeoJsonRef.current
 
-    if (!map || !isReady || !lowZoomHullGeoJson || !legendHoveredId) {
+    if (!map || !isReady || !metadata || !legendHoveredId) {
       return
     }
 
-    const hullFeature = lowZoomHullGeoJson.features.find(
-      (candidate) => candidate.properties?.id === legendHoveredId,
+    const matchingFeature = metadata.features.find(
+      (candidate: any) => candidate.properties?.id === legendHoveredId,
     )
-    // Grand Crus have no low-zoom hull; frame their detail parcels instead.
-    const features = hullFeature
-      ? [hullFeature]
-      : (detailGeoJson?.features.filter(
-          (candidate) => candidate.properties?.id === legendHoveredId,
-        ) ?? [])
 
-    if (features.length === 0) {
+    if (!matchingFeature || !(matchingFeature as any).bbox) {
+      // Grand Crus might not have hull metadata; fall back to checking detail
+      const detailMeta = detailGeoJsonRef.current
+      const detailFeature = detailMeta?.features.find(
+        (candidate: any) => candidate.properties?.id === legendHoveredId,
+      )
+      
+      if (!detailFeature || !(detailFeature as any).bbox) {
+        return
+      }
+      
+      const bbox = (detailFeature as any).bbox
+      flyToBounds(
+        map,
+        [[bbox[0], bbox[1]], [bbox[2], bbox[3]]] as [[number, number], [number, number]],
+        {
+          padding: LEGEND_PREVIEW_PADDING,
+          maxZoom: 13.4,
+          speed: 1.5,
+        },
+      )
       return
     }
+    
+    const bbox = (matchingFeature as any).bbox
 
     flyToBounds(
       map,
-      getFeatureCollectionBounds({
-        type: 'FeatureCollection',
-        features,
-      }),
+      [[bbox[0], bbox[1]], [bbox[2], bbox[3]]] as [[number, number], [number, number]],
       {
         padding: LEGEND_PREVIEW_PADDING,
-        maxZoom: hullFeature ? 11.8 : 13.4,
+        maxZoom: 11.8,
         speed: 1.5,
       },
     )
@@ -1062,36 +1085,32 @@ function BurgundyHoverCard({
 }
 
 function createLabelPoints(geoJson: FeatureCollection): FeatureCollection {
-  const largestFeatureById = new Map<string, Feature<Geometry>>()
-
-  for (const feature of geoJson.features) {
-    const id = getFeatureId(feature.properties)
-
-    if (!id) {
-      continue
-    }
-
-    const largestFeature = largestFeatureById.get(id)
-    if (!largestFeature || area(feature) > area(largestFeature)) {
-      largestFeatureById.set(id, feature as Feature<Geometry>)
-    }
-  }
-
+  // Metadata now includes precomputed labelPoint per feature
   return {
     type: 'FeatureCollection',
-    features: [...largestFeatureById.entries()].map(([id, feature]) => ({
-      type: 'Feature',
-      id,
-      properties: {
+    features: geoJson.features.map((feature) => {
+      const id = getFeatureId(feature.properties)
+      const labelPoint = (feature as any).labelPoint || 
+        (feature.geometry.type === 'Point' ? (feature.geometry as any).coordinates : [0, 0])
+
+      if (!id) {
+        return null as any
+      }
+
+      return {
+        type: 'Feature' as const,
         id,
-        name: getMetadataName(id),
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: pointOnFeature(feature).geometry.coordinates,
-      },
-    })),
-  }
+        properties: {
+          id,
+          name: getMetadataName(id),
+        },
+        geometry: {
+          type: 'Point' as const,
+          coordinates: labelPoint,
+        },
+      }
+    }).filter(Boolean),
+  } as FeatureCollection
 }
 
 function burgundyFillColorExpression(): ExpressionSpecification {
@@ -1139,35 +1158,32 @@ function hoveredRegionKey(region: HoveredBurgundyRegion) {
 }
 
 function createGrandCruLabelPoints(geoJson: FeatureCollection): FeatureCollection {
-  const largestFeatureById = new Map<string, Feature<Geometry>>()
-
-  for (const feature of geoJson.features) {
+  // Metadata now includes precomputed labelPoint per feature
+  const grandCruFeatures = geoJson.features.filter((feature) => {
     const id = getFeatureId(feature.properties)
-
-    if (!id || !(id in grandCruMeta)) {
-      continue
-    }
-
-    const largestFeature = largestFeatureById.get(id)
-    if (!largestFeature || area(feature) > area(largestFeature)) {
-      largestFeatureById.set(id, feature as Feature<Geometry>)
-    }
-  }
+    return id && id in grandCruMeta
+  })
 
   return {
     type: 'FeatureCollection',
-    features: [...largestFeatureById.entries()].map(([id, feature]) => ({
-      type: 'Feature',
-      id,
-      properties: {
+    features: grandCruFeatures.map((feature) => {
+      const id = getFeatureId(feature.properties)!
+      const labelPoint = (feature as any).labelPoint || 
+        (feature.geometry.type === 'Point' ? (feature.geometry as any).coordinates : [0, 0])
+
+      return {
+        type: 'Feature',
         id,
-        name: grandCruMeta[id].name,
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: pointOnFeature(feature).geometry.coordinates,
-      },
-    })),
+        properties: {
+          id,
+          name: grandCruMeta[id].name,
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: labelPoint,
+        },
+      }
+    }),
   }
 }
 
