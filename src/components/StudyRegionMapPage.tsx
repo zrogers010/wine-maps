@@ -115,6 +115,7 @@ export function StudyRegionMapPage({
   const hoveredFeatureIdRef = useRef<SourceFeatureId | null>(null)
   const hoveredRegionKeyRef = useRef<string | null>(null)
   const hoverLeaveTimeoutRef = useRef<number | null>(null)
+  const lastSelectedIdRef = useRef<string | null>(null)
   const [isReady, setIsReady] = useState(false)
   const [hoveredRegion, setHoveredRegion] = useState<HoveredRegion | null>(null)
   const [legendHoveredId, setLegendHoveredId] = useState<string | null>(null)
@@ -379,8 +380,10 @@ export function StudyRegionMapPage({
 
       map.on('mousemove', hullLayerId, handleHullMouseMove)
       map.on('mouseleave', hullLayerId, handleMouseLeave)
+      map.on('click', hullLayerId, handleClick)
       map.on('mousemove', detailFillLayerId, handleMouseMove)
       map.on('mouseleave', detailFillLayerId, handleDetailMouseLeave)
+      map.on('click', detailFillLayerId, handleClick)
 
       const overviewBounds = getFeatureCollectionBounds(detailGeoJson)
       overviewBoundsRef.current = overviewBounds
@@ -491,6 +494,17 @@ export function StudyRegionMapPage({
       }
 
       handleMouseLeave()
+    }
+
+    function handleClick(event: MapLayerMouseEvent) {
+      const feature = event.features?.[0]
+      const id = getFeatureId(feature?.properties)
+
+      if (id && id !== lastSelectedIdRef.current) {
+        lastSelectedIdRef.current = id
+        const regionSlug = routePath.replace('/', '')
+        trackAppellationSelect(regionSlug, id)
+      }
     }
 
     function clearHoverState() {
@@ -620,13 +634,6 @@ export function StudyRegionMapPage({
       },
     )
   }, [isReady, legendFitMaxZoomById, legendHoveredId, sharedGeometryIds])
-
-  useEffect(() => {
-    if (hoveredRegion && activeAppellation) {
-      const regionSlug = routePath.replace('/', '')
-      trackAppellationSelect(regionSlug, activeAppellation.id)
-    }
-  }, [hoveredRegion, activeAppellation, routePath])
 
   return (
     <div className="map-only-shell">

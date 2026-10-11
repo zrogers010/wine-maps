@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { AlsacePage } from './components/AlsacePage'
 import { AppShell } from './components/AppShell'
 import { BurgundyPage } from './components/BurgundyPage'
@@ -21,6 +21,7 @@ function App() {
   const rawPathname = usePathname()
   const pathname = normalizePath(rawPathname)
   const region = findRegionByPath(pathname)
+  const lastTrackedRegionRef = useRef<string | null>(null)
   // Regions stay mounted after their first visit, so switching back is
   // instant and each map keeps its camera, hover, and loaded data.
   const [visitedRegionIds, setVisitedRegionIds] = useState<string[]>([])
@@ -38,8 +39,11 @@ function App() {
   }, [pathname, rawPathname, region])
 
   useEffect(() => {
-    if (region) {
+    if (region && region.id !== lastTrackedRegionRef.current) {
+      lastTrackedRegionRef.current = region.id
       trackRegionView(region.id)
+    } else if (!region) {
+      lastTrackedRegionRef.current = null
     }
   }, [region])
 

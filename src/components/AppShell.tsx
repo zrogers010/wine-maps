@@ -88,9 +88,11 @@ export function AppShell() {
     .filter((id) => !hiddenMapIds.includes(id))
 
   const handleSelectAppellation = useCallback((id: AppellationId) => {
+    if (id !== selectedId) {
+      trackAppellationSelect('bordeaux', id)
+    }
     setSelectedId(id)
-    trackAppellationSelect('bordeaux', id)
-  }, [])
+  }, [selectedId])
 
   return (
     <div className="map-only-shell">
