@@ -125,19 +125,23 @@ export function MapView({
   subregionHoveredIds,
   layers,
   mode,
+  selectedId,
   onSelectAppellation,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<Map | null>(null)
   const overviewBoundsRef = useRef<[[number, number], [number, number]] | null>(null)
   const lowZoomHullGeoJsonRef = useRef<FeatureCollection | null>(null)
+  const bordeauxGeoJsonRef = useRef<FeatureCollection | null>(null)
   const hoveredFeatureIdRef = useRef<SourceFeatureId | null>(null)
   const hoveredRegionKeyRef = useRef<string | null>(null)
   const hoverLeaveTimeoutRef = useRef<number | null>(null)
   const [isReady, setIsReady] = useState(false)
   const [hoveredRegion, setHoveredRegion] = useState<HoveredRegion | null>(null)
   const [chateauxWithCommune, setChateauxWithCommune] = useState<ChateauWithCommune[]>(chateaux)
-  const activeRegion = hoveredRegion ?? (legendHoveredId ? { id: legendHoveredId } : null)
+  const activeRegion = hoveredRegion ?? 
+    (legendHoveredId ? { id: legendHoveredId } : null) ??
+    (selectedId ? { id: selectedId } : null)
 
   const hoveredAppellation = activeRegion
     ? appellations.find((appellation) => appellation.id === activeRegion.id)
@@ -210,6 +214,7 @@ export function MapView({
 
       setChateauxWithCommune(attachCommuneToChateaux(chateaux, bordeauxGeoJson))
       lowZoomHullGeoJsonRef.current = lowZoomHullGeoJson
+      bordeauxGeoJsonRef.current = bordeauxGeoJson
 
       map.addSource(appellationSourceId, {
         type: 'geojson',
@@ -712,6 +717,7 @@ export function MapView({
     filteredAppellationIds: AppellationId[],
     hoveredRegion: HoveredRegion | null,
     legendHoveredId: AppellationId | null,
+    selectedId: AppellationId | null,
   ) => {
     if (!map.isStyleLoaded()) {
       return
@@ -776,7 +782,9 @@ export function MapView({
           ? ['==', ['get', 'id'], hoveredRegion.id]
           : legendHoveredId
             ? ['==', ['get', 'id'], legendHoveredId]
-            : filterNone(),
+            : selectedId
+              ? ['==', ['get', 'id'], selectedId]
+              : filterNone(),
       )
     }
     if (map.getLayer(hoverCommuneShadeLayerId)) {
@@ -825,7 +833,7 @@ export function MapView({
 
     if (!map.isStyleLoaded()) {
       const handler = () => {
-        applyFilters(map, filteredAppellationIds, hoveredRegion, legendHoveredId)
+        applyFilters(map, filteredAppellationIds, hoveredRegion, legendHoveredId, selectedId)
       }
       map.once('idle', handler)
       return () => {
@@ -833,8 +841,57 @@ export function MapView({
       }
     }
 
-    applyFilters(map, filteredAppellationIds, hoveredRegion, legendHoveredId)
+    applyFilters(map, filteredAppellationIds, hoveredRegion, legendHoveredId, selectedId)
   }, [filteredAppellationIds, hoveredRegion, isReady, legendHoveredId, applyFilters])
+
+  // Handle initial selected appellation (deep linking)
+  useEffect(() => {
+    const map = mapRef.current
+    const geojson = bordeauxGeoJsonRef.current
+
+    if (!map || !isReady || !selectedId || !geojson) {
+      return
+    }
+
+    // Find the feature geometry for the selected appellation
+    const feature = geojson.features.find((f) => f.properties?.id === selectedId)
+    if (!feature || !feature.geometry) {
+      return
+    }
+
+    // Calculate bounds and fit to the selected appellation
+    const bounds = getFeatureCollectionBounds({
+      type: 'FeatureCollection',
+      features: [feature],
+    } as FeatureCollection)
+
+    if (bounds) {
+      map.fitBounds(bounds, {
+        padding: 100,
+        maxZoom: 12,
+        duration: 1000,
+      })
+    }
+
+    // Set the feature as selected
+    const featureId = feature.id || feature.properties?.id
+    if (featureId) {
+      map.setFeatureState(
+        { source: appellationSourceId, id: featureId },
+        { selected: true },
+      )
+    }
+
+    // Clean up: remove selected state when selectedId changes
+    return () => {
+      if (featureId) {
+        map.setFeatureState(
+          { source: appellationSourceId, id: featureId },
+          { selected: false },
+        )
+      }
+    }
+  }, [selectedId, isReady])
 
   useEffect(() => {
     const map = mapRef.current
