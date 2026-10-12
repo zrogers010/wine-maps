@@ -194,7 +194,7 @@ export function MapView({
       'bottom-left',
     )
     map.addControl(
-      new maplibregl.AttributionControl({ compact: true, customAttribution: 'SommelierMaps dev data' }),
+      new maplibregl.AttributionControl({ compact: true }),
       'bottom-right',
     )
 
@@ -396,16 +396,14 @@ export function MapView({
         filter: filterNone(),
         paint: {
           'fill-color': '#1c0f12',
-          // Zoom must be the top-level expression; the per-feature case moves
-          // into the stop outputs.
           'fill-opacity': [
             'interpolate',
             ['linear'],
             ['zoom'],
             zoomTransitionStart,
-            ['case', ['in', ['get', 'id'], ['literal', lowZoomHullIds]], 0, 0.1],
+            ['case', ['in', ['get', 'id'], ['literal', lowZoomHullIds]], 0, 0.6],
             zoomTransitionEnd,
-            0.1,
+            0.6,
           ],
         },
       })
@@ -427,14 +425,14 @@ export function MapView({
         source: appellationSourceId,
         paint: {
           'line-color': 'rgba(68, 48, 36, 0.64)',
-          'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.45, 11, 0.85],
+          'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.45, 13, 0.85],
           'line-opacity': [
             'interpolate',
             ['linear'],
             ['zoom'],
-            zoomTransitionStart,
-            ['case', ['in', ['get', 'id'], ['literal', lowZoomHullIds]], 0, 0.34],
-            zoomTransitionEnd,
+            10.8,
+            0,
+            11.2,
             0.34,
           ],
         },
@@ -448,9 +446,9 @@ export function MapView({
           'line-color': [
             'case',
             ['boolean', ['feature-state', 'selected'], false],
-            '#261318',
+            '#6f1627',
             ['boolean', ['feature-state', 'hover'], false],
-            '#261318',
+            '#6f1627',
             'rgba(255, 255, 255, 0.32)',
           ],
           'line-width': [
@@ -458,7 +456,7 @@ export function MapView({
             ['boolean', ['feature-state', 'selected'], false],
             3,
             ['boolean', ['feature-state', 'hover'], false],
-            2.4,
+            2.5,
             0.35,
           ],
           'line-opacity': [
@@ -698,7 +696,24 @@ export function MapView({
       return
     }
 
-    setLayerVisibility(map, 'osm-raster', layers.roadsBasemap)
+    if (!map.isStyleLoaded()) {
+      const handler = () => {
+        applyLayerSettings(map, layers, mode)
+      }
+      map.once('idle', handler)
+      return () => {
+        map.off('idle', handler)
+      }
+    }
+
+    applyLayerSettings(map, layers, mode)
+  }, [isReady, layers, mode])
+
+  function applyLayerSettings(map: Map, layers: LayerState, mode: ExperienceMode) {
+    if (!map.isStyleLoaded()) {
+      return
+    }
+
     setLayerVisibility(map, lowZoomHullLayerId, layers.aocBoundaries)
     setLayerVisibility(map, lowZoomHullShadeLayerId, layers.aocBoundaries)
     setLayerVisibility(map, lowZoomHullBorderLayerId, layers.aocBoundaries)
@@ -712,22 +727,29 @@ export function MapView({
     setLayerVisibility(map, labelLayerId, layers.studyLabels || mode === 'Study')
     setLayerVisibility(map, chateauCircleLayerId, true)
     setLayerVisibility(map, chateauLabelLayerId, true)
-    map.setPaintProperty(
-      lowZoomHullLayerId,
-      'fill-color',
-      appellationFillColorExpression(layers.grapeEmphasis),
-    )
-    map.setPaintProperty(
-      lowZoomHullShadeLayerId,
-      'fill-color',
-      '#1c0f12',
-    )
-    map.setPaintProperty(
-      fillLayerId,
-      'fill-color',
-      detailedAppellationFillColorExpression(layers.grapeEmphasis),
-    )
-  }, [isReady, layers, mode])
+
+    if (map.getLayer(lowZoomHullLayerId)) {
+      map.setPaintProperty(
+        lowZoomHullLayerId,
+        'fill-color',
+        appellationFillColorExpression(layers.grapeEmphasis),
+      )
+    }
+    if (map.getLayer(lowZoomHullShadeLayerId)) {
+      map.setPaintProperty(
+        lowZoomHullShadeLayerId,
+        'fill-color',
+        '#1c0f12',
+      )
+    }
+    if (map.getLayer(fillLayerId)) {
+      map.setPaintProperty(
+        fillLayerId,
+        'fill-color',
+        detailedAppellationFillColorExpression(layers.grapeEmphasis),
+      )
+    }
+  }
 
   useEffect(() => {
     const map = mapRef.current
@@ -736,58 +758,99 @@ export function MapView({
       return
     }
 
+    if (!map.isStyleLoaded()) {
+      const handler = () => {
+        applyFilters(map, filteredAppellationIds, hoveredRegion, legendHoveredId)
+      }
+      map.once('idle', handler)
+      return () => {
+        map.off('idle', handler)
+      }
+    }
+
+    applyFilters(map, filteredAppellationIds, hoveredRegion, legendHoveredId)
+  }, [filteredAppellationIds, hoveredRegion, isReady, legendHoveredId])
+
+  function applyFilters(
+    map: Map,
+    filteredAppellationIds: AppellationId[],
+    hoveredRegion: HoveredRegion | null,
+    legendHoveredId: AppellationId | null,
+  ) {
+    if (!map.isStyleLoaded()) {
+      return
+    }
+
     const filter: FilterSpecification =
       filteredAppellationIds.length > 0
         ? ['in', ['get', 'id'], ['literal', filteredAppellationIds]]
         : ['==', ['get', 'id'], '__none__']
 
-    map.setFilter(fillLayerId, filter)
-    map.setFilter(
-      lowZoomHullLayerId,
-      lowZoomRenderedHullIds.some((id) => filteredAppellationIds.includes(id))
-        ? [
-            'in',
-            ['get', 'id'],
-            [
-              'literal',
-              lowZoomRenderedHullIds.filter((id) => filteredAppellationIds.includes(id)),
-            ],
-          ]
-        : filterNone(),
-    )
-    map.setFilter(
-      lowZoomHullShadeLayerId,
-      lowZoomHullShadeFilter(hoveredRegion, legendHoveredId, filteredAppellationIds),
-    )
-    map.setFilter(
-      lowZoomHullBorderLayerId,
-      lowZoomRenderedHullIds.some((id) => filteredAppellationIds.includes(id))
-        ? [
-            'in',
-            ['get', 'id'],
-            [
-              'literal',
-              lowZoomRenderedHullIds.filter((id) => filteredAppellationIds.includes(id)),
-            ],
-          ]
-        : filterNone(),
-    )
-    map.setFilter(
-      hoverAppellationShadeLayerId,
-      hoveredRegion
-        ? ['==', ['get', 'id'], hoveredRegion.id]
-        : legendHoveredId
-          ? ['==', ['get', 'id'], legendHoveredId]
+    if (map.getLayer(fillLayerId)) {
+      map.setFilter(fillLayerId, filter)
+    }
+    if (map.getLayer(lowZoomHullLayerId)) {
+      map.setFilter(
+        lowZoomHullLayerId,
+        lowZoomRenderedHullIds.some((id) => filteredAppellationIds.includes(id))
+          ? [
+              'in',
+              ['get', 'id'],
+              [
+                'literal',
+                lowZoomRenderedHullIds.filter((id) => filteredAppellationIds.includes(id)),
+              ],
+            ]
           : filterNone(),
-    )
-    map.setFilter(
-      hoverCommuneShadeLayerId,
-      hoveredRegion ? communeShadeFilter(hoveredRegion) : filterNone(),
-    )
-    map.setFilter(communeBorderLayerId, filter)
-    map.setFilter(outlineLayerId, filter)
-    map.setFilter(labelLayerId, filter)
-  }, [filteredAppellationIds, hoveredRegion, isReady, legendHoveredId])
+      )
+    }
+    if (map.getLayer(lowZoomHullShadeLayerId)) {
+      map.setFilter(
+        lowZoomHullShadeLayerId,
+        lowZoomHullShadeFilter(hoveredRegion, legendHoveredId, filteredAppellationIds),
+      )
+    }
+    if (map.getLayer(lowZoomHullBorderLayerId)) {
+      map.setFilter(
+        lowZoomHullBorderLayerId,
+        lowZoomRenderedHullIds.some((id) => filteredAppellationIds.includes(id))
+          ? [
+              'in',
+              ['get', 'id'],
+              [
+                'literal',
+                lowZoomRenderedHullIds.filter((id) => filteredAppellationIds.includes(id)),
+              ],
+            ]
+          : filterNone(),
+      )
+    }
+    if (map.getLayer(hoverAppellationShadeLayerId)) {
+      map.setFilter(
+        hoverAppellationShadeLayerId,
+        hoveredRegion
+          ? ['==', ['get', 'id'], hoveredRegion.id]
+          : legendHoveredId
+            ? ['==', ['get', 'id'], legendHoveredId]
+            : filterNone(),
+      )
+    }
+    if (map.getLayer(hoverCommuneShadeLayerId)) {
+      map.setFilter(
+        hoverCommuneShadeLayerId,
+        hoveredRegion ? communeShadeFilter(hoveredRegion) : filterNone(),
+      )
+    }
+    if (map.getLayer(communeBorderLayerId)) {
+      map.setFilter(communeBorderLayerId, filter)
+    }
+    if (map.getLayer(outlineLayerId)) {
+      map.setFilter(outlineLayerId, filter)
+    }
+    if (map.getLayer(labelLayerId)) {
+      map.setFilter(labelLayerId, filter)
+    }
+  }
 
   useEffect(() => {
     const map = mapRef.current

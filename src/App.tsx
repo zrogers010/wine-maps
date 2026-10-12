@@ -150,12 +150,20 @@ function RegionIndexPage() {
           Master wine geography with interactive maps of the world's most important
           wine regions. Built specifically for WSET Level 2 and Level 3 students.
         </p>
-        <p>
-          Explore appellation boundaries from INAO data. Hover any parcel to study
-          the hierarchy, grapes, soils, and exam cues behind it. Learn the geography
-          that matters for your wine exams.
-        </p>
       </section>
+
+      {countries.map((country) => (
+        <section className="region-index-country" key={country}>
+          <h2>{country}</h2>
+          <div className="region-card-grid">
+            {regions
+              .filter((region) => region.country === country)
+              .map((region) => (
+                <RegionCard key={region.id} region={region} />
+              ))}
+          </div>
+        </section>
+      ))}
 
       <section className="wset-explainer">
         <h2>Why SommelierMaps?</h2>
@@ -173,19 +181,6 @@ function RegionIndexPage() {
           your WSET Level 2 or Level 3 exam.
         </p>
       </section>
-
-      {countries.map((country) => (
-        <section className="region-index-country" key={country}>
-          <h2>{country}</h2>
-          <div className="region-card-grid">
-            {regions
-              .filter((region) => region.country === country)
-              .map((region) => (
-                <RegionCard key={region.id} region={region} />
-              ))}
-          </div>
-        </section>
-      ))}
 
       <section className="inao-attribution">
         <p>

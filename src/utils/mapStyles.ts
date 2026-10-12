@@ -1,38 +1,49 @@
 import type { ExpressionSpecification, StyleSpecification } from 'maplibre-gl'
 
 export const APPELLATION_COLORS: Record<string, string> = {
-  medoc: '#65b84a',
-  'haut-medoc': '#b7d96b',
-  'saint-estephe': '#16b989',
-  pauillac: '#1c7ed6',
-  'saint-julien': '#18b7d8',
-  margaux: '#2fca72',
-  'moulis-en-medoc': '#f2b84b',
-  'listrac-medoc': '#e46f55',
-  'entre-deux-mers': '#f7d95b',
-  'entre-deux-mers-haut-benauge': '#f0a53a',
-  cadillac: '#c17bdc',
-  'cotes-de-bordeaux-cadillac': '#a56bd6',
-  loupiac: '#ff9f43',
-  'sainte-croix-du-mont': '#ffcf5c',
-  'premieres-cotes-de-bordeaux': '#e879b7',
-  'cotes-de-bordeaux-saint-macaire': '#c9b458',
-  'graves-de-vayres': '#7cc7e8',
-  'saint-emilion': '#d14f7a',
-  pomerol: '#9d4edd',
-  'lalande-de-pomerol': '#b565d9',
-  fronsac: '#c44569',
-  'canon-fronsac': '#e15f41',
-  'montagne-saint-emilion': '#f08a5d',
-  'lussac-saint-emilion': '#f6a04d',
-  'puisseguin-saint-emilion': '#cf6a87',
-  'saint-georges-saint-emilion': '#e66767',
-  'pessac-leognan': '#8d6e63',
-  graves: '#b08d57',
-  'graves-superieures': '#d4a64f',
-  sauternes: '#f2c94c',
-  barsac: '#f6d365',
-  cerons: '#d7b55a',
+  // Left Bank - Médoc: gravel tones (muted earth browns and taupes)
+  medoc: '#9d8b7a',
+  'haut-medoc': '#b5a08f',
+  'saint-estephe': '#8a7568',
+  pauillac: '#7a6456',
+  'saint-julien': '#9c8775',
+  margaux: '#b89f8d',
+  'moulis-en-medoc': '#c4ac99',
+  'listrac-medoc': '#a6917f',
+  
+  // Entre-Deux-Mers: soft greens
+  'entre-deux-mers': '#b5c4a7',
+  'entre-deux-mers-haut-benauge': '#a3b697',
+  
+  // Sweet whites: warm golds
+  cadillac: '#d4b88a',
+  'cotes-de-bordeaux-cadillac': '#ccb082',
+  loupiac: '#e8c896',
+  'sainte-croix-du-mont': '#f0d5a3',
+  'premieres-cotes-de-bordeaux': '#ddc092',
+  'cotes-de-bordeaux-saint-macaire': '#c9b785',
+  'graves-de-vayres': '#b3aa92',
+  
+  // Right Bank: plum and berry tones
+  'saint-emilion': '#a8748e',
+  pomerol: '#8d6982',
+  'lalande-de-pomerol': '#9d7a91',
+  fronsac: '#b5829e',
+  'canon-fronsac': '#9e6d89',
+  'montagne-saint-emilion': '#b88ba0',
+  'lussac-saint-emilion': '#c59aad',
+  'puisseguin-saint-emilion': '#a77d93',
+  'saint-georges-saint-emilion': '#b0869c',
+  
+  // Graves region: earthy browns
+  'pessac-leognan': '#9a7d6d',
+  graves: '#b08d7a',
+  'graves-superieures': '#c4a085',
+  
+  // Sauternes/Barsac: rich golds
+  sauternes: '#ddb876',
+  barsac: '#e8c688',
+  cerons: '#d5b47d',
 }
 
 export const GRAPE_COLORS: Record<string, string> = {
@@ -45,19 +56,13 @@ export const GRAPE_COLORS: Record<string, string> = {
 export function createAtlasMapStyle(): StyleSpecification {
   return {
     version: 8,
-    glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+    glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
     sources: {
-      'osm-raster': {
-        type: 'raster',
-        // @2x tiles keep the basemap crisp on retina screens and during
-        // fractional-zoom animation instead of blurring between levels.
-        tiles: [
-          'https://a.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}@2x.png',
-          'https://b.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}@2x.png',
-          'https://c.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}@2x.png',
-        ],
-        tileSize: 256,
-        attribution: '© OpenStreetMap contributors © CARTO',
+      'openmaptiles': {
+        type: 'vector',
+        tiles: ['https://tiles.openfreemap.org/planet/{z}/{x}/{y}.pbf'],
+        maxzoom: 14,
+        attribution: '© OpenStreetMap contributors, OpenFreeMap',
       },
     },
     layers: [
@@ -69,15 +74,70 @@ export function createAtlasMapStyle(): StyleSpecification {
         },
       },
       {
-        id: 'osm-raster',
-        type: 'raster',
-        source: 'osm-raster',
+        id: 'water',
+        type: 'fill',
+        source: 'openmaptiles',
+        'source-layer': 'water',
         paint: {
-          'raster-opacity': 0.82,
-          'raster-saturation': -0.46,
-          'raster-contrast': -0.22,
-          'raster-brightness-min': 0.16,
-          'raster-brightness-max': 1,
+          'fill-color': '#d4c7b0',
+          'fill-opacity': 0.5,
+        },
+      },
+      {
+        id: 'waterway',
+        type: 'line',
+        source: 'openmaptiles',
+        'source-layer': 'waterway',
+        minzoom: 8,
+        filter: ['in', ['get', 'class'], ['literal', ['river', 'canal']]],
+        paint: {
+          'line-color': '#c4b8a0',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.5, 12, 2],
+          'line-opacity': 0.4,
+        },
+      },
+      {
+        id: 'landcover',
+        type: 'fill',
+        source: 'openmaptiles',
+        'source-layer': 'landcover',
+        maxzoom: 12,
+        paint: {
+          'fill-color': '#e8ddc8',
+          'fill-opacity': 0.3,
+        },
+      },
+      {
+        id: 'landuse',
+        type: 'fill',
+        source: 'openmaptiles',
+        'source-layer': 'landuse',
+        maxzoom: 12,
+        paint: {
+          'fill-color': '#ebe0cd',
+          'fill-opacity': 0.2,
+        },
+      },
+      {
+        id: 'place-labels',
+        type: 'symbol',
+        source: 'openmaptiles',
+        'source-layer': 'place',
+        minzoom: 8,
+        filter: ['in', ['get', 'class'], ['literal', ['town', 'village', 'hamlet']]],
+        layout: {
+          'text-field': ['get', 'name'],
+          'text-font': ['Noto Sans Regular'],
+          'text-size': ['interpolate', ['linear'], ['zoom'], 8, 9, 12, 11],
+          'text-anchor': 'center',
+          'text-offset': [0, 0.3],
+          'text-max-width': 8,
+        },
+        paint: {
+          'text-color': '#8a7864',
+          'text-halo-color': 'rgba(241, 229, 207, 0.9)',
+          'text-halo-width': 1.5,
+          'text-opacity': 0.6,
         },
       },
     ],

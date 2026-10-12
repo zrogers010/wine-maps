@@ -135,8 +135,8 @@ export function StudyRegionMapPage({
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: createAtlasMapStyle(),
-      center: hashCamera?.center ?? [4.25, 48.85],
-      zoom: hashCamera?.zoom ?? 8,
+      center: hashCamera?.center ?? [7.25, 48.75],
+      zoom: hashCamera?.zoom ?? 8.8,
       minZoom: 6.5,
       maxZoom: 14,
       attributionControl: false,
@@ -167,7 +167,6 @@ export function StudyRegionMapPage({
     map.addControl(
       new maplibregl.AttributionControl({
         compact: true,
-        customAttribution: 'SommelierMaps dev data',
       }),
       'bottom-right',
     )
@@ -780,13 +779,26 @@ function StudyHoverCard({
 }
 
 async function loadGeoJson(path: string): Promise<FeatureCollection> {
-  const response = await fetch(path)
+  try {
+    const response = await fetch(path)
 
-  if (!response.ok) {
-    throw new Error(`Failed to load GeoJSON ${path}: ${response.status}`)
+    if (!response.ok) {
+      console.warn(`GeoJSON file not available: ${path}`)
+      // Return empty FeatureCollection if file not found
+      return {
+        type: 'FeatureCollection',
+        features: [],
+      }
+    }
+
+    return (await response.json()) as FeatureCollection
+  } catch (error) {
+    console.warn(`Error loading GeoJSON from ${path}:`, error)
+    return {
+      type: 'FeatureCollection',
+      features: [],
+    }
   }
-
-  return (await response.json()) as FeatureCollection
 }
 
 function createLabelPoints(

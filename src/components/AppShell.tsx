@@ -9,13 +9,14 @@ import type {
 import { APPELLATION_COLORS } from '../utils/mapStyles'
 import { trackAppellationSelect } from '../utils/analytics'
 import { MapView } from './MapView'
+import { MapErrorBoundary } from './MapErrorBoundary'
 
 const appellations = appellationData as AppellationMetadata[]
 const hiddenMapIds: AppellationId[] = ['graves-superieures']
 
 const regionLegendGroups: Array<{ title: string; ids: AppellationId[] }> = [
   {
-    title: 'Bordeaux / Médoc',
+    title: 'Médoc',
     ids: [
       'medoc',
       'haut-medoc',
@@ -28,7 +29,7 @@ const regionLegendGroups: Array<{ title: string; ids: AppellationId[] }> = [
     ],
   },
   {
-    title: 'Bordeaux / Entre-Deux-Mers',
+    title: 'Entre-Deux-Mers',
     ids: [
       'entre-deux-mers',
       'entre-deux-mers-haut-benauge',
@@ -42,7 +43,7 @@ const regionLegendGroups: Array<{ title: string; ids: AppellationId[] }> = [
     ],
   },
   {
-    title: 'Bordeaux / Right Bank',
+    title: 'Right Bank',
     ids: [
       'saint-emilion',
       'pomerol',
@@ -56,7 +57,7 @@ const regionLegendGroups: Array<{ title: string; ids: AppellationId[] }> = [
     ],
   },
   {
-    title: 'Bordeaux / Graves & Sauternes',
+    title: 'Graves & Sauternes',
     ids: [
       'pessac-leognan',
       'graves',
@@ -95,16 +96,18 @@ export function AppShell({ initialSelectedId }: { initialSelectedId?: Appellatio
 
   return (
     <div className="map-only-shell">
-      <MapView
-        appellations={appellations}
-        filteredAppellationIds={filteredIds}
-        layers={layers}
-        mode={mode}
-        selectedId={selectedId}
-        legendHoveredId={legendHoveredId}
-        subregionHoveredIds={subregionHoveredIds}
-        onSelectAppellation={handleSelectAppellation}
-      />
+      <MapErrorBoundary>
+        <MapView
+          appellations={appellations}
+          filteredAppellationIds={filteredIds}
+          layers={layers}
+          mode={mode}
+          selectedId={selectedId}
+          legendHoveredId={legendHoveredId}
+          subregionHoveredIds={subregionHoveredIds}
+          onSelectAppellation={handleSelectAppellation}
+        />
+      </MapErrorBoundary>
       <div className="map-source-badge">
         INAO/data.gouv.fr AOC viticole parcel delimitation extract. Online data
         are informational; official plans remain with town halls or INAO.

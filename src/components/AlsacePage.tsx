@@ -247,19 +247,19 @@ const alsaceColors = Object.fromEntries(
 
 const legendGroups = [
   {
-    title: 'Alsace / Regional',
+    title: 'Regional',
     ids: ['alsace', 'cremant-d-alsace'],
   },
   {
-    title: 'Alsace / Northern Grand Cru',
+    title: 'Northern Grand Cru',
     ids: grandCruIds(northernGrandCruNames),
   },
   {
-    title: 'Alsace / Central Grand Cru',
+    title: 'Central Grand Cru',
     ids: grandCruIds(centralGrandCruNames),
   },
   {
-    title: 'Alsace / Southern Grand Cru',
+    title: 'Southern Grand Cru',
     ids: grandCruIds(southernGrandCruNames),
   },
 ]

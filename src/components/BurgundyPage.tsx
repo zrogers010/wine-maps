@@ -197,11 +197,11 @@ const grandCruColors: Record<string, string> = {
 
 const legendGroups = [
   {
-    title: 'Burgundy / Chablis',
+    title: 'Chablis',
     ids: ['petit-chablis', 'chablis', 'chablis-grand-cru'],
   },
   {
-    title: 'Burgundy / Côte de Nuits',
+    title: 'Côte de Nuits',
     ids: [
       'gevrey-chambertin',
       'morey-saint-denis',
@@ -212,7 +212,7 @@ const legendGroups = [
     ],
   },
   {
-    title: 'Burgundy / Côte de Beaune',
+    title: 'Côte de Beaune',
     ids: [
       'aloxe-corton',
       'beaune',
@@ -271,8 +271,8 @@ export function BurgundyPage() {
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: createAtlasMapStyle(),
-      center: hashCamera?.center ?? [4.8, 47.2],
-      zoom: hashCamera?.zoom ?? 8.4,
+      center: hashCamera?.center ?? [4.87, 46.98],
+      zoom: hashCamera?.zoom ?? 9.2,
       minZoom: 6.8,
       maxZoom: 14,
       attributionControl: false,
@@ -298,7 +298,6 @@ export function BurgundyPage() {
     map.addControl(
       new maplibregl.AttributionControl({
         compact: true,
-        customAttribution: 'SommelierMaps dev data',
       }),
       'bottom-right',
     )
@@ -1033,13 +1032,25 @@ function BurgundyHoverCard({
 }
 
 async function loadGeoJson(path: string): Promise<FeatureCollection> {
-  const response = await fetch(path)
+  try {
+    const response = await fetch(path)
 
-  if (!response.ok) {
-    throw new Error(`Failed to load GeoJSON ${path}: ${response.status}`)
+    if (!response.ok) {
+      console.warn(`GeoJSON file not available: ${path}`)
+      return {
+        type: 'FeatureCollection',
+        features: [],
+      }
+    }
+
+    return (await response.json()) as FeatureCollection
+  } catch (error) {
+    console.warn(`Error loading GeoJSON from ${path}:`, error)
+    return {
+      type: 'FeatureCollection',
+      features: [],
+    }
   }
-
-  return (await response.json()) as FeatureCollection
 }
 
 function createLabelPoints(geoJson: FeatureCollection): FeatureCollection {

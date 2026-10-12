@@ -14,7 +14,7 @@ const champagneColors: Record<string, string> = {
 
 const legendGroups = [
   {
-    title: 'Champagne / AOC',
+    title: 'Appellations',
     ids: ['champagne', 'coteaux-champenois', 'rose-des-riceys'],
   },
 ]
