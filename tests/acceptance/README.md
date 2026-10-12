@@ -5,7 +5,7 @@ Exits `0` when all checks pass, `1` on any failure, `2` on bad usage.
 
 ## Run
 ```bash
-cd /workspace/sm-acceptance
+cd tests/acceptance
 npm install                 # only dependency: playwright
 # app: npm run build && npx vite preview --port 4173   (runtime GeoJSON must be in public/data)
 node acceptance.mjs http://localhost:4173 [--out ./acceptance-shots] [--only a,b,c,d,e,f,g,h]
@@ -32,7 +32,7 @@ The app must expose the MapLibre instance as `window.__wineMap` **only** when th
 | e | No `pageerror` or `console.error` on any page visited (includes "There is no tile manager…"). |
 | f | `window.__wineMap` undefined without `?test=1`. |
 | g | Line features from water/hydro layers rendered over the Médoc bbox must all have `class === 'river'`, checked both initially and after selecting Pauillac (custom GeoJSON lines without a class fail). |
-| h | Home `.region-card-media` thumbnails: > 15% of pixels differ (RGB dist > 28) from the dominant background color, per card. |
+| h | Home `.region-card-media` thumbnails: > 15% of pixels differ (RGB dist > 28) from the dominant background color, per card; **and** a shape test: non-background pixels fill < 85% of their own bounding box (rejects rectangles/squares) and the card SVG has ≥ 60 path commands. |
 
 Selectors, region routes, GeoJSON path and thresholds are constants at the top of `acceptance.mjs`.
 

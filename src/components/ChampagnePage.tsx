@@ -20,9 +20,10 @@ const legendGroups = [
   },
 ]
 
-export function ChampagnePage() {
+export function ChampagnePage({ initialSelectedId }: { initialSelectedId?: string } = {}) {
   return (
     <StudyRegionMapPage
+      initialSelectedId={initialSelectedId}
       appellations={appellations}
       colors={champagneColors}
       detailDataPath="/data/france/champagne/champagne-opendatawine-display-2026.geojson"

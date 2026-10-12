@@ -263,9 +263,10 @@ const legendGroups = [
   },
 ]
 
-export function AlsacePage() {
+export function AlsacePage({ initialSelectedId }: { initialSelectedId?: string } = {}) {
   return (
     <StudyRegionMapPage
+      initialSelectedId={initialSelectedId}
       appellations={appellations}
       colors={alsaceColors}
       detailDataPath="/data/france/alsace/alsace-display-2026.geojson"

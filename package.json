@@ -21,7 +21,7 @@
     "data:probe-champagne-official": "node scripts/probe-champagne-official-data.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test:acceptance": "npm run build && npx vite preview --port 4173 & sleep 5 && node tests/acceptance/acceptance.mjs http://localhost:4173; kill %1"
+    "test:acceptance": "node tests/acceptance/acceptance.mjs"
   },
   "dependencies": {
     "@turf/turf": "^7.3.5",
@@ -32,7 +32,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@playwright/test": "^1.64.0",
     "@types/d3": "^7.4.3",
     "@types/geojson": "^7946.0.16",
     "@types/node": "^24.12.2",

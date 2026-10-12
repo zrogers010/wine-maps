@@ -208,9 +208,17 @@ try {
       const r = await withPixels(p, buf, `(d) => { const n = d.width*d.height, hist = new Map();
         for (let i=0;i<n*4;i+=4){ const k=(d.data[i]>>3)<<10|(d.data[i+1]>>3)<<5|(d.data[i+2]>>3); hist.set(k,(hist.get(k)||0)+1); }
         const bk=[...hist.entries()].sort((a,b)=>b[1]-a[1])[0][0]; const bg=[(bk>>10&31)*8+4,(bk>>5&31)*8+4,(bk&31)*8+4]; let fg=0;
-        for (let i=0;i<n*4;i+=4){ if (Math.hypot(d.data[i]-bg[0],d.data[i+1]-bg[1],d.data[i+2]-bg[2])>28) fg++; }
-        return { w:d.width, h:d.height, coverage:+(fg/n).toFixed(3) }; }`);
+        let x0=d.width,y0=d.height,x1=-1,y1=-1;
+        for (let i=0;i<n*4;i+=4){ if (Math.hypot(d.data[i]-bg[0],d.data[i+1]-bg[1],d.data[i+2]-bg[2])>28){ fg++; const p=i/4,x=p%d.width,y=(p/d.width)|0; if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } }
+        const bboxArea = x1>=0 ? (x1-x0+1)*(y1-y0+1) : 0;
+        return { w:d.width, h:d.height, coverage:+(fg/n).toFixed(3), fillOfBbox: bboxArea ? +(fg/bboxArea).toFixed(3) : 0 }; }`);
       check('h', `home thumbnail "${name}" non-background coverage > 15%`, r.coverage > 0.15, r);
+      // Shape test: a real region outline must not be a near-rectangle and must be a reasonably complex path.
+      const svg = await media.evaluate(el => { const s = el.tagName.toLowerCase() === 'svg' ? el : el.querySelector('svg');
+        if (!s) return null; const paths = [...s.querySelectorAll('path')]; const cmds = paths.reduce((a, p) => a + ((p.getAttribute('d') || '').match(/[MLHVCSQTAZ]/gi) || []).length, 0);
+        return { paths: paths.length, pathCommands: cmds, rects: s.querySelectorAll('rect').length, circles: s.querySelectorAll('circle,ellipse').length }; });
+      check('h', `home thumbnail "${name}" is a real shape (filled/bbox < 0.85 and >= 60 path commands)`,
+        r.fillOfBbox > 0 && r.fillOfBbox < 0.85 && svg && svg.pathCommands >= 60, { fillOfBbox: r.fillOfBbox, ...svg });
     }
     await p.close();
   }

@@ -1,11 +1,21 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { area, booleanPointInPolygon, point, pointOnFeature } from '@turf/turf'
+import {
+  addSelectedOutlineLayers,
+  boundsForIds,
+  exposeMapForTests,
+  fitSelection,
+  keepAboveSheet,
+  pickAppellationAt,
+  setSelectedOutline,
+} from '../utils/selection'
 import maplibregl, {
   type ExpressionSpecification,
   type FilterSpecification,
   type GeoJSONSourceSpecification,
   type Map,
   type MapLayerMouseEvent,
+  type MapMouseEvent,
 } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import chateauData from '../data/france/bordeaux/chateaux.json'
@@ -43,6 +53,8 @@ interface MapViewProps {
   layers: LayerState
   mode: ExperienceMode
   selectedId: AppellationId | null
+  /** Appellation from the URL (/bordeaux/<id>/); framed once when the map is ready. */
+  deepLinkId?: AppellationId | null
   onSelectAppellation: (id: AppellationId | null) => void
 }
 
@@ -116,6 +128,8 @@ type ChateauWithCommune = ChateauPoint & {
   insee?: string
 }
 
+const BORDEAUX_DETAIL_URL = '/data/france/bordeaux/bordeaux-display-exclusive-2026.geojson'
+
 export function MapView({
   appellations,
   filteredAppellationIds,
@@ -124,6 +138,7 @@ export function MapView({
   layers,
   mode,
   selectedId,
+  deepLinkId = null,
   onSelectAppellation,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -177,10 +192,7 @@ export function MapView({
 
     attachCameraHashSync(map, '/bordeaux')
 
-    // Expose map globally for E2E tests only when ?test=1 is present
-    if (new URLSearchParams(window.location.search).has('test')) {
-      ;(window as unknown as { __wineMap?: maplibregl.Map }).__wineMap = map
-    }
+    exposeMapForTests(map)
 
     // Gentler wheel steps make trackpad/mouse zooming feel fluid instead of jumpy.
     map.scrollZoom.setWheelZoomRate(1 / 700)
@@ -203,7 +215,7 @@ export function MapView({
 
     map.on('load', async () => {
       const [bordeauxGeoJson, lowZoomHullGeoJson] = await Promise.all([
-        loadBordeauxGeoJson('/data/france/bordeaux/bordeaux-display-exclusive-2026.geojson'),
+        loadBordeauxGeoJson(BORDEAUX_DETAIL_URL),
         loadBordeauxGeoJson('/data/france/bordeaux/bordeaux-display-cadillac-dissolve-trial-2026.geojson'),
       ])
 
@@ -211,13 +223,19 @@ export function MapView({
         return
       }
 
-      setChateauxWithCommune(attachCommuneToChateaux(chateaux, bordeauxGeoJson))
+      // Point-in-polygon over ~12 MB of parcels is not needed for first paint.
+      window.setTimeout(() => {
+        if (!cancelled) setChateauxWithCommune(attachCommuneToChateaux(chateaux, bordeauxGeoJson))
+      }, 1500)
       lowZoomHullGeoJsonRef.current = lowZoomHullGeoJson
       bordeauxGeoJsonRef.current = bordeauxGeoJson
 
       map.addSource(appellationSourceId, {
         type: 'geojson',
-        data: bordeauxGeoJson,
+        // Pass the URL so the worker fetches (HTTP-cached) and parses it itself,
+        // instead of structured-cloning a 12 MB object off the main thread.
+        data: BORDEAUX_DETAIL_URL,
+        tolerance: 0.5,
       } satisfies GeoJSONSourceSpecification)
 
       map.addSource(lowZoomHullSourceId, {
@@ -512,10 +530,12 @@ export function MapView({
 
       map.on('mousemove', lowZoomHullLayerId, handleHullMouseMove)
       map.on('mouseleave', lowZoomHullLayerId, handleMouseLeave)
-      map.on('click', lowZoomHullLayerId, handleClick)
       map.on('mousemove', fillLayerId, handleMouseMove)
       map.on('mouseleave', fillLayerId, handleDetailMouseLeave)
-      map.on('click', fillLayerId, handleClick)
+      addSelectedOutlineLayers(map, appellationSourceId, 'appellation')
+      map.moveLayer('appellation-selection-halo', labelLayerId)
+      map.moveLayer('appellation-selected-outline', labelLayerId)
+      map.on('click', handleClick)
 
       const overviewBounds = getFeatureCollectionBounds(bordeauxGeoJson)
       overviewBoundsRef.current = overviewBounds
@@ -612,11 +632,17 @@ export function MapView({
       handleMouseLeave()
     }
 
-    function handleClick(event: MapLayerMouseEvent) {
-      const id = getFeatureId(event.features?.[0]?.properties)
+    // One click handler for the whole map: select the topmost appellation
+    // actually rendered under the pointer. The camera never zooms on click;
+    // on mobile it only pans enough to keep the feature above the sheet.
+    function handleClick(event: MapMouseEvent) {
+      const id = getFeatureId({
+        id: pickAppellationAt(map, event.point, [fillLayerId, lowZoomHullLayerId]),
+      })
 
       if (id) {
         onSelectAppellation(id)
+        keepAboveSheet(map, event.lngLat)
       }
     }
 
@@ -692,9 +718,8 @@ export function MapView({
     legendHoveredId: AppellationId | null,
     selectedId: AppellationId | null,
   ) => {
-    if (!map.isStyleLoaded()) {
-      return
-    }
+    // Every setter below is guarded by getLayer(), so this is safe while tiles
+    // are still loading (isStyleLoaded() is false during the deep-link fit).
 
     const filter: FilterSpecification =
       filteredAppellationIds.length > 0
@@ -755,11 +780,10 @@ export function MapView({
           ? ['==', ['get', 'id'], hoveredRegion.id]
           : legendHoveredId
             ? ['==', ['get', 'id'], legendHoveredId]
-            : selectedId
-              ? ['==', ['get', 'id'], selectedId]
-              : filterNone(),
+            : filterNone(),
       )
     }
+    setSelectedOutline(map, 'appellation', selectedId)
     if (map.getLayer(hoverCommuneShadeLayerId)) {
       map.setFilter(
         hoverCommuneShadeLayerId,
@@ -804,208 +828,37 @@ export function MapView({
       return
     }
 
-    if (!map.isStyleLoaded()) {
-      const handler = () => {
-        applyFilters(map, filteredAppellationIds, hoveredRegion, legendHoveredId, selectedId)
-      }
-      map.once('idle', handler)
-      return () => {
-        map.off('idle', handler)
-      }
-    }
-
     applyFilters(map, filteredAppellationIds, hoveredRegion, legendHoveredId, selectedId)
   }, [filteredAppellationIds, hoveredRegion, isReady, legendHoveredId, selectedId, applyFilters])
 
-  // Handle initial selected appellation (deep linking) - only on first load
+  // Deep link (/bordeaux/<id>/): frame every parcel of the appellation once,
+  // padded for the detail panel (desktop) or bottom sheet (mobile).
   useEffect(() => {
     const map = mapRef.current
-    const geojson = bordeauxGeoJsonRef.current
 
-    // Only run once on initial mount if selectedId is set (deep link)
-    if (hasPerformedInitialFitRef.current || !map || !isReady || !selectedId || !geojson) {
+    if (hasPerformedInitialFitRef.current || !map || !isReady) {
       return
     }
 
-    // Mark as performed immediately to prevent overview from running
     hasPerformedInitialFitRef.current = true
+    const bounds = deepLinkId
+      ? boundsForIds([bordeauxGeoJsonRef.current, lowZoomHullGeoJsonRef.current], [deepLinkId])
+      : null
 
-    // Find the feature geometry for the selected appellation
-    const feature = geojson.features.find((f) => f.properties?.id === selectedId)
-    if (!feature || !feature.geometry) {
-      return
+    if (bounds) {
+      // Wait a frame so the panel/sheet is laid out before measuring padding.
+      const frame = requestAnimationFrame(() => fitSelection(map, bounds))
+      return () => cancelAnimationFrame(frame)
     }
 
-    const performFitAndSelect = () => {
-      if (!map.isStyleLoaded()) {
-        return
-      }
-      
-      // Check if source exists and is loaded
-      try {
-        const source = map.getSource(appellationSourceId)
-        if (!source) {
-          return
-        }
-      } catch (e) {
-        // Source doesn't exist yet
-        return
-      }
-
-      // Ensure map container has correct size (important for mobile)
-      map.resize()
-
-      // Calculate bounds and fit to the selected appellation
-      const bounds = getFeatureCollectionBounds({
-        type: 'FeatureCollection',
-        features: [feature],
-      } as FeatureCollection)
-
-      if (bounds) {
-        // Check if mobile viewport
-        const isMobile = window.innerWidth < 769
-        const sheetHeight = isMobile ? window.innerHeight * 0.45 : 0
-        
-        // Calculate camera for bounds
-        const result = map.cameraForBounds(bounds, {
-          padding: {
-            top: 50,
-            bottom: isMobile ? sheetHeight + 50 : 50,
-            left: 50,
-            right: 50,
-          },
-          minZoom: 10.1,
-          maxZoom: 13,
-        })
-        
-        if (result && result.center) {
-          // Use jumpTo to instantly set the camera
-          map.jumpTo({
-            center: result.center,
-            zoom: result.zoom || 10.1,
-          })
-        } else {
-          // Fallback
-          map.fitBounds(bounds, {
-            padding: {
-              top: 50,
-              bottom: isMobile ? sheetHeight + 50 : 50,
-              left: 50,
-              right: 50,
-            },
-            minZoom: 10.1,
-            maxZoom: 13,
-            duration: 600,
-          })
-        }
-      }
-
-      // Set the feature as selected
-      const featureId = feature.id || feature.properties?.id
-      if (featureId) {
-        map.setFeatureState(
-          { source: appellationSourceId, id: featureId },
-          { selected: true },
-        )
-      }
-    }
-
-    // Wait for both style and source to be loaded
-    if (!map.isStyleLoaded()) {
-      const checkAndPerform = () => {
-        if (map.isStyleLoaded() && map.getSource(appellationSourceId)) {
-          performFitAndSelect()
-        }
-      }
-      
-      map.once('sourcedata', checkAndPerform)
-      map.once('idle', checkAndPerform)
-      
-      return () => {
-        map.off('sourcedata', checkAndPerform)
-        map.off('idle', checkAndPerform)
-      }
-    }
-
-    performFitAndSelect()
-  }, [selectedId, isReady])
-
-  // Overview fitBounds - only when there's no deep link
-  useEffect(() => {
-    const map = mapRef.current
-    const overviewBounds = overviewBoundsRef.current
-    
-    // Only fit to overview if:
-    // 1. No selectedId (no deep link)
-    // 2. No hash camera
-    // 3. Haven't already performed an initial fit
-    const hashCamera = readCameraFromHash()
-    if (!map || !isReady || selectedId || hashCamera || !overviewBounds || hasPerformedInitialFitRef.current) {
-      return
-    }
-
-    // Wait a moment before overview, in case deep link is loading
-    const timer = setTimeout(() => {
-      map.fitBounds(overviewBounds, {
+    if (!readCameraFromHash() && overviewBoundsRef.current) {
+      map.fitBounds(overviewBoundsRef.current, {
         padding: OVERVIEW_PADDING,
         duration: 1100,
         essential: true,
       })
-    }, 150)
-    
-    return () => clearTimeout(timer)
-  }, [isReady, selectedId])
-
-  // Ease map on mobile when feature selected to keep it visible above sheet
-  useEffect(() => {
-    const map = mapRef.current
-    const geojson = bordeauxGeoJsonRef.current
-
-    // Only on mobile
-    const isMobile = window.innerWidth < 769
-    if (!map || !isReady || !selectedId || !geojson || !isMobile) {
-      return
     }
-
-    // Find the feature
-    const feature = geojson.features.find((f) => f.properties?.id === selectedId)
-    if (!feature || !feature.geometry) {
-      return
-    }
-
-    // Get the center point of the feature
-    const centerPoint = pointOnFeature(feature)
-    if (!centerPoint?.geometry?.coordinates) {
-      return
-    }
-
-    const [lng, lat] = centerPoint.geometry.coordinates
-
-    // Ease to the feature with bottom padding for the sheet
-    // Wait for initial fitBounds to complete
-    const sheetHeight = window.innerHeight * 0.45
-    
-    const doEase = () => {
-      if (map.isStyleLoaded() && !map.isMoving()) {
-        map.easeTo({
-          center: [lng, lat],
-          padding: {
-            top: 40,
-            bottom: sheetHeight + 120,
-            left: 40,
-            right: 40,
-          },
-          duration: 500,
-          essential: true,
-        })
-      }
-    }
-    
-    // Give alsace more time before checking if it needs easing
-    const timer = setTimeout(doEase, 1200)
-    
-    return () => clearTimeout(timer)
-  }, [selectedId, isReady])
+  }, [deepLinkId, isReady])
 
   useEffect(() => {
     const map = mapRef.current

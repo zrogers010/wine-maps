@@ -6,6 +6,7 @@ import maplibregl, {
   type GeoJSONSourceSpecification,
   type Map as MapLibreMap,
   type MapLayerMouseEvent,
+  type MapMouseEvent,
 } from 'maplibre-gl'
 import type { Feature, FeatureCollection, Geometry } from 'geojson'
 import appellationData from '../data/france/burgundy/appellations.json'
@@ -20,6 +21,15 @@ import { createAtlasMapStyle } from '../utils/mapStyles'
 import { attachCameraHashSync, readCameraFromHash } from '../utils/urlHash'
 import { trackAppellationSelect } from '../utils/analytics'
 import { MapLoadingVeil } from './MapLoadingVeil'
+import {
+  addSelectedOutlineLayers,
+  boundsForIds,
+  exposeMapForTests,
+  fitSelection,
+  keepAboveSheet,
+  pickAppellationAt,
+  setSelectedOutline,
+} from '../utils/selection'
 
 type SourceFeatureId = string | number
 
@@ -251,7 +261,7 @@ const legendGroups = [
   },
 ]
 
-export function BurgundyPage() {
+export function BurgundyPage({ initialSelectedId }: { initialSelectedId?: string } = {}) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const overviewBoundsRef = useRef<[[number, number], [number, number]] | null>(null)
@@ -263,7 +273,8 @@ export function BurgundyPage() {
   const lastSelectedIdRef = useRef<string | null>(null)
   const [isReady, setIsReady] = useState(false)
   const [hoveredRegion, setHoveredRegion] = useState<HoveredBurgundyRegion | null>(null)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null)
+  const deepLinkIdRef = useRef<string | null>(initialSelectedId ?? null)
   const [legendHoveredId, setLegendHoveredId] = useState<string | null>(null)
   const [subregionHoveredIds, setSubregionHoveredIds] = useState<string[] | null>(null)
 
@@ -593,16 +604,38 @@ export function BurgundyPage() {
 
       map.on('mousemove', burgundyLowZoomLayerId, handleHullMouseMove)
       map.on('mouseleave', burgundyLowZoomLayerId, handleMouseLeave)
-      map.on('click', burgundyLowZoomLayerId, handleClick)
       map.on('mousemove', burgundyFillLayerId, handleMouseMove)
       map.on('mouseleave', burgundyFillLayerId, handleDetailMouseLeave)
-      map.on('click', burgundyFillLayerId, handleClick)
+      map.on('click', handleClick)
+
+      // Persistent selection outline: village hulls at low zoom, parcels once zoomed in.
+      const hullIds = burgundyLowZoomGeoJson.features
+        .map((feature) => feature.properties?.id)
+        .filter((id): id is string => typeof id === 'string')
+      addSelectedOutlineLayers(map, burgundyLowZoomSourceId, 'burgundy-hull', [
+        'interpolate', ['linear'], ['zoom'], zoomTransitionStart, 1, zoomTransitionEnd, 0,
+      ])
+      addSelectedOutlineLayers(map, burgundySourceId, 'burgundy', [
+        'interpolate', ['linear'], ['zoom'],
+        zoomTransitionStart, ['case', ['in', ['get', 'id'], ['literal', hullIds]], 0, 1],
+        zoomTransitionEnd, 1,
+      ])
+      for (const layerId of ['burgundy-hull-selection-halo', 'burgundy-hull-selected-outline', 'burgundy-selection-halo', 'burgundy-selected-outline']) {
+        map.moveLayer(layerId, burgundyLabelLayerId)
+      }
 
       const overviewBounds = getFeatureCollectionBounds(burgundyGeoJson)
       overviewBoundsRef.current = overviewBounds
 
-      // A camera deep link takes precedence over the intro overview flight.
-      if (!hashCamera) {
+      const deepLinkBounds = deepLinkIdRef.current
+        ? boundsForIds([burgundyGeoJson, burgundyLowZoomGeoJson], [deepLinkIdRef.current])
+        : null
+
+      if (deepLinkBounds) {
+        // /burgundy/<id>/: frame the appellation once the card has been laid out.
+        requestAnimationFrame(() => fitSelection(map, deepLinkBounds))
+      } else if (!hashCamera) {
+        // A camera deep link takes precedence over the intro overview flight.
         map.fitBounds(overviewBounds, {
           padding: OVERVIEW_PADDING,
           duration: 1100,
@@ -615,10 +648,7 @@ export function BurgundyPage() {
 
     mapRef.current = map
 
-    // Expose map globally for E2E tests only when ?test=1 is present
-    if (new URLSearchParams(window.location.search).has('test')) {
-      ;(window as unknown as { __wineMap?: MapLibreMap }).__wineMap = map
-    }
+    exposeMapForTests(map)
 
     return () => {
       cancelled = true
@@ -719,15 +749,20 @@ export function BurgundyPage() {
       handleMouseLeave()
     }
 
-    function handleClick(event: MapLayerMouseEvent) {
-      const feature = event.features?.[0]
-      const id = getFeatureId(feature?.properties)
+    // Select the topmost appellation rendered under the pointer; never zoom.
+    function handleClick(event: MapMouseEvent) {
+      const id = pickAppellationAt(map, event.point, [burgundyFillLayerId, burgundyLowZoomLayerId])
 
-      if (id && id !== lastSelectedIdRef.current) {
+      if (!id) {
+        return
+      }
+
+      if (id !== lastSelectedIdRef.current) {
         lastSelectedIdRef.current = id
         trackAppellationSelect('burgundy', id)
-        setSelectedId(id)
       }
+      setSelectedId(id)
+      keepAboveSheet(map, event.lngLat)
     }
 
     function clearHoverState() {
@@ -740,6 +775,17 @@ export function BurgundyPage() {
       setHoveredRegion(null)
     }
   }, [])
+
+  useEffect(() => {
+    const map = mapRef.current
+
+    if (!map || !isReady) {
+      return
+    }
+
+    setSelectedOutline(map, 'burgundy-hull', selectedId)
+    setSelectedOutline(map, 'burgundy', selectedId)
+  }, [isReady, selectedId])
 
   useEffect(() => {
     const map = mapRef.current
@@ -850,6 +896,7 @@ export function BurgundyPage() {
         grandCru={activeGrandCru}
         region={activeRegion}
         onClose={() => {
+          lastSelectedIdRef.current = null
           setSelectedId(null)
           setHoveredRegion(null)
         }}

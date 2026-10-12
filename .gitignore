@@ -58,3 +58,4 @@ src/data/**/*.geojson.gz
 
 playwright-report/
 test-results/
+acceptance-shots/

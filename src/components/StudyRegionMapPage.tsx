@@ -6,6 +6,7 @@ import maplibregl, {
   type GeoJSONSourceSpecification,
   type Map as MapLibreMap,
   type MapLayerMouseEvent,
+  type MapMouseEvent,
 } from 'maplibre-gl'
 import type { Feature, FeatureCollection, Geometry } from 'geojson'
 import {
@@ -19,6 +20,15 @@ import { createAtlasMapStyle } from '../utils/mapStyles'
 import { attachCameraHashSync, readCameraFromHash } from '../utils/urlHash'
 import { trackAppellationSelect } from '../utils/analytics'
 import { MapLoadingVeil } from './MapLoadingVeil'
+import {
+  addSelectedOutlineLayers,
+  boundsForIds,
+  exposeMapForTests,
+  fitSelection,
+  keepAboveSheet,
+  pickAppellationAt,
+  setSelectedOutline,
+} from '../utils/selection'
 
 type SourceFeatureId = string | number
 
@@ -59,6 +69,8 @@ interface HoveredRegion {
 }
 
 interface StudyRegionMapPageProps {
+  /** Appellation from the URL (/<region>/<id>/); framed once on load. */
+  initialSelectedId?: string
   appellations: StudyRegionMetadata[]
   colors: Record<string, string>
   detailDataPath: string
@@ -84,6 +96,7 @@ export function StudyRegionMapPage({
   detailDataPath,
   emptyCardTitle,
   hullDataPath,
+  initialSelectedId,
   legendAriaLabel,
   legendFitMaxZoomById = {},
   legendGroups,
@@ -117,7 +130,13 @@ export function StudyRegionMapPage({
   const lastSelectedIdRef = useRef<string | null>(null)
   const [isReady, setIsReady] = useState(false)
   const [hoveredRegion, setHoveredRegion] = useState<HoveredRegion | null>(null)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null)
+  // Geometry ids to frame for a deep link (some appellations share another's geometry).
+  const deepLinkGeometryIdsRef = useRef<string[]>(
+    initialSelectedId
+      ? [initialSelectedId, sharedGeometryIds[initialSelectedId]].filter((id): id is string => Boolean(id))
+      : [],
+  )
   const [legendHoveredId, setLegendHoveredId] = useState<string | null>(null)
   const [subregionHoveredIds, setSubregionHoveredIds] = useState<string[] | null>(null)
 
@@ -147,10 +166,7 @@ export function StudyRegionMapPage({
 
     attachCameraHashSync(map, routePath)
 
-    // Expose map globally for E2E tests only when ?test=1 is present
-    if (new URLSearchParams(window.location.search).has('test')) {
-      ;(window as unknown as { __wineMap?: MapLibreMap }).__wineMap = map
-    }
+    exposeMapForTests(map)
 
     // Gentler wheel steps make trackpad/mouse zooming feel fluid instead of jumpy.
     map.scrollZoom.setWheelZoomRate(1 / 700)
@@ -380,16 +396,26 @@ export function StudyRegionMapPage({
 
       map.on('mousemove', hullLayerId, handleHullMouseMove)
       map.on('mouseleave', hullLayerId, handleMouseLeave)
-      map.on('click', hullLayerId, handleClick)
       map.on('mousemove', detailFillLayerId, handleMouseMove)
       map.on('mouseleave', detailFillLayerId, handleDetailMouseLeave)
-      map.on('click', detailFillLayerId, handleClick)
+      map.on('click', handleClick)
+
+      addSelectedOutlineLayers(map, detailSourceId, sourcePrefix)
+      map.moveLayer(`${sourcePrefix}-selection-halo`, labelLayerId)
+      map.moveLayer(`${sourcePrefix}-selected-outline`, labelLayerId)
 
       const overviewBounds = getFeatureCollectionBounds(detailGeoJson)
       overviewBoundsRef.current = overviewBounds
 
-      // A camera deep link takes precedence over the intro overview flight.
-      if (!hashCamera) {
+      const deepLinkBounds = deepLinkGeometryIdsRef.current.length
+        ? boundsForIds([detailGeoJson, hullGeoJson], deepLinkGeometryIdsRef.current)
+        : null
+
+      if (deepLinkBounds) {
+        // /<region>/<id>/: frame the appellation once the card has been laid out.
+        requestAnimationFrame(() => fitSelection(map, deepLinkBounds))
+      } else if (!hashCamera) {
+        // A camera deep link takes precedence over the intro overview flight.
         map.fitBounds(overviewBounds, {
           padding: OVERVIEW_PADDING,
           duration: 1100,
@@ -496,16 +522,20 @@ export function StudyRegionMapPage({
       handleMouseLeave()
     }
 
-    function handleClick(event: MapLayerMouseEvent) {
-      const feature = event.features?.[0]
-      const id = getFeatureId(feature?.properties)
+    // Select the topmost appellation rendered under the pointer; never zoom.
+    function handleClick(event: MapMouseEvent) {
+      const id = pickAppellationAt(map, event.point, [detailFillLayerId, hullLayerId])
 
-      if (id && id !== lastSelectedIdRef.current) {
-        lastSelectedIdRef.current = id
-        const regionSlug = routePath.replace('/', '')
-        trackAppellationSelect(regionSlug, id)
-        setSelectedId(id)
+      if (!id) {
+        return
       }
+
+      if (id !== lastSelectedIdRef.current) {
+        lastSelectedIdRef.current = id
+        trackAppellationSelect(routePath.replace('/', ''), id)
+      }
+      setSelectedId(id)
+      keepAboveSheet(map, event.lngLat)
     }
 
     function clearHoverState() {
@@ -537,6 +567,7 @@ export function StudyRegionMapPage({
     labelMinZoom,
     labelSourceId,
     routePath,
+    sourcePrefix,
   ])
 
   useEffect(() => {
@@ -636,55 +667,19 @@ export function StudyRegionMapPage({
     )
   }, [isReady, legendFitMaxZoomById, legendHoveredId, sharedGeometryIds])
 
-  // Mobile easing: keep tapped feature visible above bottom sheet
   useEffect(() => {
     const map = mapRef.current
-    const geojson = hullGeoJsonRef.current
 
-    // Only on mobile
-    const isMobile = window.innerWidth < 769
-    if (!map || !isReady || !selectedId || !geojson || !isMobile) {
+    if (!map || !isReady) {
       return
     }
 
-    // Find the feature
-    const feature = geojson.features.find((f) => f.properties?.id === selectedId)
-    if (!feature || !feature.geometry) {
-      return
-    }
-
-    // Get the center point of the feature
-    const centerPoint = pointOnFeature(feature)
-    if (!centerPoint?.geometry?.coordinates) {
-      return
-    }
-
-    const [lng, lat] = centerPoint.geometry.coordinates
-
-    // Ease to the feature with bottom padding for the sheet
-    const sheetHeight = window.innerHeight * 0.45
-    
-    const doEase = () => {
-      if (map.isStyleLoaded() && !map.isMoving()) {
-        map.easeTo({
-          center: [lng, lat],
-          padding: {
-            top: 40,
-            bottom: sheetHeight + 140,
-            left: 40,
-            right: 40,
-          },
-          duration: 600,
-          essential: true,
-        })
-      }
-    }
-    
-    // Give burgundy/alsace extra time to settle  
-    const timer = setTimeout(doEase, 1000)
-    
-    return () => clearTimeout(timer)
-  }, [selectedId, isReady])
+    setSelectedOutline(
+      map,
+      sourcePrefix,
+      selectedId ? (sharedGeometryIds[selectedId] ?? selectedId) : null,
+    )
+  }, [isReady, selectedId, sharedGeometryIds, sourcePrefix])
 
   return (
     <div className="map-only-shell">
@@ -695,6 +690,7 @@ export function StudyRegionMapPage({
         emptyCardTitle={emptyCardTitle}
         region={activeRegion}
         onClose={() => {
+          lastSelectedIdRef.current = null
           setSelectedId(null)
           setHoveredRegion(null)
         }}

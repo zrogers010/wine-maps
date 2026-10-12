@@ -116,6 +116,7 @@ export function AppShell({ initialSelectedId }: { initialSelectedId?: Appellatio
           layers={layers}
           mode={mode}
           selectedId={selectedId}
+          deepLinkId={initialSelectedId ?? null}
           legendHoveredId={legendHoveredId}
           subregionHoveredIds={subregionHoveredIds}
           onSelectAppellation={handleSelectAppellation}
