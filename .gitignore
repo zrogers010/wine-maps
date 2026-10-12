@@ -54,3 +54,4 @@ src/data/**/*.geojson.gz
 
 # Local screenshot scratch
 .tmp-map-screens/
+/data/

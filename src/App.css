@@ -999,13 +999,9 @@
 
 /* SEO intro section (visible to users and search engines) */
 .seo-intro {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 5;
-  max-height: 40vh;
-  overflow-y: auto;
+  position: relative;
+  max-height: none;
+  overflow-y: visible;
   background: rgba(248, 239, 219, 0.98);
   border-top: 2px solid rgba(111, 22, 39, 0.2);
   box-shadow: 0 -4px 20px rgba(66, 48, 33, 0.15);

@@ -15,7 +15,7 @@ export function AppellationPanel({
         <p className="eyebrow">Study card</p>
         <h2>Select an appellation</h2>
         <p>
-          Hover the map to preview a boundary, then click a Médoc appellation to
+          Tap or hover the map to preview a boundary, then click a Médoc appellation to
           open terroir, grape, tasting, and exam notes.
         </p>
         <div className="accuracy-box">

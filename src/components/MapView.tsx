@@ -1358,7 +1358,7 @@ function HoverRegionCard({
     return (
       <aside className="hover-region-card is-empty">
         <span className="hover-card-kicker">Bordeaux AOC Map</span>
-        <strong>Hover the map or legend to explore an appellation</strong>
+        <strong>Tap or hover the map or legend to explore an appellation</strong>
       </aside>
     )
   }

@@ -696,7 +696,7 @@ function StudyHoverCard({
     return (
       <aside className="hover-region-card is-empty">
         <span className="hover-card-kicker">{emptyCardTitle}</span>
-        <strong>Hover the map or legend to explore an appellation</strong>
+        <strong>Tap or hover the map or legend to explore an appellation</strong>
       </aside>
     )
   }
