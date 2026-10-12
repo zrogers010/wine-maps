@@ -11,6 +11,7 @@ import type { AppellationId } from './types/wine'
 import { trackRegionView, trackPageView } from './utils/analytics'
 import { getEmailCaptureProvider } from './services/emailCapture'
 import { EmailSignupCard } from './components/EmailSignupCard'
+import { regionSVGs } from './generated/regionSVGs'
 import type { ComponentType, ReactNode } from 'react'
 import './App.css'
 
@@ -195,62 +196,15 @@ function RegionIndexPage() {
 }
 
 function RegionCard({ region }: { region: RegionConfig }) {
-  const regionSVGs: Record<string, React.ReactElement> = {
-    bordeaux: (
-      <svg viewBox="0 0 120 180" xmlns="http://www.w3.org/2000/svg">
-        <path
-          d="M60,10 L80,25 L90,45 L95,70 L100,95 L105,120 L100,145 L90,165 L70,175 L50,170 L30,160 L20,140 L15,115 L18,90 L25,65 L35,40 L45,20 Z"
-          fill="#8b2e3f"
-          opacity="0.85"
-        />
-      </svg>
-    ),
-    burgundy: (
-      <svg viewBox="0 0 80 200" xmlns="http://www.w3.org/2000/svg">
-        <path
-          d="M40,10 L55,20 L60,35 L62,55 L60,75 L58,95 L56,115 L54,135 L50,155 L45,175 L38,190 L30,185 L25,170 L22,150 L20,130 L22,110 L24,90 L26,70 L30,50 L35,30 Z"
-          fill="#7a5c68"
-          opacity="0.85"
-        />
-      </svg>
-    ),
-    champagne: (
-      <svg viewBox="0 0 140 120" xmlns="http://www.w3.org/2000/svg">
-        <path
-          d="M20,40 L35,25 L55,20 L75,22 L95,28 L110,38 L120,52 L118,68 L108,82 L92,92 L75,98 L55,100 L38,95 L25,85 L18,70 L16,55 Z"
-          fill="#a89080"
-          opacity="0.85"
-        />
-      </svg>
-    ),
-    alsace: (
-      <svg viewBox="0 0 60 220" xmlns="http://www.w3.org/2000/svg">
-        <path
-          d="M30,10 L42,15 L48,25 L50,40 L48,60 L46,80 L44,100 L42,120 L40,140 L38,160 L36,180 L32,200 L28,210 L22,205 L18,190 L16,170 L18,150 L20,130 L22,110 L24,90 L26,70 L28,50 L30,30 Z"
-          fill="#b5a08e"
-          opacity="0.85"
-        />
-      </svg>
-    ),
-  }
-
   const regionSVG = regionSVGs[region.id] || (
     <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
       <circle cx="50" cy="50" r="35" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-      <path
-        d="M30,50 Q35,35 50,35 T70,50 Q65,65 50,65 T30,50"
-        fill="currentColor"
-        opacity="0.2"
-      />
-      <text x="50" y="55" textAnchor="middle" fontSize="12" fill="currentColor" opacity="0.4">
-        {region.name.slice(0, 3).toUpperCase()}
-      </text>
     </svg>
   )
 
   return (
     <Link className="region-card" href={region.path}>
-      <span className="region-card-media">{regionSVG}</span>
+      <span className="region-card-media" dangerouslySetInnerHTML={{ __html: regionSVG }} />
       <span className="region-card-body">
         <strong>{region.name}</strong>
         <span>{region.hook}</span>

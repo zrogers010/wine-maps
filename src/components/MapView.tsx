@@ -851,41 +851,75 @@ export function MapView({
       return
     }
 
-    if (!map.isStyleLoaded()) {
-      return
-    }
-
     // Find the feature geometry for the selected appellation
     const feature = geojson.features.find((f) => f.properties?.id === selectedId)
     if (!feature || !feature.geometry) {
       return
     }
 
-    // Calculate bounds and fit to the selected appellation
-    const bounds = getFeatureCollectionBounds({
-      type: 'FeatureCollection',
-      features: [feature],
-    } as FeatureCollection)
+    const performFitAndSelect = () => {
+      if (!map.isStyleLoaded() || !map.isSourceLoaded(appellationSourceId)) {
+        return
+      }
 
-    if (bounds) {
-      map.fitBounds(bounds, {
-        padding: 80,
-        maxZoom: 11.5,
-        duration: 1000,
-      })
+      // Ensure map container has correct size (important for mobile)
+      map.resize()
+
+      // Calculate bounds and fit to the selected appellation
+      const bounds = getFeatureCollectionBounds({
+        type: 'FeatureCollection',
+        features: [feature],
+      } as FeatureCollection)
+
+      if (bounds) {
+        // Check if mobile viewport
+        const isMobile = window.innerWidth < 769
+        const sheetHeight = isMobile ? window.innerHeight * 0.45 : 0
+        
+        map.fitBounds(bounds, {
+          padding: {
+            top: 80,
+            bottom: isMobile ? sheetHeight + 80 : 80,
+            left: 80,
+            right: 80,
+          },
+          maxZoom: 11.5,
+          duration: 1000,
+        })
+      }
+
+      // Set the feature as selected
+      const featureId = feature.id || feature.properties?.id
+      if (featureId) {
+        map.setFeatureState(
+          { source: appellationSourceId, id: featureId },
+          { selected: true },
+        )
+      }
     }
 
-    // Set the feature as selected
-    const featureId = feature.id || feature.properties?.id
-    if (featureId) {
-      map.setFeatureState(
-        { source: appellationSourceId, id: featureId },
-        { selected: true },
-      )
+    // Wait for both style and source to be loaded
+    if (!map.isStyleLoaded() || !map.isSourceLoaded(appellationSourceId)) {
+      const checkAndPerform = () => {
+        if (map.isStyleLoaded() && map.isSourceLoaded(appellationSourceId)) {
+          performFitAndSelect()
+        }
+      }
+      
+      map.once('sourcedata', checkAndPerform)
+      map.once('idle', checkAndPerform)
+      
+      return () => {
+        map.off('sourcedata', checkAndPerform)
+        map.off('idle', checkAndPerform)
+      }
     }
+
+    performFitAndSelect()
 
     // Clean up: remove selected state when selectedId changes
     return () => {
+      const featureId = feature.id || feature.properties?.id
       if (featureId) {
         map.setFeatureState(
           { source: appellationSourceId, id: featureId },
@@ -893,6 +927,54 @@ export function MapView({
         )
       }
     }
+  }, [selectedId, isReady])
+
+  // Ease map on mobile when feature selected to keep it visible above sheet
+  useEffect(() => {
+    const map = mapRef.current
+    const geojson = bordeauxGeoJsonRef.current
+
+    if (!map || !isReady || !selectedId || !geojson) {
+      return
+    }
+
+    // Only on mobile
+    const isMobile = window.innerWidth < 769
+    if (!isMobile) {
+      return
+    }
+
+    // Find the feature
+    const feature = geojson.features.find((f) => f.properties?.id === selectedId)
+    if (!feature || !feature.geometry) {
+      return
+    }
+
+    // Get the center point of the feature
+    const centerPoint = pointOnFeature(feature)
+    if (!centerPoint?.geometry?.coordinates) {
+      return
+    }
+
+    const [lng, lat] = centerPoint.geometry.coordinates
+
+    // Ease to the feature with bottom padding for the sheet
+    const sheetHeight = window.innerHeight * 0.45
+    
+    setTimeout(() => {
+      if (map.isStyleLoaded()) {
+        map.easeTo({
+          center: [lng, lat],
+          padding: {
+            top: 80,
+            bottom: sheetHeight + 40,
+            left: 40,
+            right: 40,
+          },
+          duration: 600,
+        })
+      }
+    }, 300)
   }, [selectedId, isReady])
 
   useEffect(() => {

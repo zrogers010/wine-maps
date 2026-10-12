@@ -1,0 +1,186 @@
+#!/usr/bin/env node
+import { readFileSync, writeFileSync, existsSync } from 'fs'
+import { join, dirname } from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const rootDir = join(__dirname, '..')
+
+// Region data paths
+const regions = {
+  bordeaux: {
+    path: 'public/data/france/bordeaux/bordeaux-display-exclusive-2026.geojson',
+    colors: {
+      'medoc': '#7a5266',
+      'haut-medoc': '#8d6278',
+      'saint-estephe': '#6f4a5d',
+      'pauillac': '#7f5468',
+      'saint-julien': '#8e6579',
+      'margaux': '#9d7589',
+      'moulis-en-medoc': '#7d5567',
+      'listrac-medoc': '#755061',
+    },
+    viewBox: '-1.2 44.2 1.5 1.8',
+    fill: '#8b2e3f',
+  },
+  burgundy: {
+    path: 'public/data/france/burgundy/burgundy-display-exclusive-2026.geojson',
+    colors: {
+      'gevrey-chambertin': '#9d7582',
+      'morey-saint-denis': '#a8828f',
+      'chambolle-musigny': '#b58fa0',
+      'vougeot': '#8d6c78',
+      'vosne-romanee': '#a17d8d',
+      'nuits-saint-georges': '#9a7786',
+    },
+    viewBox: '4.5 46.8 0.8 1.5',
+    fill: '#7a5c68',
+  },
+  champagne: {
+    path: 'public/data/france/champagne/champagne-opendatawine-display-2026.geojson',
+    colors: {
+      'champagne': '#d4c4a8',
+    },
+    viewBox: '3.4 48.6 1.8 1.2',
+    fill: '#a89080',
+  },
+  alsace: {
+    path: 'public/data/france/alsace/alsace-display-2026.geojson',
+    colors: {
+      'alsace': '#b8c4a4',
+    },
+    viewBox: '7.0 47.5 0.8 2.2',
+    fill: '#b5a08e',
+  },
+}
+
+function simplifyCoordinates(coords, tolerance = 0.01) {
+  // Douglas-Peucker simplification
+  if (coords.length <= 2) return coords
+  
+  function getPerpendicularDistance(point, lineStart, lineEnd) {
+    const [x, y] = point
+    const [x1, y1] = lineStart
+    const [x2, y2] = lineEnd
+    
+    const dx = x2 - x1
+    const dy = y2 - y1
+    
+    if (dx === 0 && dy === 0) {
+      return Math.sqrt((x - x1) ** 2 + (y - y1) ** 2)
+    }
+    
+    const t = ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy)
+    const projX = x1 + t * dx
+    const projY = y1 + t * dy
+    
+    return Math.sqrt((x - projX) ** 2 + (y - projY) ** 2)
+  }
+  
+  let maxDist = 0
+  let maxIndex = 0
+  
+  for (let i = 1; i < coords.length - 1; i++) {
+    const dist = getPerpendicularDistance(coords[i], coords[0], coords[coords.length - 1])
+    if (dist > maxDist) {
+      maxDist = dist
+      maxIndex = i
+    }
+  }
+  
+  if (maxDist > tolerance) {
+    const left = simplifyCoordinates(coords.slice(0, maxIndex + 1), tolerance)
+    const right = simplifyCoordinates(coords.slice(maxIndex), tolerance)
+    return [...left.slice(0, -1), ...right]
+  }
+  
+  return [coords[0], coords[coords.length - 1]]
+}
+
+function coordinatesToPath(coordinates, viewBox) {
+  const [minX, minY, width, height] = viewBox.split(' ').map(Number)
+  const scaleX = 100 / width
+  const scaleY = 100 / height
+  
+  return coordinates.map((coord, i) => {
+    const x = (coord[0] - minX) * scaleX
+    const y = 100 - (coord[1] - minY) * scaleY // Flip Y axis
+    return i === 0 ? `M${x.toFixed(2)},${y.toFixed(2)}` : `L${x.toFixed(2)},${y.toFixed(2)}`
+  }).join(' ') + ' Z'
+}
+
+function generateRegionSVG(regionId, config) {
+  const filePath = join(rootDir, config.path)
+  
+  if (!existsSync(filePath)) {
+    console.warn(`⚠️  Data file not found for ${regionId}: ${config.path}`)
+    return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="35" fill="${config.fill}" opacity="0.8"/></svg>`
+  }
+  
+  const geoJSON = JSON.parse(readFileSync(filePath, 'utf-8'))
+  const paths = []
+  
+  // Process features and create paths
+  const featuresByColor = {}
+  
+  for (const feature of geoJSON.features) {
+    const id = feature.properties?.id
+    const color = config.colors[id] || config.fill
+    
+    if (!featuresByColor[color]) {
+      featuresByColor[color] = []
+    }
+    
+    let coordinates = []
+    
+    if (feature.geometry.type === 'Polygon') {
+      coordinates = feature.geometry.coordinates[0]
+    } else if (feature.geometry.type === 'MultiPolygon') {
+      // Take the largest polygon
+      let largest = []
+      for (const poly of feature.geometry.coordinates) {
+        if (poly[0].length > largest.length) {
+          largest = poly[0]
+        }
+      }
+      coordinates = largest
+    }
+    
+    if (coordinates.length > 0) {
+      const simplified = simplifyCoordinates(coordinates, 0.005)
+      featuresByColor[color].push(simplified)
+    }
+  }
+  
+  // Generate SVG paths
+  for (const [color, coordsList] of Object.entries(featuresByColor)) {
+    for (const coords of coordsList) {
+      if (coords.length >= 3) {
+        const pathData = coordinatesToPath(coords, config.viewBox)
+        paths.push(`<path d="${pathData}" fill="${color}" opacity="0.85"/>`)
+      }
+    }
+  }
+  
+  return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">\n  ${paths.join('\n  ')}\n</svg>`
+}
+
+// Generate SVGs for all regions
+const svgs = {}
+for (const [regionId, config] of Object.entries(regions)) {
+  console.log(`Generating SVG for ${regionId}...`)
+  svgs[regionId] = generateRegionSVG(regionId, config)
+}
+
+// Write to a TypeScript file
+const tsContent = `// Generated by scripts/generate-region-svgs.mjs
+// Do not edit manually - regenerate with: node scripts/generate-region-svgs.mjs
+
+export const regionSVGs: Record<string, string> = {
+${Object.entries(svgs).map(([id, svg]) => `  '${id}': \`${svg}\`,`).join('\n')}
+}
+`
+
+const outputPath = join(rootDir, 'src/generated/regionSVGs.ts')
+writeFileSync(outputPath, tsContent)
+console.log(`✅ Generated region SVGs: ${outputPath}`)
