@@ -224,14 +224,24 @@ const southernGrandCruNames = [
 ]
 
 const alsaceColors = Object.fromEntries(
-  appellations.map((appellation) => [
-    appellation.id,
-    appellation.id === 'alsace'
-      ? '#c9b896'
-      : appellation.id === 'cremant-d-alsace'
-        ? '#b8a88a'
-        : '#9a8a6d',
-  ]),
+  appellations.map((appellation) => {
+    if (appellation.id === 'alsace') {
+      return [appellation.id, '#c9b896']
+    }
+    if (appellation.id === 'cremant-d-alsace') {
+      return [appellation.id, '#b8a88a']
+    }
+    // Grand Crus: assign different colors based on north/central/south
+    const grandCruName = appellation.name.replace('Alsace Grand Cru ', '')
+    if (northernGrandCruNames.includes(grandCruName)) {
+      return [appellation.id, '#a89680']
+    }
+    if (centralGrandCruNames.includes(grandCruName)) {
+      return [appellation.id, '#8a7a65']
+    }
+    // Southern Grand Crus
+    return [appellation.id, '#6d5f4d']
+  }),
 )
 
 const legendGroups = [

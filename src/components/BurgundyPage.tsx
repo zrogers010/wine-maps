@@ -167,24 +167,24 @@ const grandCruMeta: Record<string, GrandCruMeta> = {
 
 const grandCruColors: Record<string, string> = {
   // Grand Crus - muted jewel tones, slightly darker than their villages
-  chambertin: '#82657',
+  chambertin: '#826576',
   'chambertin-clos-de-beze': '#8d6a75',
   'chapelle-chambertin': '#90707d',
   'charmes-chambertin': '#9c7c89',
-  'griotte-chambertin': '#88697',
+  'griotte-chambertin': '#886976',
   'latricieres-chambertin': '#7e5f6d',
   'mazis-chambertin': '#8a6c7a',
   'mazoyeres-chambertin': '#9c7c89',
-  'ruchottes-chambertin': '#84657',
+  'ruchottes-chambertin': '#846576',
   'clos-de-la-roche': '#856675',
   'clos-saint-denis': '#886b78',
-  'clos-des-lambrays': '#92738',
+  'clos-des-lambrays': '#927387',
   'clos-de-tart': '#7e5f6d',
   'bonnes-mares': '#7a5c68',
   musigny: '#7a5c68',
   'clos-de-vougeot': '#7a5c69',
   echezeaux: '#8e707e',
-  'grands-echezeaux': '#82657',
+  'grands-echezeaux': '#826576',
   'romanee-conti': '#7a5c69',
   'la-tache': '#7d5f6d',
   richebourg: '#916f7d',
@@ -255,10 +255,12 @@ export function BurgundyPage() {
   const lastSelectedIdRef = useRef<string | null>(null)
   const [isReady, setIsReady] = useState(false)
   const [hoveredRegion, setHoveredRegion] = useState<HoveredBurgundyRegion | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [legendHoveredId, setLegendHoveredId] = useState<string | null>(null)
   const [subregionHoveredIds, setSubregionHoveredIds] = useState<string[] | null>(null)
 
-  const activeRegion = hoveredRegion ?? (legendHoveredId ? { id: legendHoveredId } : null)
+  const selectedRegion = selectedId ? { id: selectedId } : null
+  const activeRegion = hoveredRegion ?? selectedRegion ?? (legendHoveredId ? { id: legendHoveredId } : null)
   const activeGrandCru = activeRegion ? grandCruMeta[activeRegion.id] : undefined
   const activeAppellation = activeRegion
     ? appellations.find(
@@ -605,10 +607,8 @@ export function BurgundyPage() {
 
     mapRef.current = map
 
-    if (import.meta.env.DEV) {
-      // Dev-only handle for automated screenshot/interaction checks.
-      ;(window as unknown as { __wineMap?: MapLibreMap }).__wineMap = map
-    }
+    // Expose map globally for E2E tests
+    ;(window as unknown as { __wineMap?: MapLibreMap }).__wineMap = map
 
     return () => {
       cancelled = true
@@ -716,6 +716,7 @@ export function BurgundyPage() {
       if (id && id !== lastSelectedIdRef.current) {
         lastSelectedIdRef.current = id
         trackAppellationSelect('burgundy', id)
+        setSelectedId(id)
       }
     }
 
@@ -838,6 +839,10 @@ export function BurgundyPage() {
         appellation={activeAppellation}
         grandCru={activeGrandCru}
         region={activeRegion}
+        onClose={() => {
+          setSelectedId(null)
+          setHoveredRegion(null)
+        }}
       />
       <div className="map-source-badge">
         INAO/data.gouv.fr AOC viticole parcel delimitation extract. Online data
@@ -891,11 +896,21 @@ function BurgundyHoverCard({
   appellation,
   grandCru,
   region,
+  onClose,
 }: {
   appellation: BurgundyAppellationMetadata | null | undefined
   grandCru: GrandCruMeta | undefined
   region: HoveredBurgundyRegion | null
+  onClose?: () => void
 }) {
+  const isMobileOpen = Boolean(region)
+
+  const handleClose = () => {
+    if (onClose) {
+      onClose()
+    }
+  }
+
   if (!appellation || !region) {
     return (
       <aside className="hover-region-card is-empty">
@@ -907,7 +922,14 @@ function BurgundyHoverCard({
 
   if (grandCru) {
     return (
-      <aside className="hover-region-card">
+      <aside className={`hover-region-card${isMobileOpen ? ' mobile-open' : ''}`}>
+        <button 
+          className="mobile-close-button"
+          onClick={handleClose}
+          aria-label="Close"
+        >
+          ×
+        </button>
         <span className="hover-card-kicker">
           Burgundy / {grandCru.subregion} / Grand Cru
         </span>
@@ -958,7 +980,14 @@ function BurgundyHoverCard({
   const isPremierCru = region.cruLevel === 'premier-cru'
 
   return (
-    <aside className="hover-region-card">
+    <aside className={`hover-region-card${isMobileOpen ? ' mobile-open' : ''}`}>
+      <button 
+        className="mobile-close-button"
+        onClick={handleClose}
+        aria-label="Close"
+      >
+        ×
+      </button>
       <span className="hover-card-kicker">
         {appellation.region} / {appellation.subregion}
       </span>

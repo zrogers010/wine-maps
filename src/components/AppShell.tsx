@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import appellationData from '../data/france/bordeaux/appellations.json'
 import type {
   AppellationId,
@@ -86,6 +86,13 @@ export function AppShell({ initialSelectedId }: { initialSelectedId?: Appellatio
   const filteredIds = appellations
     .map((appellation) => appellation.id)
     .filter((id) => !hiddenMapIds.includes(id))
+
+  // Sync initialSelectedId prop changes to state (for deep linking)
+  useEffect(() => {
+    if (initialSelectedId !== undefined) {
+      setSelectedId(initialSelectedId)
+    }
+  }, [initialSelectedId])
 
   const handleSelectAppellation = useCallback((id: AppellationId | null) => {
     if (id !== selectedId) {

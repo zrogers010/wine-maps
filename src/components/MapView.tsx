@@ -178,10 +178,8 @@ export function MapView({
 
     attachCameraHashSync(map, '/bordeaux')
 
-    if (import.meta.env.DEV) {
-      // Dev-only handle for automated screenshot/interaction checks.
-      ;(window as unknown as { __wineMap?: maplibregl.Map }).__wineMap = map
-    }
+    // Expose map globally for E2E tests
+    ;(window as unknown as { __wineMap?: maplibregl.Map }).__wineMap = map
 
     // Gentler wheel steps make trackpad/mouse zooming feel fluid instead of jumpy.
     map.scrollZoom.setWheelZoomRate(1 / 700)
@@ -842,7 +840,7 @@ export function MapView({
     }
 
     applyFilters(map, filteredAppellationIds, hoveredRegion, legendHoveredId, selectedId)
-  }, [filteredAppellationIds, hoveredRegion, isReady, legendHoveredId, applyFilters])
+  }, [filteredAppellationIds, hoveredRegion, isReady, legendHoveredId, selectedId, applyFilters])
 
   // Handle initial selected appellation (deep linking)
   useEffect(() => {
@@ -850,6 +848,10 @@ export function MapView({
     const geojson = bordeauxGeoJsonRef.current
 
     if (!map || !isReady || !selectedId || !geojson) {
+      return
+    }
+
+    if (!map.isStyleLoaded()) {
       return
     }
 
@@ -867,8 +869,8 @@ export function MapView({
 
     if (bounds) {
       map.fitBounds(bounds, {
-        padding: 100,
-        maxZoom: 12,
+        padding: 80,
+        maxZoom: 11.5,
         duration: 1000,
       })
     }

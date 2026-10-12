@@ -117,10 +117,12 @@ export function StudyRegionMapPage({
   const lastSelectedIdRef = useRef<string | null>(null)
   const [isReady, setIsReady] = useState(false)
   const [hoveredRegion, setHoveredRegion] = useState<HoveredRegion | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [legendHoveredId, setLegendHoveredId] = useState<string | null>(null)
   const [subregionHoveredIds, setSubregionHoveredIds] = useState<string[] | null>(null)
 
-  const activeRegion = hoveredRegion ?? (legendHoveredId ? { id: legendHoveredId } : null)
+  const selectedRegion = selectedId ? { id: selectedId } : null
+  const activeRegion = hoveredRegion ?? selectedRegion ?? (legendHoveredId ? { id: legendHoveredId } : null)
   const activeAppellation = activeRegion
     ? appellations.find((appellation) => appellation.id === activeRegion.id)
     : null
@@ -145,10 +147,8 @@ export function StudyRegionMapPage({
 
     attachCameraHashSync(map, routePath)
 
-    if (import.meta.env.DEV) {
-      // Dev-only handle for automated screenshot/interaction checks.
-      ;(window as unknown as { __wineMap?: MapLibreMap }).__wineMap = map
-    }
+    // Expose map globally for E2E tests
+    ;(window as unknown as { __wineMap?: MapLibreMap }).__wineMap = map
 
     // Gentler wheel steps make trackpad/mouse zooming feel fluid instead of jumpy.
     map.scrollZoom.setWheelZoomRate(1 / 700)
@@ -502,6 +502,7 @@ export function StudyRegionMapPage({
         lastSelectedIdRef.current = id
         const regionSlug = routePath.replace('/', '')
         trackAppellationSelect(regionSlug, id)
+        setSelectedId(id)
       }
     }
 
@@ -641,6 +642,10 @@ export function StudyRegionMapPage({
         appellation={activeAppellation}
         emptyCardTitle={emptyCardTitle}
         region={activeRegion}
+        onClose={() => {
+          setSelectedId(null)
+          setHoveredRegion(null)
+        }}
       />
       <div className="map-source-badge">{sourceBadge}</div>
       <aside className="region-legend" aria-label={legendAriaLabel}>
@@ -687,11 +692,21 @@ function StudyHoverCard({
   appellation,
   emptyCardTitle,
   region,
+  onClose,
 }: {
   appellation: StudyRegionMetadata | null | undefined
   emptyCardTitle: string
   region: HoveredRegion | null
+  onClose?: () => void
 }) {
+  const isMobileOpen = Boolean(region)
+
+  const handleClose = () => {
+    if (onClose) {
+      onClose()
+    }
+  }
+
   if (!appellation || !region) {
     return (
       <aside className="hover-region-card is-empty">
@@ -702,7 +717,14 @@ function StudyHoverCard({
   }
 
   return (
-    <aside className="hover-region-card">
+    <aside className={`hover-region-card${isMobileOpen ? ' mobile-open' : ''}`}>
+      <button 
+        className="mobile-close-button"
+        onClick={handleClose}
+        aria-label="Close"
+      >
+        ×
+      </button>
       <span className="hover-card-kicker">
         {appellation.region} / {appellation.subregion}
       </span>
