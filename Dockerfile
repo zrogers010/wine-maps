@@ -66,13 +66,13 @@ server {
     }
 
     # Runtime data files (GeoJSON) with strict 404 for missing files
+    # 1-hour cache with revalidation (filenames are not content-hashed)
     location /data/ {
         types {
             application/geo+json geojson;
         }
         try_files \$uri =404;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
+        add_header Cache-Control "public, max-age=3600, must-revalidate";
         add_header X-Content-Type-Options "nosniff" always;
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header X-XSS-Protection "1; mode=block" always;
