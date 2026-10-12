@@ -615,8 +615,10 @@ export function BurgundyPage() {
 
     mapRef.current = map
 
-    // Expose map globally for E2E tests
-    ;(window as unknown as { __wineMap?: MapLibreMap }).__wineMap = map
+    // Expose map globally for E2E tests only when ?test=1 is present
+    if (new URLSearchParams(window.location.search).has('test')) {
+      ;(window as unknown as { __wineMap?: MapLibreMap }).__wineMap = map
+    }
 
     return () => {
       cancelled = true

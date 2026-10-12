@@ -20,7 +20,8 @@
     "data:extract-medoc": "node scripts/extract-inao-medoc.mjs && npm run data:build-exclusive",
     "data:probe-champagne-official": "node scripts/probe-champagne-official-data.mjs",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:acceptance": "npm run build && npx vite preview --port 4173 & sleep 5 && node tests/acceptance/acceptance.mjs http://localhost:4173; kill %1"
   },
   "dependencies": {
     "@turf/turf": "^7.3.5",

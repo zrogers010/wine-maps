@@ -196,11 +196,9 @@ function RegionIndexPage() {
 }
 
 function RegionCard({ region }: { region: RegionConfig }) {
-  const regionSVG = regionSVGs[region.id] || (
-    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="50" cy="50" r="35" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-    </svg>
-  )
+  const regionSVG = regionSVGs[region.id] || `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="35" fill="none" stroke="currentColor" stroke-width="2" opacity="0.3" />
+  </svg>`
 
   return (
     <Link className="region-card" href={region.path}>

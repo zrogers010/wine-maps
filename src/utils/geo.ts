@@ -69,6 +69,7 @@ export function createHydrologyPlaceholder(): FeatureCollection {
         properties: {
           name: 'Gironde estuary context',
           placeholder: true,
+          class: 'river',
         },
         geometry: {
           type: 'LineString',

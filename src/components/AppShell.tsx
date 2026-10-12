@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react'
+import { useCallback, useState, useEffect, useRef } from 'react'
 import appellationData from '../data/france/bordeaux/appellations.json'
 import type {
   AppellationId,
@@ -81,15 +81,16 @@ export function AppShell({ initialSelectedId }: { initialSelectedId?: Appellatio
   const [selectedId, setSelectedId] = useState<AppellationId | null>(initialSelectedId || null)
   const [legendHoveredId, setLegendHoveredId] = useState<AppellationId | null>(null)
   const [subregionHoveredIds, setSubregionHoveredIds] = useState<AppellationId[] | null>(null)
+  const hasUserInteractedRef = useRef(false)
   const layers = defaultLayers
   const mode: ExperienceMode = 'Explore'
   const filteredIds = appellations
     .map((appellation) => appellation.id)
     .filter((id) => !hiddenMapIds.includes(id))
 
-  // Sync initialSelectedId prop changes to state (for deep linking)
+  // Sync initialSelectedId prop changes to state (for deep linking) only if user hasn't interacted
   useEffect(() => {
-    if (initialSelectedId !== undefined && initialSelectedId !== selectedId) {
+    if (initialSelectedId !== undefined && initialSelectedId !== selectedId && !hasUserInteractedRef.current) {
       queueMicrotask(() => {
         setSelectedId(initialSelectedId)
       })
@@ -97,6 +98,7 @@ export function AppShell({ initialSelectedId }: { initialSelectedId?: Appellatio
   }, [initialSelectedId, selectedId])
 
   const handleSelectAppellation = useCallback((id: AppellationId | null) => {
+    hasUserInteractedRef.current = true
     if (id !== selectedId) {
       if (id) {
         trackAppellationSelect('bordeaux', id)
