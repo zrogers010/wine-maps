@@ -7,6 +7,7 @@ import type {
   LayerState,
 } from '../types/wine'
 import { APPELLATION_COLORS } from '../utils/mapStyles'
+import { trackAppellationSelect } from '../utils/analytics'
 import { MapView } from './MapView'
 
 const appellations = appellationData as AppellationMetadata[]
@@ -86,8 +87,11 @@ export function AppShell({ initialSelectedId }: { initialSelectedId?: Appellatio
     .filter((id) => !hiddenMapIds.includes(id))
 
   const handleSelectAppellation = useCallback((id: AppellationId) => {
+    if (id !== selectedId) {
+      trackAppellationSelect('bordeaux', id)
+    }
     setSelectedId(id)
-  }, [])
+  }, [selectedId])
 
   return (
     <div className="map-only-shell">

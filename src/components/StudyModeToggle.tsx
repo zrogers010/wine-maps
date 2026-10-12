@@ -1,3 +1,4 @@
+import { trackStudyModeToggle } from '../utils/analytics'
 import type { ExperienceMode } from '../types/wine'
 
 interface StudyModeToggleProps {
@@ -9,6 +10,13 @@ const activeModes: ExperienceMode[] = ['Explore', 'Study']
 const futureModes: ExperienceMode[] = ['Blind Tasting', 'Compare']
 
 export function StudyModeToggle({ mode, onModeChange }: StudyModeToggleProps) {
+  const handleModeChange = (newMode: ExperienceMode) => {
+    if (newMode !== mode) {
+      trackStudyModeToggle(newMode)
+      onModeChange(newMode)
+    }
+  }
+
   return (
     <div className="mode-toggle" aria-label="Atlas mode">
       {activeModes.map((modeOption) => (
@@ -16,7 +24,7 @@ export function StudyModeToggle({ mode, onModeChange }: StudyModeToggleProps) {
           className={mode === modeOption ? 'active' : ''}
           key={modeOption}
           type="button"
-          onClick={() => onModeChange(modeOption)}
+          onClick={() => handleModeChange(modeOption)}
         >
           {modeOption}
         </button>
