@@ -1,0 +1,23 @@
+# Environment configuration for prod
+# This configures the ALB and HTTPS certificates for the production environment
+
+# HTTP configuration with custom domain certificates
+http:
+  public:
+    certificates:
+      # Replace this ARN with your actual ACM certificate ARN
+      # The certificate must be in us-east-1 and include both:
+      # - www.sommeliermaps.com
+      # - sommeliermaps.com
+      # Use DNS validation (CNAME records in DigitalOcean)
+      - arn:aws:acm:us-east-1:486638851283:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+# After creating the certificate:
+# 1. Request or import certificate in ACM (us-east-1)
+# 2. Add DNS validation CNAME records to DigitalOcean
+# 3. Wait for certificate status to be "Issued"
+# 4. Update the ARN above
+# 5. Deploy with: copilot env deploy --name prod
+# 6. Add DNS records in DigitalOcean:
+#    - www.sommeliermaps.com → CNAME → <alb-dns-name>
+#    - sommeliermaps.com → CNAME → <alb-dns-name> (or use apex redirect)

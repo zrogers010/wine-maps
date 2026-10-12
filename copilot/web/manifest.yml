@@ -1,0 +1,46 @@
+# AWS Copilot manifest for SommelierMaps web service
+# A Load Balanced Web Service serving the static Vite site via nginx
+name: web
+type: Load Balanced Web Service
+
+# Docker build configuration
+image:
+  build:
+    dockerfile: Dockerfile
+    args:
+      # Optional: Pass GA measurement ID at build time
+      # Export VITE_GA_MEASUREMENT_ID before running copilot deploy
+      VITE_GA_MEASUREMENT_ID: ${VITE_GA_MEASUREMENT_ID}
+  port: 80
+
+# CPU and memory configuration
+# Small sizing for static content serving
+cpu: 256       # 0.25 vCPU
+memory: 512    # 512 MB
+
+# Platform version
+platform: linux/x86_64
+
+# Scaling configuration
+count: 1
+
+# HTTP configuration
+http:
+  path: '/'
+  healthcheck:
+    path: /healthz
+    port: 80
+    success_codes: '200'
+    healthy_threshold: 2
+    unhealthy_threshold: 3
+    interval: 30s
+    timeout: 5s
+    grace_period: 60s
+  alias:
+    - www.sommeliermaps.com
+    - sommeliermaps.com
+
+# Network configuration
+network:
+  vpc:
+    placement: public
