@@ -395,15 +395,14 @@ export function MapView({
         source: appellationSourceId,
         filter: filterNone(),
         paint: {
-          'fill-color': '#1c0f12',
+          'fill-color': 'rgba(255, 255, 255, 0.5)',
           'fill-opacity': [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            zoomTransitionStart,
-            ['case', ['in', ['get', 'id'], ['literal', lowZoomHullIds]], 0, 0.6],
-            zoomTransitionEnd,
-            0.6,
+            'case',
+            ['boolean', ['feature-state', 'hover'], false],
+            0,
+            ['boolean', ['feature-state', 'selected'], false],
+            0,
+            1,
           ],
         },
       })
@@ -443,47 +442,22 @@ export function MapView({
         type: 'line',
         source: appellationSourceId,
         paint: {
-          'line-color': [
-            'case',
-            ['boolean', ['feature-state', 'selected'], false],
-            '#6f1627',
-            ['boolean', ['feature-state', 'hover'], false],
-            '#6f1627',
-            'rgba(255, 255, 255, 0.32)',
-          ],
-          'line-width': [
-            'case',
-            ['boolean', ['feature-state', 'selected'], false],
-            3,
-            ['boolean', ['feature-state', 'hover'], false],
-            2.5,
-            0.35,
-          ],
-          'line-opacity': [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            zoomTransitionStart,
-            [
-              'case',
-              ['in', ['get', 'id'], ['literal', lowZoomHullIds]],
-              0,
-              ['boolean', ['feature-state', 'selected'], false],
-              0.95,
-              ['boolean', ['feature-state', 'hover'], false],
-              0.9,
-              0.36,
-            ],
-            zoomTransitionEnd,
-            [
-              'case',
-              ['boolean', ['feature-state', 'selected'], false],
-              0.95,
-              ['boolean', ['feature-state', 'hover'], false],
-              0.9,
-              0.36,
-            ],
-          ],
+          'line-color': 'rgba(255, 255, 255, 0.25)',
+          'line-width': 0.3,
+          'line-opacity': 0.3,
+        },
+      })
+
+      // Hover/selected outline layer (on top)
+      map.addLayer({
+        id: 'appellation-hover-outline',
+        type: 'line',
+        source: appellationSourceId,
+        filter: filterNone(),
+        paint: {
+          'line-color': '#a01845',
+          'line-width': 3.5,
+          'line-opacity': 1,
         },
       })
 
@@ -544,6 +518,7 @@ export function MapView({
       })
 
       map.moveLayer(labelLayerId)
+      map.moveLayer('appellation-hover-outline')
       map.moveLayer(lowZoomHullLayerId, labelLayerId)
       map.moveLayer(lowZoomHullShadeLayerId, labelLayerId)
       map.moveLayer(lowZoomHullBorderLayerId, labelLayerId)
@@ -702,6 +677,7 @@ export function MapView({
     setLayerVisibility(map, hoverCommuneShadeLayerId, layers.aocBoundaries)
     setLayerVisibility(map, communeBorderLayerId, layers.aocBoundaries)
     setLayerVisibility(map, outlineLayerId, layers.aocBoundaries)
+    setLayerVisibility(map, 'appellation-hover-outline', layers.aocBoundaries)
     setLayerVisibility(map, vineyardLayerId, layers.vineyardParcels)
     setLayerVisibility(map, hydrologyLayerId, layers.rivers)
     setLayerVisibility(map, labelLayerId, layers.studyLabels || mode === 'Study')
@@ -788,6 +764,14 @@ export function MapView({
     if (map.getLayer(hoverAppellationShadeLayerId)) {
       map.setFilter(
         hoverAppellationShadeLayerId,
+        hoveredRegion || legendHoveredId
+          ? ['in', ['get', 'id'], ['literal', filteredAppellationIds]]
+          : filterNone(),
+      )
+    }
+    if (map.getLayer('appellation-hover-outline')) {
+      map.setFilter(
+        'appellation-hover-outline',
         hoveredRegion
           ? ['==', ['get', 'id'], hoveredRegion.id]
           : legendHoveredId
