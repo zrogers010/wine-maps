@@ -8,6 +8,7 @@ This runbook covers deploying the SommelierMaps static site as an AWS Copilot ap
 2. **AWS Copilot CLI** installed ([installation guide](https://aws.github.io/copilot-cli/docs/getting-started/install/))
 3. **Docker** installed and running locally
 4. **DigitalOcean DNS** access for DNS record creation
+5. **S3 bucket** for runtime GeoJSON data (set `DATA_BUCKET` environment variable)
 
 ## Configuration
 
@@ -16,6 +17,46 @@ This runbook covers deploying the SommelierMaps static site as an AWS Copilot ap
 - **Service name**: `web`
 - **Region**: `us-east-1`
 - **Domains**: `www.sommeliermaps.com` (canonical), `sommeliermaps.com`
+- **Data bucket**: S3 bucket containing runtime GeoJSON files (8 required files)
+
+## Runtime Data Management
+
+The application requires 8 GeoJSON files at runtime that are **not** committed to git. These files are stored in S3 and synced to `public/data/` before building the Docker image.
+
+### Required Files
+1. `/data/france/bordeaux/bordeaux-display-exclusive-2026.geojson`
+2. `/data/france/bordeaux/bordeaux-display-cadillac-dissolve-trial-2026.geojson`
+3. `/data/france/burgundy/burgundy-display-exclusive-2026.geojson`
+4. `/data/france/burgundy/burgundy-display-hulls-2026.geojson`
+5. `/data/france/champagne/champagne-opendatawine-display-2026.geojson`
+6. `/data/france/champagne/champagne-opendatawine-hulls-2026.geojson`
+7. `/data/france/alsace/alsace-display-2026.geojson`
+8. `/data/france/alsace/alsace-display-hulls-2026.geojson`
+
+### Upload Data to S3 (First Time Setup)
+
+If you have the runtime GeoJSON files locally in `public/data/`:
+
+```bash
+export DATA_BUCKET=your-bucket-name
+./scripts/upload-data.sh
+```
+
+This uploads all GeoJSON files to `s3://${DATA_BUCKET}/public-data/` with proper MIME types and cache headers.
+
+### Sync Data Before Deployment
+
+**Before every deployment**, sync the runtime data from S3:
+
+```bash
+export DATA_BUCKET=your-bucket-name
+./scripts/sync-data.sh
+```
+
+This script:
+- Downloads all GeoJSON files from S3 to `public/data/`
+- Verifies all 8 required files are present
+- Fails with a clear error if any files are missing
 
 ## Step 1: Initialize the Copilot Application
 
@@ -103,51 +144,56 @@ Note the certificate ARN from the output.
 6. Wait for validation (can take 5-30 minutes)
 7. Verify the certificate status is **Issued** in ACM
 
-## Step 4: Configure Custom Domain in Manifest
+## Step 4: Configure Custom Domain Certificate
 
-Edit `copilot/web/manifest.yml` and uncomment the certificate configuration:
+Edit `copilot/environments/prod/manifest.yml` and update the certificate ARN:
 
 ```yaml
-environments:
-  prod:
-    http:
-      alias:
-        - name: www.sommeliermaps.com
-          certificate_arn: arn:aws:acm:us-east-1:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-        - name: sommeliermaps.com
-          certificate_arn: arn:aws:acm:us-east-1:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+http:
+  public:
+    certificates:
+      - arn:aws:acm:us-east-1:486638851283:certificate/your-actual-cert-id
 ```
 
-Replace the `certificate_arn` values with your actual ARN (same ARN for both domains if they're in the same certificate).
+Replace `your-actual-cert-id` with your actual certificate ARN from Step 3.
 
-## Step 5: Deploy the Web Service
+## Step 5: Sync Runtime Data and Deploy
 
-### First Deployment
+### Sync Runtime Data from S3
+
+**Critical**: Before every deployment, sync the runtime GeoJSON files:
 
 ```bash
-# Deploy without Google Analytics (optional)
+export DATA_BUCKET=your-bucket-name
+./scripts/sync-data.sh
+```
+
+This ensures `public/data/` contains all 8 required GeoJSON files before Docker builds the image.
+
+### Deploy the Web Service
+
+**Without Google Analytics**:
+
+```bash
 copilot svc deploy \
   --name web \
   --env prod
 ```
 
-### Deploy with Google Analytics
-
-If you have a GA4 measurement ID:
+**With Google Analytics** (recommended for production):
 
 ```bash
-# Set the build arg for Google Analytics
+# Export the GA measurement ID (Copilot reads from environment)
 export VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
 
 copilot svc deploy \
   --name web \
-  --env prod \
-  --build-arg VITE_GA_MEASUREMENT_ID=${VITE_GA_MEASUREMENT_ID}
+  --env prod
 ```
 
 **Note**: 
-- If `VITE_GA_MEASUREMENT_ID` is not set or empty, analytics will be disabled
-- This is safe - the site works without analytics
+- `VITE_GA_MEASUREMENT_ID` is passed as a Docker build arg
+- If not set or empty, analytics will be disabled (safe fallback)
 - First deployment takes 10-15 minutes
 
 ### Deployment Process
@@ -236,14 +282,18 @@ curl https://www.sommeliermaps.com/robots.txt
 
 ## Subsequent Deployments
 
-For code updates:
+For code updates, always sync data first:
 
 ```bash
-# Standard deployment
-copilot svc deploy --name web --env prod
+# 1. Sync runtime data from S3
+export DATA_BUCKET=your-bucket-name
+./scripts/sync-data.sh
 
-# With updated GA ID
-copilot svc deploy --name web --env prod --build-arg VITE_GA_MEASUREMENT_ID=G-NEWID
+# 2. (Optional) Export GA measurement ID
+export VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+
+# 3. Deploy
+copilot svc deploy --name web --env prod
 ```
 
 ## Monitoring and Logs
@@ -274,12 +324,23 @@ copilot svc show --name web --env prod
 
 ### Build fails with missing data files
 
-The build requires JSON files under `src/data/` but excludes large geospatial files (`.geojson`, `.pmtiles`, etc.) via `.dockerignore`.
+**If the build fails with missing data**:
 
-**If the build fails**:
-1. Check which JSON files are required: `src/data/regions.json`, `src/data/france/{region}/appellations.json`
-2. Ensure these JSON files are committed to git
-3. Large data files under `data/raw/` and `public/data/` are intentionally excluded
+1. **Missing JSON metadata**: Files like `src/data/regions.json` and `src/data/france/{region}/appellations.json` must be committed to git.
+
+2. **Missing runtime GeoJSON**: The 8 runtime GeoJSON files must be synced from S3 before build:
+   ```bash
+   export DATA_BUCKET=your-bucket-name
+   ./scripts/sync-data.sh
+   ```
+   These files live in `public/data/` and are included in the Docker image.
+
+3. **Missing S3 data**: If `sync-data.sh` reports missing files, upload them to S3:
+   ```bash
+   # Place files in public/data/ locally, then:
+   export DATA_BUCKET=your-bucket-name
+   ./scripts/upload-data.sh
+   ```
 
 ### Container fails health check
 
@@ -340,17 +401,18 @@ copilot app delete
 
 ## Notes
 
-1. **Build Data**: The Docker build works from a clean clone because only committed JSON files are needed. Large geospatial source files (`data/raw/`, `public/data/`, `*.geojson`) are gitignored and not required for production builds.
+1. **Runtime Data Sync**: The 8 runtime GeoJSON files are **not** in git. They must be synced from S3 before every deployment using `./scripts/sync-data.sh`. These files are included in the Docker image and served at `/data/france/**/*.geojson`.
 
-2. **Analytics**: The `VITE_GA_MEASUREMENT_ID` build arg is optional. When omitted or empty, the site works normally but analytics tracking is disabled. This prevents accidentally discarding real analytics data during development.
+2. **Build Data**: Small JSON metadata files (`src/data/regions.json`, `src/data/france/{region}/appellations.json`) are committed to git and used during prerendering. Large geospatial source files (`data/raw/`, `*.shp`, `*.gpkg`) are gitignored and not needed for production builds.
 
-3. **Canonical URL**: The canonical URL is `www.sommeliermaps.com`. Consider adding a redirect from the apex domain to www at the application level or via CloudFront if needed.
+3. **Analytics**: The `VITE_GA_MEASUREMENT_ID` build arg is optional. Export it as an environment variable before `copilot deploy`, and Copilot will pass it as a build arg. When omitted or empty, the site works normally but analytics tracking is disabled.
 
-4. **Cache Headers**: The nginx configuration sets appropriate cache headers:
-   - Hashed assets (JS/CSS): 1 year cache
+4. **Canonical URL**: The canonical URL is `www.sommeliermaps.com`. Consider adding a redirect from the apex domain to www at the application level or via CloudFront if needed.
+
+5. **Cache Headers**: The nginx configuration sets appropriate cache headers:
+   - `/assets/*` (hashed JS/CSS): 1 year immutable cache
+   - `/data/*` (GeoJSON): 1 year immutable cache, returns 404 for missing files
    - HTML/sitemap/robots: no-cache
    - PMTiles: 1 year cache with Range request support
 
-5. **PMTiles Support**: The nginx config includes MIME type and Range request support for `.pmtiles` files (for future vector tile datasets).
-
-6. **Environment Variables**: Build-time variables must be passed as `--build-arg`. Runtime environment variables are not needed for static sites.
+6. **GeoJSON MIME Type**: Runtime GeoJSON files are served with `Content-Type: application/geo+json` and included in gzip compression.

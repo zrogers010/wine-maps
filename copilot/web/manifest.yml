@@ -9,7 +9,7 @@ image:
     dockerfile: Dockerfile
     args:
       # Optional: Pass GA measurement ID at build time
-      # Set in your environment or pass via --build-arg
+      # Export VITE_GA_MEASUREMENT_ID before running copilot deploy
       VITE_GA_MEASUREMENT_ID: ${VITE_GA_MEASUREMENT_ID}
   port: 80
 
@@ -22,15 +22,11 @@ memory: 512    # 512 MB
 platform: linux/x86_64
 
 # Scaling configuration
-count:
-  range:
-    min: 1
-    max: 1
-  cpu_percentage: 70
+count: 1
 
-# Health check configuration
+# HTTP configuration
 http:
-  path: '/healthz'
+  path: '/'
   healthcheck:
     path: /healthz
     port: 80
@@ -40,42 +36,11 @@ http:
     interval: 30s
     timeout: 5s
     grace_period: 60s
+  alias:
+    - www.sommeliermaps.com
+    - sommeliermaps.com
 
 # Network configuration
 network:
   vpc:
     placement: public
-
-# Custom domain configuration
-# To enable HTTPS with your custom domain:
-# 1. Import or create an ACM certificate in us-east-1 for:
-#    - www.sommeliermaps.com
-#    - sommeliermaps.com
-# 2. Note the certificate ARN
-# 3. Uncomment and configure the alias section below
-# 4. After deployment, create DNS records in DigitalOcean:
-#    - www.sommeliermaps.com → CNAME → <copilot-alb-dns-name>
-#    - sommeliermaps.com → A → <resolve-alb-ip> (or ALIAS if DO supports it)
-#    - If ALIAS not supported, use CNAME and handle apex separately
-#
-# Note: The certificate must use DNS validation since DNS is on DigitalOcean
-# (not Route53). Create the cert in ACM, note the validation CNAME records,
-# and add them to DigitalOcean before deploying.
-#
-# alias:
-#   - www.sommeliermaps.com
-#   - sommeliermaps.com
-#   hosted_zone: Z0123456789ABCDEFGHIJ  # Not used with external DNS, but required by Copilot
-#
-# After uncommenting, also add to the environments section:
-# environments:
-#   prod:
-#     http:
-#       alias:
-#         - name: www.sommeliermaps.com
-#           certificate_arn: arn:aws:acm:us-east-1:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-#         - name: sommeliermaps.com
-#           certificate_arn: arn:aws:acm:us-east-1:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-#
-# Canonical URL is www.sommeliermaps.com
-# You may want to add a redirect from bare domain to www via CloudFront or ALB rules

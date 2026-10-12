@@ -31,11 +31,12 @@ gzip on;
 gzip_vary on;
 gzip_proxied any;
 gzip_comp_level 6;
-gzip_types text/plain text/css text/xml text/javascript application/json application/javascript application/xml+rss application/atom+xml image/svg+xml;
+gzip_types text/plain text/css text/xml text/javascript application/json application/javascript application/xml+rss application/atom+xml application/geo+json image/svg+xml;
 
-# Upstream configuration for better error handling
-upstream app {
-    server 127.0.0.1:8080;
+# Map GeoJSON files to proper MIME type
+map \$uri \$geojson_type {
+    ~*\.geojson\$ application/geo+json;
+    default "";
 }
 
 server {
@@ -44,58 +45,77 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
-    # Security headers
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-
     # Healthcheck endpoint
     location /healthz {
         access_log off;
+        default_type text/plain;
         return 200 "healthy\n";
-        add_header Content-Type text/plain;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-XSS-Protection "1; mode=block" always;
     }
 
-    # Long cache for hashed assets (JS, CSS with content hashes in filenames)
-    location ~* \.(js|css|woff2?|ttf|eot|svg|png|jpg|jpeg|gif|ico|webp)$ {
+    # Long cache for hashed assets only (JS/CSS in /assets/ with content hashes)
+    location ^~ /assets/ {
         expires 1y;
         add_header Cache-Control "public, immutable";
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-XSS-Protection "1; mode=block" always;
         access_log off;
     }
 
-    # Special handling for .pmtiles (PMTiles format with Range request support)
-    location ~* \.pmtiles$ {
+    # Runtime data files (GeoJSON) with strict 404 for missing files
+    location /data/ {
+        types {
+            application/geo+json geojson;
+        }
+        try_files \$uri =404;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+    }
+
+    # PMTiles with Range request support (for future vector tiles)
+    location ~* \.pmtiles\$ {
         types {
             application/vnd.pmtiles pmtiles;
         }
         add_header Accept-Ranges bytes;
         expires 1y;
         add_header Cache-Control "public, immutable";
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-XSS-Protection "1; mode=block" always;
     }
 
-    # No cache for HTML, sitemap, and robots (always check for updates)
-    location ~* \.(html|xml|txt)$ {
-        expires -1;
-        add_header Cache-Control "no-cache, no-store, must-revalidate";
-    }
-
-    # Root location - try prerendered HTML first, then SPA fallback
-    location / {
-        # Try the exact file, then with /index.html suffix, then fall back to SPA
-        try_files \$uri \$uri/index.html /index.html;
-    }
-
-    # Specific handlers for sitemap and robots
+    # Sitemap and robots with no-cache
     location = /sitemap.xml {
         try_files \$uri =404;
-        expires -1;
         add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-XSS-Protection "1; mode=block" always;
     }
 
     location = /robots.txt {
         try_files \$uri =404;
-        expires -1;
         add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+    }
+
+    # Root location - try prerendered HTML first, then SPA fallback
+    # All HTML (including SPA index.html) gets no-cache
+    location / {
+        try_files \$uri \$uri/index.html /index.html;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-XSS-Protection "1; mode=block" always;
     }
 }
 EOF

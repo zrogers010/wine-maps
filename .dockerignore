@@ -20,16 +20,12 @@ dist-ssr
 .env.*.local
 *.local
 
-# Large raw data files (gitignored, not needed for build)
-# Note: If these are required for the build, you'll need to include them
+# Large raw source data files (gitignored, not needed for build)
+# Note: public/data/ contains runtime GeoJSON files synced from S3 before build
 data/raw/
-public/data/
 
-# Geospatial source files (gitignored)
-src/data/**/*.geojson
-src/data/**/*.topojson
-src/data/**/*.geojsonl
-src/data/**/*.geojson.gz
+# Source-only geospatial files (not needed in container)
+# Runtime GeoJSON under public/data/ is included
 *.shp
 *.shp.xml
 *.shx
@@ -44,8 +40,6 @@ src/data/**/*.geojson.gz
 *.sqlite3
 *.db
 *.mbtiles
-*.pmtiles
-*.fgb
 *.tif
 *.tiff
 *.kml
