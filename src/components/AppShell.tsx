@@ -90,7 +90,9 @@ export function AppShell({ initialSelectedId }: { initialSelectedId?: Appellatio
   // Sync initialSelectedId prop changes to state (for deep linking)
   useEffect(() => {
     if (initialSelectedId !== undefined && initialSelectedId !== selectedId) {
-      setSelectedId(initialSelectedId)
+      queueMicrotask(() => {
+        setSelectedId(initialSelectedId)
+      })
     }
   }, [initialSelectedId, selectedId])
 

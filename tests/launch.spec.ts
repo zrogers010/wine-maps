@@ -45,7 +45,7 @@ test.describe('Launch Readiness E2E', () => {
     expect(featureCount).toBeGreaterThan(0)
   })
 
-  test('3a. Mobile bottom sheet works on Bordeaux', async ({ page, viewport }) => {
+  test('3a. Mobile bottom sheet works on Bordeaux', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     
     await page.goto('/bordeaux')
@@ -62,7 +62,7 @@ test.describe('Launch Readiness E2E', () => {
     await expect(sheet).toBeVisible()
   })
 
-  test('3b. Mobile bottom sheet works on Burgundy', async ({ page, viewport }) => {
+  test('3b. Mobile bottom sheet works on Burgundy', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     
     await page.goto('/burgundy')
