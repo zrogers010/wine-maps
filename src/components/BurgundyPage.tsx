@@ -615,10 +615,8 @@ export function BurgundyPage() {
 
     mapRef.current = map
 
-    // Expose map globally for E2E tests (non-production only)
-    if (import.meta.env.MODE !== 'production') {
-      ;(window as unknown as { __wineMap?: MapLibreMap }).__wineMap = map
-    }
+    // Expose map globally for E2E tests
+    ;(window as unknown as { __wineMap?: MapLibreMap }).__wineMap = map
 
     return () => {
       cancelled = true
