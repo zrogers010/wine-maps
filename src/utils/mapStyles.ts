@@ -60,8 +60,7 @@ export function createAtlasMapStyle(): StyleSpecification {
     sources: {
       'openmaptiles': {
         type: 'vector',
-        tiles: ['https://tiles.openfreemap.org/planet/{z}/{x}/{y}.pbf'],
-        maxzoom: 14,
+        url: 'https://tiles.openfreemap.org/planet',
         attribution: '© OpenStreetMap contributors, OpenFreeMap',
       },
     },
@@ -79,8 +78,8 @@ export function createAtlasMapStyle(): StyleSpecification {
         source: 'openmaptiles',
         'source-layer': 'water',
         paint: {
-          'fill-color': '#d4c7b0',
-          'fill-opacity': 0.5,
+          'fill-color': '#c8b8a0',
+          'fill-opacity': 0.6,
         },
       },
       {
@@ -91,9 +90,9 @@ export function createAtlasMapStyle(): StyleSpecification {
         minzoom: 8,
         filter: ['in', ['get', 'class'], ['literal', ['river', 'canal']]],
         paint: {
-          'line-color': '#c4b8a0',
-          'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.5, 12, 2],
-          'line-opacity': 0.4,
+          'line-color': '#b8a890',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.8, 12, 2.5],
+          'line-opacity': 0.5,
         },
       },
       {
@@ -104,7 +103,7 @@ export function createAtlasMapStyle(): StyleSpecification {
         maxzoom: 12,
         paint: {
           'fill-color': '#e8ddc8',
-          'fill-opacity': 0.3,
+          'fill-opacity': 0.25,
         },
       },
       {
@@ -115,7 +114,7 @@ export function createAtlasMapStyle(): StyleSpecification {
         maxzoom: 12,
         paint: {
           'fill-color': '#ebe0cd',
-          'fill-opacity': 0.2,
+          'fill-opacity': 0.15,
         },
       },
       {
@@ -124,11 +123,19 @@ export function createAtlasMapStyle(): StyleSpecification {
         source: 'openmaptiles',
         'source-layer': 'place',
         minzoom: 8,
-        filter: ['in', ['get', 'class'], ['literal', ['town', 'village', 'hamlet']]],
+        filter: ['in', ['get', 'class'], ['literal', ['town', 'village', 'city']]],
         layout: {
           'text-field': ['get', 'name'],
           'text-font': ['Noto Sans Regular'],
-          'text-size': ['interpolate', ['linear'], ['zoom'], 8, 9, 12, 11],
+          'text-size': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            8,
+            ['case', ['==', ['get', 'class'], 'city'], 11, 9],
+            12,
+            ['case', ['==', ['get', 'class'], 'city'], 14, 11],
+          ],
           'text-anchor': 'center',
           'text-offset': [0, 0.3],
           'text-max-width': 8,
@@ -137,7 +144,7 @@ export function createAtlasMapStyle(): StyleSpecification {
           'text-color': '#8a7864',
           'text-halo-color': 'rgba(241, 229, 207, 0.9)',
           'text-halo-width': 1.5,
-          'text-opacity': 0.6,
+          'text-opacity': 0.65,
         },
       },
     ],

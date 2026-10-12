@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { area, booleanPointInPolygon, point, pointOnFeature } from '@turf/turf'
 import maplibregl, {
   type ExpressionSpecification,
@@ -689,27 +689,7 @@ export function MapView({
     }
   }, [appellations, onSelectAppellation])
 
-  useEffect(() => {
-    const map = mapRef.current
-
-    if (!map || !isReady) {
-      return
-    }
-
-    if (!map.isStyleLoaded()) {
-      const handler = () => {
-        applyLayerSettings(map, layers, mode)
-      }
-      map.once('idle', handler)
-      return () => {
-        map.off('idle', handler)
-      }
-    }
-
-    applyLayerSettings(map, layers, mode)
-  }, [isReady, layers, mode])
-
-  function applyLayerSettings(map: Map, layers: LayerState, mode: ExperienceMode) {
+  const applyLayerSettings = useCallback((map: Map, layers: LayerState, mode: ExperienceMode) => {
     if (!map.isStyleLoaded()) {
       return
     }
@@ -749,34 +729,14 @@ export function MapView({
         detailedAppellationFillColorExpression(layers.grapeEmphasis),
       )
     }
-  }
+  }, [])
 
-  useEffect(() => {
-    const map = mapRef.current
-
-    if (!map || !isReady) {
-      return
-    }
-
-    if (!map.isStyleLoaded()) {
-      const handler = () => {
-        applyFilters(map, filteredAppellationIds, hoveredRegion, legendHoveredId)
-      }
-      map.once('idle', handler)
-      return () => {
-        map.off('idle', handler)
-      }
-    }
-
-    applyFilters(map, filteredAppellationIds, hoveredRegion, legendHoveredId)
-  }, [filteredAppellationIds, hoveredRegion, isReady, legendHoveredId])
-
-  function applyFilters(
+  const applyFilters = useCallback((
     map: Map,
     filteredAppellationIds: AppellationId[],
     hoveredRegion: HoveredRegion | null,
     legendHoveredId: AppellationId | null,
-  ) {
+  ) => {
     if (!map.isStyleLoaded()) {
       return
     }
@@ -850,7 +810,47 @@ export function MapView({
     if (map.getLayer(labelLayerId)) {
       map.setFilter(labelLayerId, filter)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    const map = mapRef.current
+
+    if (!map || !isReady) {
+      return
+    }
+
+    if (!map.isStyleLoaded()) {
+      const handler = () => {
+        applyLayerSettings(map, layers, mode)
+      }
+      map.once('idle', handler)
+      return () => {
+        map.off('idle', handler)
+      }
+    }
+
+    applyLayerSettings(map, layers, mode)
+  }, [isReady, layers, mode, applyLayerSettings])
+
+  useEffect(() => {
+    const map = mapRef.current
+
+    if (!map || !isReady) {
+      return
+    }
+
+    if (!map.isStyleLoaded()) {
+      const handler = () => {
+        applyFilters(map, filteredAppellationIds, hoveredRegion, legendHoveredId)
+      }
+      map.once('idle', handler)
+      return () => {
+        map.off('idle', handler)
+      }
+    }
+
+    applyFilters(map, filteredAppellationIds, hoveredRegion, legendHoveredId)
+  }, [filteredAppellationIds, hoveredRegion, isReady, legendHoveredId, applyFilters])
 
   useEffect(() => {
     const map = mapRef.current
