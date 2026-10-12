@@ -147,8 +147,10 @@ export function StudyRegionMapPage({
 
     attachCameraHashSync(map, routePath)
 
-    // Expose map globally for E2E tests
-    ;(window as unknown as { __wineMap?: MapLibreMap }).__wineMap = map
+    // Expose map globally for E2E tests (non-production only)
+    if (import.meta.env.MODE !== 'production') {
+      ;(window as unknown as { __wineMap?: MapLibreMap }).__wineMap = map
+    }
 
     // Gentler wheel steps make trackpad/mouse zooming feel fluid instead of jumpy.
     map.scrollZoom.setWheelZoomRate(1 / 700)

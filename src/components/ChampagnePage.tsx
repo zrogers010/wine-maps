@@ -7,10 +7,10 @@ import {
 const appellations = appellationData as StudyRegionMetadata[]
 
 const champagneColors: Record<string, string> = {
-  // Muted champagne family - more distinct tones for each appellation
-  champagne: '#e8d7b8',
-  'coteaux-champenois': '#c9a882',
-  'rose-des-riceys': '#b8857a',
+  // Distinct muted tones for each appellation
+  champagne: '#d4c4a8',
+  'coteaux-champenois': '#b89485',
+  'rose-des-riceys': '#a87876',
 }
 
 const legendGroups = [

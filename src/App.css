@@ -1355,6 +1355,13 @@
     width: auto;
     max-width: calc(100vw - 24px);
     max-height: 60vh;
+    transition: transform 0.3s ease;
+  }
+
+  /* Hide legend when mobile sheet is open */
+  .region-legend.is-hidden {
+    transform: translateY(120%);
+    pointer-events: none;
   }
 
   .region-legend-group:first-child h2 {
@@ -1392,6 +1399,8 @@
 
   .hover-region-card:not(.is-empty).mobile-open {
     transform: translateY(0);
+    max-height: 45vh;
+    overflow-y: auto;
   }
 
   .hover-region-card:not(.is-empty)::before {

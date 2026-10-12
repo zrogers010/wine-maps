@@ -88,7 +88,7 @@ export function createAtlasMapStyle(): StyleSpecification {
         source: 'openmaptiles',
         'source-layer': 'waterway',
         minzoom: 8,
-        filter: ['in', ['get', 'class'], ['literal', ['river', 'canal']]],
+        filter: ['==', ['get', 'class'], 'river'],
         paint: {
           'line-color': '#a89880',
           'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1, 12, 3],

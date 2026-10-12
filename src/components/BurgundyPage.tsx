@@ -166,39 +166,47 @@ const grandCruMeta: Record<string, GrandCruMeta> = {
 }
 
 const grandCruColors: Record<string, string> = {
-  // Grand Crus - muted jewel tones, slightly darker than their villages
-  chambertin: '#826576',
-  'chambertin-clos-de-beze': '#8d6a75',
-  'chapelle-chambertin': '#90707d',
-  'charmes-chambertin': '#9c7c89',
-  'griotte-chambertin': '#886976',
-  'latricieres-chambertin': '#7e5f6d',
-  'mazis-chambertin': '#8a6c7a',
-  'mazoyeres-chambertin': '#9c7c89',
-  'ruchottes-chambertin': '#846576',
-  'clos-de-la-roche': '#856675',
-  'clos-saint-denis': '#886b78',
-  'clos-des-lambrays': '#927387',
-  'clos-de-tart': '#7e5f6d',
-  'bonnes-mares': '#7a5c68',
-  musigny: '#7a5c68',
-  'clos-de-vougeot': '#7a5c69',
-  echezeaux: '#8e707e',
-  'grands-echezeaux': '#826576',
-  'romanee-conti': '#7a5c69',
-  'la-tache': '#7d5f6d',
-  richebourg: '#916f7d',
-  'la-romanee': '#866877',
-  'la-grande-rue': '#8d6c7a',
-  'romanee-saint-vivant': '#846674',
-  corton: '#94786a',
-  'corton-charlemagne': '#a88a7a',
-  charlemagne: '#b09686',
-  montrachet: '#ae947f',
-  'chevalier-montrachet': '#b59983',
-  'batard-montrachet': '#b89d88',
-  'bienvenues-batard-montrachet': '#c4a894',
-  'criots-batard-montrachet': '#baa18d',
+  // Gevrey Chambertin group - deep burgundy reds
+  chambertin: '#8b4e5f',
+  'chambertin-clos-de-beze': '#944f5e',
+  'chapelle-chambertin': '#9d5563',
+  'charmes-chambertin': '#a65a68',
+  'griotte-chambertin': '#995265',
+  'latricieres-chambertin': '#8a4b5d',
+  'mazis-chambertin': '#924d60',
+  'mazoyeres-chambertin': '#a65a68',
+  'ruchottes-chambertin': '#8c4d5f',
+  
+  // Morey group - purple-reds
+  'clos-de-la-roche': '#7a4f6b',
+  'clos-saint-denis': '#845873',
+  'clos-des-lambrays': '#8e5f7a',
+  'clos-de-tart': '#7d526e',
+  
+  // Chambolle/Vougeot/Vosne group - rose-mauves
+  'bonnes-mares': '#a97286',
+  musigny: '#b5808f',
+  'clos-de-vougeot': '#9c6a7c',
+  echezeaux: '#a87385',
+  'grands-echezeaux': '#9f6d7e',
+  'romanee-conti': '#a67588',
+  'la-tache': '#9e6f80',
+  richebourg: '#b17a8c',
+  'la-romanee': '#a87487',
+  'la-grande-rue': '#a47185',
+  'romanee-saint-vivant': '#ad788a',
+  
+  // Beaune reds - warm terracotta
+  corton: '#a87562',
+  
+  // Beaune whites - golden beiges
+  'corton-charlemagne': '#c4a07a',
+  charlemagne: '#cca882',
+  montrachet: '#d4b28a',
+  'chevalier-montrachet': '#d8b68f',
+  'batard-montrachet': '#dcba93',
+  'bienvenues-batard-montrachet': '#e0be97',
+  'criots-batard-montrachet': '#dbb990',
 }
 
 const legendGroups = [
@@ -607,8 +615,10 @@ export function BurgundyPage() {
 
     mapRef.current = map
 
-    // Expose map globally for E2E tests
-    ;(window as unknown as { __wineMap?: MapLibreMap }).__wineMap = map
+    // Expose map globally for E2E tests (non-production only)
+    if (import.meta.env.MODE !== 'production') {
+      ;(window as unknown as { __wineMap?: MapLibreMap }).__wineMap = map
+    }
 
     return () => {
       cancelled = true
@@ -848,7 +858,10 @@ export function BurgundyPage() {
         INAO/data.gouv.fr AOC viticole parcel delimitation extract. Online data
         are informational; official plans remain with town halls or INAO.
       </div>
-      <aside className="region-legend" aria-label="Burgundy appellation legend">
+      <aside 
+        className={`region-legend${selectedId ? ' is-hidden' : ''}`} 
+        aria-label="Burgundy appellation legend"
+      >
         {legendGroups.map((group) => (
           <section className="region-legend-group" key={group.title}>
             <h2

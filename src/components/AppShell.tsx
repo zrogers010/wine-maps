@@ -89,10 +89,10 @@ export function AppShell({ initialSelectedId }: { initialSelectedId?: Appellatio
 
   // Sync initialSelectedId prop changes to state (for deep linking)
   useEffect(() => {
-    if (initialSelectedId !== undefined) {
+    if (initialSelectedId !== undefined && initialSelectedId !== selectedId) {
       setSelectedId(initialSelectedId)
     }
-  }, [initialSelectedId])
+  }, [initialSelectedId, selectedId])
 
   const handleSelectAppellation = useCallback((id: AppellationId | null) => {
     if (id !== selectedId) {

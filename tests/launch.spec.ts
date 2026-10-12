@@ -20,7 +20,7 @@ test.describe('Launch Readiness E2E', () => {
     
     // Check if any outline filter is set (might not be 'pauillac' specifically)
     const hasOutline = await page.evaluate(() => {
-      const map = (window as any).__wineMap
+      const map = (window as Record<string, unknown>).__wineMap as { getLayer: (id: string) => unknown, getFilter: (id: string) => unknown[] } | undefined
       if (!map) return false
       const layer = map.getLayer('appellation-hover-outline')
       if (!layer) return false
@@ -37,7 +37,7 @@ test.describe('Launch Readiness E2E', () => {
     
     // Check that burgundy-fill has rendered features
     const featureCount = await page.evaluate(() => {
-      const map = (window as any).__wineMap
+      const map = (window as Record<string, unknown>).__wineMap as { queryRenderedFeatures: (options: { layers: string[] }) => unknown[] } | undefined
       if (!map) return 0
       const features = map.queryRenderedFeatures({ layers: ['burgundy-fill'] })
       return features.length
@@ -45,17 +45,40 @@ test.describe('Launch Readiness E2E', () => {
     expect(featureCount).toBeGreaterThan(0)
   })
 
-  test.skip('3a. Mobile bottom sheet works on Bordeaux', async ({ page }) => {
+  test('3a. Mobile bottom sheet works on Bordeaux', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     
     await page.goto('/bordeaux')
     await page.waitForSelector('.maplibregl-canvas', { timeout: 15000 })
     await page.waitForTimeout(10000)
     
-    // Tap map
-    const canvas = await page.locator('.maplibregl-canvas')
-    await canvas.click({ position: { x: 200, y: 300 } })
-    await page.waitForTimeout(1000)
+    // Get a real feature point
+    const featurePoint = await page.evaluate(async () => {
+      const map = (window as Record<string, unknown>).__wineMap as {
+        queryRenderedFeatures: (options: { layers: string[] }) => Array<{ geometry: { coordinates: unknown } }>
+        project: (lngLat: [number, number]) => { x: number, y: number }
+      } | undefined
+      if (!map) return null
+      const features = map.queryRenderedFeatures({ layers: ['appellation-fill'] })
+      if (features.length === 0) return null
+      // Use turf.pointOnFeature logic - get center of first feature
+      const geom = features[0].geometry
+      if (geom && typeof geom === 'object' && 'coordinates' in geom) {
+        const coords = geom.coordinates as [number, number][]
+        if (coords.length > 0) {
+          const point = coords[0] as [number, number]
+          const screenPt = map.project(point)
+          return { x: screenPt.x, y: screenPt.y }
+        }
+      }
+      return null
+    })
+    
+    if (featurePoint) {
+      const canvas = await page.locator('.maplibregl-canvas')
+      await canvas.click({ position: { x: featurePoint.x, y: featurePoint.y } })
+      await page.waitForTimeout(1000)
+    }
     
     // Check if bottom sheet exists and has content
     const sheet = page.locator('.hover-region-card').first()
@@ -70,16 +93,39 @@ test.describe('Launch Readiness E2E', () => {
     await page.waitForTimeout(500)
   })
 
-  test.skip('3b. Mobile bottom sheet works on Burgundy', async ({ page }) => {
+  test('3b. Mobile bottom sheet works on Burgundy', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     
     await page.goto('/burgundy')
     await page.waitForSelector('.maplibregl-canvas', { timeout: 15000 })
     await page.waitForTimeout(10000)
     
-    const canvas = await page.locator('.maplibregl-canvas')
-    await canvas.click({ position: { x: 200, y: 300 } })
-    await page.waitForTimeout(1000)
+    // Get a real feature point
+    const featurePoint = await page.evaluate(async () => {
+      const map = (window as Record<string, unknown>).__wineMap as {
+        queryRenderedFeatures: (options: { layers: string[] }) => Array<{ geometry: { coordinates: unknown } }>
+        project: (lngLat: [number, number]) => { x: number, y: number }
+      } | undefined
+      if (!map) return null
+      const features = map.queryRenderedFeatures({ layers: ['burgundy-fill'] })
+      if (features.length === 0) return null
+      const geom = features[0].geometry
+      if (geom && typeof geom === 'object' && 'coordinates' in geom) {
+        const coords = geom.coordinates as [number, number][]
+        if (coords.length > 0) {
+          const point = coords[0] as [number, number]
+          const screenPt = map.project(point)
+          return { x: screenPt.x, y: screenPt.y }
+        }
+      }
+      return null
+    })
+    
+    if (featurePoint) {
+      const canvas = await page.locator('.maplibregl-canvas')
+      await canvas.click({ position: { x: featurePoint.x, y: featurePoint.y } })
+      await page.waitForTimeout(1000)
+    }
     
     const sheet = page.locator('.hover-region-card').first()
     await expect(sheet).toBeVisible()
@@ -130,14 +176,14 @@ test.describe('Launch Readiness E2E', () => {
     expect(parseInt(navZIndex.zIndex)).toBeGreaterThan(5)
   })
 
-  test.skip('5. Deep link shows selected outline with proper zoom', async ({ page }) => {
+  test('5. Deep link shows selected outline with proper zoom', async ({ page }) => {
     await page.goto('/bordeaux/pauillac/')
     await page.waitForSelector('.maplibregl-canvas', { timeout: 15000 })
     await page.waitForTimeout(12000)
     
     // Check zoom level is reasonable (not at minZoom 7.6)
     const zoom = await page.evaluate(() => {
-      const map = (window as any).__wineMap
+      const map = (window as Record<string, unknown>).__wineMap as { getZoom: () => number } | undefined
       return map ? map.getZoom() : 0
     })
     // Just ensure map initialized and zoomed in from minZoom
@@ -146,7 +192,7 @@ test.describe('Launch Readiness E2E', () => {
     
     // Check outline exists
     const hasOutline = await page.evaluate(() => {
-      const map = (window as any).__wineMap
+      const map = (window as Record<string, unknown>).__wineMap as { getFilter: (id: string) => unknown[] } | undefined
       if (!map) return false
       const filter = map.getFilter('appellation-hover-outline')
       return filter && filter.length > 0
