@@ -46,6 +46,10 @@ const REGION_CONFIG = {
     detail: 'bordeaux-display-exclusive-2026.geojson',
     hull: 'bordeaux-display-cadillac-dissolve-trial-2026.geojson',
   },
+  'tiny-parcel-test': {
+    detail: 'tiny-parcel-detail.geojson',
+    hull: 'tiny-parcel-hulls.geojson',
+  },
 }
 
 // Parse arguments
@@ -93,7 +97,9 @@ const manifest = {
 }
 
 let anyOverBudget = false
+let anyDropped = false
 let builtCount = 0
+const failedRegions = []
 
 // Helper: run command and return exit code
 function runCommand(cmd, args, options = {}) {
@@ -193,6 +199,8 @@ for (const region of regionArray) {
     '-z15', '-Z11',
     '-r1',
     '-l', region,
+    '--no-tiny-polygon-reduction-at-maximum-zoom',
+    '--no-feature-limit',
     '--coalesce-densest-as-needed',
     '--detect-shared-borders',
     '--no-simplification-of-shared-nodes',
@@ -237,7 +245,8 @@ for (const region of regionArray) {
     const missing = inputIds.filter(id => !uniqueOutputIds.includes(id))
     console.error(`  ❌ FEATURES DROPPED: ${missing.length} features missing at max zoom`)
     missing.slice(0, 5).forEach(id => console.error(`     Missing: ${id}`))
-    anyOverBudget = true
+    anyDropped = true
+    failedRegions.push({ region, reason: `${missing.length} features dropped` })
   }
   
   // Convert mbtiles to pmtiles
@@ -320,6 +329,7 @@ for (const region of regionArray) {
   if (metadataSize > metadataBudgetBytes) {
     console.error(`  ❌ METADATA OVER BUDGET: ${metadataSizeKB} KB > ${metadataBudgetKB} KB`)
     anyOverBudget = true
+    failedRegions.push({ region, reason: `metadata ${metadataSizeKB} KB > ${metadataBudgetKB} KB` })
   }
   
   const totalSize = detailSize + hullSize + metadataSize
@@ -330,6 +340,7 @@ for (const region of regionArray) {
   if (totalSize > sizeBudgetBytes) {
     console.error(`  ❌ OVER BUDGET: ${totalSizeMB} MB > ${sizeBudgetMB} MB`)
     anyOverBudget = true
+    failedRegions.push({ region, reason: `total ${totalSizeMB} MB > ${sizeBudgetMB} MB` })
   }
   
   console.log('')
@@ -383,12 +394,32 @@ console.log(`Manifest: ${manifestFile}`)
 console.log(`Current: ${join(currentDir, 'manifest.json')}`)
 console.log('')
 
-if (anyOverBudget) {
-  console.error('❌ ERROR: One or more regions exceeded budget')
+if (anyDropped || anyOverBudget) {
+  console.error('❌ ERROR: Build failed')
   console.error('')
-  console.error('To fix:')
-  console.error('  - For tile size: increase simplification (-r1 → -r1.5) or reduce max zoom (-z15 → -z14)')
-  console.error('  - For metadata: check for geometry leaks or large property values')
+  
+  if (anyDropped) {
+    console.error('Features dropped at max zoom:')
+    failedRegions.filter(f => f.reason.includes('dropped')).forEach(f => {
+      console.error(`  - ${f.region}: ${f.reason}`)
+    })
+    console.error('')
+    console.error('To fix:')
+    console.error('  - Use --no-tiny-polygon-reduction-at-maximum-zoom (already enabled)')
+    console.error('  - Or clean input data to remove degenerate slivers')
+  }
+  
+  if (anyOverBudget) {
+    console.error('Regions over budget:')
+    failedRegions.filter(f => !f.reason.includes('dropped')).forEach(f => {
+      console.error(`  - ${f.region}: ${f.reason}`)
+    })
+    console.error('')
+    console.error('To fix:')
+    console.error('  - For tile size: increase simplification (-r1 → -r1.5) or reduce max zoom (-z15 → -z14)')
+    console.error('  - For metadata: check for geometry leaks or large property values')
+  }
+  
   console.error('')
   process.exit(1)
 }

@@ -60,8 +60,14 @@ jobs:
           sudo mv pmtiles /usr/local/bin/
           which pmtiles
       
+      - name: Setup Mac-style symlinked data directory
+        run: |
+          # Match Mac layout: tiles at project root, public/data symlink to fixtures
+          ln -s $(pwd)/test/fixtures/data public/data
+          ls -la public/
+      
       - name: Build tiles with fixtures
-        run: DATA_DIR=test/fixtures/data/france npm run tiles:build | tee /tmp/build.log
+        run: npm run tiles:build | tee /tmp/build.log
       
       - name: Verify manifest
         run: |
@@ -93,23 +99,42 @@ jobs:
           
           echo "✅ Feature-drop check ran for all regions (3 'ids:' lines found)"
       
+      - name: Positive test - tiny parcel preserved
+        run: |
+          rm -rf tiles
+          
+          if ! npm run tiles:build -- --regions tiny-parcel-test 2>&1 | tee /tmp/tiny-test.log; then
+            echo "❌ Tiny parcel test should pass"
+            cat /tmp/tiny-test.log
+            exit 1
+          fi
+          
+          # Verify all 3 features present (including tiny-parcel)
+          if ! grep -q "ids: input=3 z15=3" /tmp/tiny-test.log; then
+            echo "❌ Expected all 3 features preserved (including tiny-parcel)"
+            cat /tmp/tiny-test.log
+            exit 1
+          fi
+          
+          echo "✅ Tiny parcel preserved with new flags"
+      
       - name: Negative test - missing file should fail
         run: |
-          mv test/fixtures/data/france/alsace/alsace-display-2026.geojson /tmp/backup.geojson
+          mv public/data/france/alsace/alsace-display-2026.geojson /tmp/backup.geojson
           
-          if DATA_DIR=test/fixtures/data/france npm run tiles:build 2>&1; then
+          if npm run tiles:build 2>&1; then
             echo "❌ Build should have failed with missing file"
-            mv /tmp/backup.geojson test/fixtures/data/france/alsace/alsace-display-2026.geojson
+            mv /tmp/backup.geojson public/data/france/alsace/alsace-display-2026.geojson
             exit 1
           fi
           
           echo "✅ Build correctly failed with missing file"
-          mv /tmp/backup.geojson test/fixtures/data/france/alsace/alsace-display-2026.geojson
+          mv /tmp/backup.geojson public/data/france/alsace/alsace-display-2026.geojson
       
       - name: Negative test - feature drop should fail
         run: |
-          # Create a tiny sliver polygon that tippecanoe will drop
-          cat > test/fixtures/data/france/burgundy/burgundy-test-drop.geojson << 'EOF'
+          # Create a degenerate sliver polygon that tippecanoe will drop even with --no-tiny-polygon-reduction
+          cat > public/data/france/burgundy/burgundy-test-drop.geojson << 'EOF'
           {
             "type": "FeatureCollection",
             "features": [
@@ -117,7 +142,7 @@ jobs:
                 "type": "Feature",
                 "id": "should-drop",
                 "properties": {
-                  "name": "Tiny Sliver"
+                  "name": "Degenerate Sliver"
                 },
                 "geometry": {
                   "type": "Polygon",
@@ -139,15 +164,15 @@ jobs:
           }
           EOF
           
-          mv test/fixtures/data/france/burgundy/burgundy-display-exclusive-2026.geojson /tmp/backup-burgundy.geojson
-          mv test/fixtures/data/france/burgundy/burgundy-test-drop.geojson test/fixtures/data/france/burgundy/burgundy-display-exclusive-2026.geojson
+          mv public/data/france/burgundy/burgundy-display-exclusive-2026.geojson /tmp/backup-burgundy.geojson
+          mv public/data/france/burgundy/burgundy-test-drop.geojson public/data/france/burgundy/burgundy-display-exclusive-2026.geojson
           
           # Use set -o pipefail to preserve exit code through pipe
           set -o pipefail
-          if DATA_DIR=test/fixtures/data/france npm run tiles:build 2>&1 | tee /tmp/drop-test.log; then
+          if npm run tiles:build 2>&1 | tee /tmp/drop-test.log; then
             echo "❌ Build should have failed when features were dropped"
             cat /tmp/drop-test.log
-            mv /tmp/backup-burgundy.geojson test/fixtures/data/france/burgundy/burgundy-display-exclusive-2026.geojson
+            mv /tmp/backup-burgundy.geojson public/data/france/burgundy/burgundy-display-exclusive-2026.geojson
             exit 1
           fi
           
@@ -155,12 +180,12 @@ jobs:
           if ! grep -q "FEATURES DROPPED" /tmp/drop-test.log; then
             echo "❌ Error message should mention 'FEATURES DROPPED'"
             cat /tmp/drop-test.log
-            mv /tmp/backup-burgundy.geojson test/fixtures/data/france/burgundy/burgundy-display-exclusive-2026.geojson
+            mv /tmp/backup-burgundy.geojson public/data/france/burgundy/burgundy-display-exclusive-2026.geojson
             exit 1
           fi
           
           echo "✅ Build correctly failed when features were dropped"
-          mv /tmp/backup-burgundy.geojson test/fixtures/data/france/burgundy/burgundy-display-exclusive-2026.geojson
+          mv /tmp/backup-burgundy.geojson public/data/france/burgundy/burgundy-display-exclusive-2026.geojson
   
   smoke-test:
     runs-on: ubuntu-latest
@@ -198,8 +223,14 @@ jobs:
           sudo apt-get install -y google-chrome-stable
           google-chrome --version
       
+      - name: Setup Mac-style symlinked data directory
+        run: |
+          # Match Mac layout: tiles at project root, public/data symlink to fixtures
+          ln -s $(pwd)/test/fixtures/data public/data
+          ls -la public/
+      
       - name: Build tiles with fixtures
-        run: DATA_DIR=test/fixtures/data/france npm run tiles:build
+        run: npm run tiles:build
       
       - name: Run smoke test
         run: npm run smoke:tiles

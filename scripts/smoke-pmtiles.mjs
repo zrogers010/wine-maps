@@ -112,6 +112,7 @@ console.log('')
 
 let failed = false
 const consoleErrors = []
+const failedRequests = []
 
 try {
   // Connect to Chrome CDP
@@ -153,6 +154,14 @@ try {
         }
       }
       
+      // Capture failed network requests
+      if (message.method === 'Network.responseReceived') {
+        const response = message.params.response
+        if (response.status >= 400 && response.url.includes('/tiles/')) {
+          failedRequests.push({ url: response.url, status: response.status })
+        }
+      }
+      
       if (message.id && pending.has(message.id)) {
         const { resolve, reject } = pending.get(message.id)
         pending.delete(message.id)
@@ -170,12 +179,20 @@ try {
     await send('Page.enable')
     await send('Runtime.enable')
     await send('Console.enable')
+    await send('Network.enable')
     await send('Emulation.setDeviceMetricsOverride', {
       width: 1440,
       height: 900,
       deviceScaleFactor: 2,
       mobile: false,
     })
+
+    const baseUrl = `http://localhost:${DEV_SERVER_PORT}`
+    const manifestUrl = `${baseUrl}/tiles/current/manifest.json`
+    
+    console.log(`Base URL: ${baseUrl}`)
+    console.log(`Manifest: ${manifestUrl}`)
+    console.log('')
 
     // Load test metadata for all EXPECTED regions
     const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8'))
@@ -256,6 +273,7 @@ try {
     for (const testCase of testCases) {
       console.log(`Testing ${testCase.region}...`)
       consoleErrors.length = 0  // Reset for this region
+      failedRequests.length = 0  // Reset for this region
       
       // Navigate to region page
       await send('Page.navigate', { url: `http://localhost:${DEV_SERVER_PORT}${testCase.path}` })
@@ -270,6 +288,23 @@ try {
       
       if (mapCheck.value !== 'loaded') {
         console.error(`  ❌ Map did not load`)
+        
+        // Log diagnostics
+        if (failedRequests.length > 0) {
+          console.error(`  Failed network requests:`)
+          failedRequests.forEach(r => console.error(`    ${r.url} -> ${r.status}`))
+        }
+        if (consoleErrors.length > 0) {
+          console.error(`  Console errors:`)
+          consoleErrors.forEach(e => console.error(`    ${e}`))
+        }
+        
+        // Save failure screenshot
+        const { data: screenshot } = await send('Page.captureScreenshot', { format: 'png' })
+        const failScreenshotPath = join(OUTPUT_DIR, `${testCase.region}-FAIL.png`)
+        writeFileSync(failScreenshotPath, screenshot, 'base64')
+        console.error(`  Screenshot saved: ${failScreenshotPath}`)
+        
         failed = true
         continue
       }
@@ -293,6 +328,13 @@ try {
       
       if (!featureCheck.value) {
         console.error(`  ❌ Feature "${testCase.testId}" not found in rendered tiles`)
+        
+        // Save failure screenshot
+        const { data: screenshot } = await send('Page.captureScreenshot', { format: 'png' })
+        const failScreenshotPath = join(OUTPUT_DIR, `${testCase.region}-FAIL.png`)
+        writeFileSync(failScreenshotPath, screenshot, 'base64')
+        console.error(`  Screenshot saved: ${failScreenshotPath}`)
+        
         failed = true
         continue
       }
@@ -345,6 +387,13 @@ try {
       
       if (!hoverCheck.value) {
         console.error(`  ❌ Hover card did not appear with expected name "${testCase.expectedName}"`)
+        
+        // Save failure screenshot
+        const { data: screenshot } = await send('Page.captureScreenshot', { format: 'png' })
+        const failScreenshotPath = join(OUTPUT_DIR, `${testCase.region}-FAIL.png`)
+        writeFileSync(failScreenshotPath, screenshot, 'base64')
+        console.error(`  Screenshot saved: ${failScreenshotPath}`)
+        
         failed = true
       } else {
         console.log(`  ✓ Hover card appeared`)
