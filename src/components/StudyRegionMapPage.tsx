@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { area, pointOnFeature } from '@turf/turf'
 import maplibregl, {
   type ExpressionSpecification,
   type FilterSpecification,
@@ -7,7 +6,7 @@ import maplibregl, {
   type Map as MapLibreMap,
   type MapLayerMouseEvent,
 } from 'maplibre-gl'
-import type { Feature, FeatureCollection, Geometry } from 'geojson'
+import type { FeatureCollection } from 'geojson'
 import {
   flyToBounds,
   LEGEND_PREVIEW_PADDING,
@@ -16,6 +15,12 @@ import {
 } from '../utils/camera'
 import { getFeatureCollectionBounds } from '../utils/geo'
 import { createAtlasMapStyle } from '../utils/mapStyles'
+import { attachCameraHashSync, readCameraFromHash } from '../utils/urlHash'
+import { registerPMTilesProtocol, getPMTilesUrl, loadRegionMetadata, getSourceLayer } from '../utils/pmtiles'
+import { MapLoadingVeil } from './MapLoadingVeil'
+
+// Register PMTiles protocol
+registerPMTilesProtocol(maplibregl)
 
 type SourceFeatureId = string | number
 
@@ -65,6 +70,9 @@ interface StudyRegionMapPageProps {
   legendGroups: LegendGroup[]
   legendFitMaxZoomById?: Record<string, number>
   labelMinZoom?: number
+  regionName: string
+  regionId?: string
+  routePath: string
   sharedGeometryIds?: Record<string, string>
   sourceBadge: string
 }
@@ -83,6 +91,9 @@ export function StudyRegionMapPage({
   legendFitMaxZoomById = {},
   legendGroups,
   labelMinZoom = 0,
+  regionName,
+  regionId,
+  routePath,
   sharedGeometryIds = {},
   sourceBadge,
 }: StudyRegionMapPageProps) {
@@ -107,7 +118,9 @@ export function StudyRegionMapPage({
   const hoveredFeatureIdRef = useRef<SourceFeatureId | null>(null)
   const hoveredRegionKeyRef = useRef<string | null>(null)
   const hoverLeaveTimeoutRef = useRef<number | null>(null)
+  const sourceLayerRef = useRef<string | undefined>(undefined)
   const [isReady, setIsReady] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [hoveredRegion, setHoveredRegion] = useState<HoveredRegion | null>(null)
   const [legendHoveredId, setLegendHoveredId] = useState<string | null>(null)
   const [subregionHoveredIds, setSubregionHoveredIds] = useState<string[] | null>(null)
@@ -123,16 +136,22 @@ export function StudyRegionMapPage({
     }
 
     let cancelled = false
+    const hashCamera = readCameraFromHash()
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: createAtlasMapStyle(),
-      center: [4.25, 48.85],
-      zoom: 8,
+      center: hashCamera?.center ?? [4.25, 48.85],
+      zoom: hashCamera?.zoom ?? 8,
       minZoom: 6.5,
       maxZoom: 14,
       attributionControl: false,
       fadeDuration: 180,
     })
+
+    attachCameraHashSync(map, routePath)
+
+    // Expose map globally for automated testing and debugging
+    ;(window as unknown as { __wineMap?: MapLibreMap }).__wineMap = map
 
     // Gentler wheel steps make trackpad/mouse zooming feel fluid instead of jumpy.
     map.scrollZoom.setWheelZoomRate(1 / 700)
@@ -157,36 +176,55 @@ export function StudyRegionMapPage({
     )
 
     map.on('load', async () => {
-      const [detailGeoJson, hullGeoJson] = await Promise.all([
-        loadGeoJson(detailDataPath),
-        loadGeoJson(hullDataPath),
-      ])
-
-      if (cancelled) {
-        return
+      if (!regionId) {
+        throw new Error('regionId is required for PMTiles mode')
       }
 
-      hullGeoJsonRef.current = hullGeoJson
+      try {
+        // Load metadata and resolve tile URLs before adding sources
+        const [metadata, detailUrl, hullUrl] = await Promise.all([
+          loadRegionMetadata(regionId),
+          getPMTilesUrl(regionId, 'detail'),
+          getPMTilesUrl(regionId, 'hull'),
+        ])
+        
+        if (cancelled) {
+          return
+        }
 
-      map.addSource(detailSourceId, {
-        type: 'geojson',
-        data: detailGeoJson,
-      } satisfies GeoJSONSourceSpecification)
+        hullGeoJsonRef.current = metadata
 
-      map.addSource(hullSourceId, {
-        type: 'geojson',
-        data: hullGeoJson,
-      } satisfies GeoJSONSourceSpecification)
+        // Add PMTiles vector sources with real URLs
+        const sourceLayer = getSourceLayer(regionId)
+        sourceLayerRef.current = sourceLayer
 
-      map.addSource(labelSourceId, {
-        type: 'geojson',
-        data: createLabelPoints(hullGeoJson, appellations),
-      } satisfies GeoJSONSourceSpecification)
+        map.addSource(detailSourceId, {
+          type: 'vector',
+          url: detailUrl,
+          promoteId: { [sourceLayer]: 'id' },
+        })
 
-      map.addLayer({
-        id: hullLayerId,
-        type: 'fill',
-        source: hullSourceId,
+        map.addSource(hullSourceId, {
+          type: 'vector',
+          url: hullUrl,
+          promoteId: { [sourceLayer]: 'id' },
+        })
+          
+        // Label source uses GeoJSON from metadata
+        map.addSource(labelSourceId, {
+          type: 'geojson',
+          data: createLabelPoints(metadata, appellations),
+        } satisfies GeoJSONSourceSpecification)
+
+        if (cancelled) {
+          return
+        }
+
+        map.addLayer({
+          id: hullLayerId,
+          type: 'fill',
+          source: hullSourceId,
+          'source-layer': sourceLayer,
         paint: {
           'fill-color': fillColorExpression(colors),
           'fill-opacity': [
@@ -205,6 +243,7 @@ export function StudyRegionMapPage({
         id: hullShadeLayerId,
         type: 'fill',
         source: hullSourceId,
+        'source-layer': sourceLayer,
         filter: filterNone(),
         paint: {
           'fill-color': '#1c0f12',
@@ -224,6 +263,7 @@ export function StudyRegionMapPage({
         id: hullBorderLayerId,
         type: 'line',
         source: hullSourceId,
+        'source-layer': sourceLayer,
         paint: {
           'line-color': 'rgba(96, 65, 45, 0.52)',
           'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.65, 11, 1.15],
@@ -243,6 +283,7 @@ export function StudyRegionMapPage({
         id: detailFillLayerId,
         type: 'fill',
         source: detailSourceId,
+        'source-layer': sourceLayer,
         paint: {
           'fill-color': fillColorExpression(colors),
           // Fade in across the same span the hulls fade out for one smooth crossfade.
@@ -264,6 +305,7 @@ export function StudyRegionMapPage({
         id: appellationShadeLayerId,
         type: 'fill',
         source: detailSourceId,
+        'source-layer': sourceLayer,
         filter: filterNone(),
         paint: {
           'fill-color': '#1c0f12',
@@ -283,6 +325,7 @@ export function StudyRegionMapPage({
         id: communeShadeLayerId,
         type: 'fill',
         source: detailSourceId,
+        'source-layer': sourceLayer,
         filter: filterNone(),
         paint: {
           'fill-color': '#1c0f12',
@@ -294,6 +337,7 @@ export function StudyRegionMapPage({
         id: communeLineLayerId,
         type: 'line',
         source: detailSourceId,
+        'source-layer': sourceLayer,
         paint: {
           'line-color': 'rgba(68, 48, 36, 0.64)',
           'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.45, 11, 0.85],
@@ -313,6 +357,7 @@ export function StudyRegionMapPage({
         id: lineLayerId,
         type: 'line',
         source: detailSourceId,
+        'source-layer': sourceLayer,
         paint: {
           'line-color': [
             'case',
@@ -361,20 +406,36 @@ export function StudyRegionMapPage({
       map.moveLayer(hullShadeLayerId, labelLayerId)
       map.moveLayer(hullBorderLayerId, labelLayerId)
 
-      map.on('mousemove', hullLayerId, handleHullMouseMove)
-      map.on('mouseleave', hullLayerId, handleMouseLeave)
-      map.on('mousemove', detailFillLayerId, handleMouseMove)
-      map.on('mouseleave', detailFillLayerId, handleDetailMouseLeave)
+        map.on('mousemove', hullLayerId, handleHullMouseMove)
+        map.on('mouseleave', hullLayerId, handleMouseLeave)
+        map.on('mousemove', detailFillLayerId, handleMouseMove)
+        map.on('mouseleave', detailFillLayerId, handleDetailMouseLeave)
 
-      const overviewBounds = getFeatureCollectionBounds(detailGeoJson)
-      overviewBoundsRef.current = overviewBounds
-      map.fitBounds(overviewBounds, {
-        padding: OVERVIEW_PADDING,
-        duration: 1100,
-        essential: true,
-      })
+        const overviewBounds = metadata.bbox
+          ? ([[metadata.bbox[0], metadata.bbox[1]], [metadata.bbox[2], metadata.bbox[3]]] as [[number, number], [number, number]])
+          : getFeatureCollectionBounds(metadata)
+        overviewBoundsRef.current = overviewBounds
 
-      setIsReady(true)
+        // A camera deep link takes precedence over the intro overview flight.
+        if (!hashCamera) {
+          map.fitBounds(overviewBounds, {
+            padding: OVERVIEW_PADDING,
+            duration: 1100,
+            essential: true,
+          })
+        }
+
+        setIsReady(true)
+      } catch (error) {
+        console.error('Failed to load map data:', error)
+        const isDev = import.meta.env.DEV
+        setLoadError(
+          isDev
+            ? 'Map data not found. Run `npm run tiles:build` to generate tiles.'
+            : 'Unable to load map data. Please try again later.',
+        )
+        return
+      }
     })
 
     mapRef.current = map
@@ -405,7 +466,7 @@ export function StudyRegionMapPage({
       map.getCanvas().style.cursor = 'pointer'
 
       if (hoveredFeatureIdRef.current !== null) {
-        setFeatureHover(map, detailSourceId, hoveredFeatureIdRef.current, false)
+        setFeatureHover(map, detailSourceId, hoveredFeatureIdRef.current, false, sourceLayerRef.current)
         hoveredFeatureIdRef.current = null
       }
 
@@ -436,11 +497,11 @@ export function StudyRegionMapPage({
 
       if (hoveredFeatureIdRef.current !== sourceFeatureId) {
         if (hoveredFeatureIdRef.current !== null) {
-          setFeatureHover(map, detailSourceId, hoveredFeatureIdRef.current, false)
+          setFeatureHover(map, detailSourceId, hoveredFeatureIdRef.current, false, sourceLayerRef.current)
         }
 
         hoveredFeatureIdRef.current = sourceFeatureId
-        setFeatureHover(map, detailSourceId, sourceFeatureId, true)
+        setFeatureHover(map, detailSourceId, sourceFeatureId, true, sourceLayerRef.current)
       }
 
       const nextRegion = getHoveredRegion(feature?.properties, id)
@@ -475,7 +536,7 @@ export function StudyRegionMapPage({
 
     function clearHoverState() {
       if (hoveredFeatureIdRef.current !== null) {
-        setFeatureHover(map, detailSourceId, hoveredFeatureIdRef.current, false)
+        setFeatureHover(map, detailSourceId, hoveredFeatureIdRef.current, false, sourceLayerRef.current)
         hoveredFeatureIdRef.current = null
       }
 
@@ -501,6 +562,7 @@ export function StudyRegionMapPage({
     labelLayerId,
     labelMinZoom,
     labelSourceId,
+    routePath,
   ])
 
   useEffect(() => {
@@ -538,29 +600,40 @@ export function StudyRegionMapPage({
 
   useEffect(() => {
     const map = mapRef.current
-    const hullGeoJson = hullGeoJsonRef.current
+    const metadata = hullGeoJsonRef.current
 
-    if (!map || !isReady || !hullGeoJson || !subregionHoveredIds?.length) {
+    if (!map || !isReady || !metadata || !subregionHoveredIds?.length) {
       return
     }
 
     const displayIds = subregionHoveredIds.map((id) => displayGeometryId(id, sharedGeometryIds))
-    const features = hullGeoJson.features.filter(
-      (feature) =>
-        typeof feature.properties?.id === 'string' &&
-        displayIds.includes(feature.properties.id),
+    
+    // Find metadata features by ID to get their bboxes
+    const matchingFeatures = metadata.features.filter((feature: any) =>
+      typeof feature.properties?.id === 'string' &&
+      displayIds.includes(feature.properties.id)
     )
 
-    if (features.length === 0) {
+    if (matchingFeatures.length === 0) {
       return
     }
+    
+    // Compute combined bbox from feature bboxes
+    const bboxes = matchingFeatures.map((f: any) => f.bbox).filter(Boolean)
+    if (bboxes.length === 0) {
+      return
+    }
+    
+    const combinedBbox = [
+      Math.min(...bboxes.map((b: number[]) => b[0])),
+      Math.min(...bboxes.map((b: number[]) => b[1])),
+      Math.max(...bboxes.map((b: number[]) => b[2])),
+      Math.max(...bboxes.map((b: number[]) => b[3])),
+    ]
 
     flyToBounds(
       map,
-      getFeatureCollectionBounds({
-        type: 'FeatureCollection',
-        features,
-      }),
+      [[combinedBbox[0], combinedBbox[1]], [combinedBbox[2], combinedBbox[3]]] as [[number, number], [number, number]],
       {
         padding: LEGEND_PREVIEW_PADDING,
         maxZoom: maxZoomForIds(subregionHoveredIds, legendFitMaxZoomById, sharedGeometryIds, 10.15),
@@ -571,27 +644,26 @@ export function StudyRegionMapPage({
 
   useEffect(() => {
     const map = mapRef.current
-    const hullGeoJson = hullGeoJsonRef.current
+    const metadata = hullGeoJsonRef.current
 
-    if (!map || !isReady || !hullGeoJson || !legendHoveredId) {
+    if (!map || !isReady || !metadata || !legendHoveredId) {
       return
     }
 
     const displayId = displayGeometryId(legendHoveredId, sharedGeometryIds)
-    const features = hullGeoJson.features.filter(
-      (candidate) => candidate.properties?.id === displayId,
+    const matchingFeature = metadata.features.find(
+      (candidate: any) => candidate.properties?.id === displayId,
     )
 
-    if (features.length === 0) {
+    if (!matchingFeature || !(matchingFeature as any).bbox) {
       return
     }
+    
+    const bbox = (matchingFeature as any).bbox
 
     flyToBounds(
       map,
-      getFeatureCollectionBounds({
-        type: 'FeatureCollection',
-        features,
-      }),
+      [[bbox[0], bbox[1]], [bbox[2], bbox[3]]] as [[number, number], [number, number]],
       {
         padding: LEGEND_PREVIEW_PADDING,
         maxZoom: maxZoomForIds([legendHoveredId], legendFitMaxZoomById, sharedGeometryIds, 11.8),
@@ -603,6 +675,15 @@ export function StudyRegionMapPage({
   return (
     <div className="map-only-shell">
       <div className="map-container" ref={containerRef} />
+      <MapLoadingVeil isReady={isReady || loadError !== null} regionName={regionName} />
+      {loadError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#1a1410] text-[#d4c5b3] z-[1000]">
+          <div className="max-w-md text-center px-4">
+            <p className="text-2xl mb-3">⚠️</p>
+            <p>{loadError}</p>
+          </div>
+        </div>
+      )}
       <StudyHoverCard
         appellation={activeAppellation}
         emptyCardTitle={emptyCardTitle}
@@ -744,45 +825,31 @@ function StudyHoverCard({
   )
 }
 
-async function loadGeoJson(path: string): Promise<FeatureCollection> {
-  const response = await fetch(path)
-
-  if (!response.ok) {
-    throw new Error(`Failed to load GeoJSON ${path}: ${response.status}`)
-  }
-
-  return (await response.json()) as FeatureCollection
-}
-
 function createLabelPoints(
   geoJson: FeatureCollection,
   appellations: StudyRegionMetadata[],
 ): FeatureCollection {
-  const largestFeatureById = new Map<string, Feature<Geometry>>()
-
-  for (const feature of geoJson.features) {
-    const id = getFeatureId(feature.properties) ?? String(feature.id)
-    const largestFeature = largestFeatureById.get(id)
-
-    if (!largestFeature || getFeatureArea(feature) > getFeatureArea(largestFeature)) {
-      largestFeatureById.set(id, feature as Feature<Geometry>)
-    }
-  }
-
+  // Metadata now includes precomputed labelPoint per feature
   return {
     type: 'FeatureCollection',
-    features: [...largestFeatureById.entries()].map(([id, feature]) => ({
+    features: geoJson.features.map((feature) => {
+      const id = feature.properties?.id as string
+      const labelPoint = (feature as any).labelPoint || 
+        (feature.geometry.type === 'Point' ? (feature.geometry as any).coordinates : [0, 0])
+      
+      return {
         type: 'Feature',
         id,
         properties: {
           id,
-          name: appellations.find((appellation) => appellation.id === id)?.name ?? id,
+          name: appellations.find((appellation) => appellation.id === id)?.name ?? feature.properties?.name ?? id,
         },
         geometry: {
           type: 'Point',
-          coordinates: pointOnFeature(feature as Feature<Geometry>).geometry.coordinates,
+          coordinates: labelPoint,
         },
-      })),
+      }
+    }),
   }
 }
 
@@ -795,17 +862,18 @@ function fillColorExpression(colors: Record<string, string>): ExpressionSpecific
   ] as unknown as ExpressionSpecification
 }
 
-function getFeatureArea(feature: Feature<Geometry>) {
-  return area(feature)
-}
-
 function setFeatureHover(
   map: MapLibreMap,
   source: string,
   id: SourceFeatureId,
   isHovered: boolean,
+  sourceLayer?: string,
 ) {
-  map.setFeatureState({ source, id }, { hover: isHovered })
+  if (sourceLayer) {
+    map.setFeatureState({ source, sourceLayer, id }, { hover: isHovered })
+  } else {
+    map.setFeatureState({ source, id }, { hover: isHovered })
+  }
 }
 
 function getHoveredRegion(properties: unknown, id: string): HoveredRegion {

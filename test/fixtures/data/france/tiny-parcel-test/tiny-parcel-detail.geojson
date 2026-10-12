@@ -1,0 +1,56 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "big-parcel",
+        "name": "Big Parcel"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [5.0, 47.0],
+          [5.2, 47.0],
+          [5.2, 47.2],
+          [5.0, 47.2],
+          [5.0, 47.0]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "tiny-parcel",
+        "name": "Tiny Parcel"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [5.201, 47.001],
+          [5.203, 47.001],
+          [5.203, 47.003],
+          [5.201, 47.003],
+          [5.201, 47.001]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "medium-parcel",
+        "name": "Medium Parcel"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [5.21, 47.01],
+          [5.25, 47.01],
+          [5.25, 47.05],
+          [5.21, 47.05],
+          [5.21, 47.01]
+        ]]
+      }
+    }
+  ]
+}

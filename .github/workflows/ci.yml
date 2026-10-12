@@ -1,0 +1,358 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Check script syntax
+        run: |
+          for script in scripts/*.mjs; do
+            echo "Checking $script"
+            node --check "$script"
+          done
+      
+      - name: Typecheck
+        run: npm run build
+  
+  pmtiles-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install tippecanoe
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tippecanoe
+      
+      - name: Install pmtiles CLI
+        run: |
+          cd /tmp
+          wget https://github.com/protomaps/go-pmtiles/releases/download/v1.24.0/go-pmtiles_1.24.0_Linux_x86_64.tar.gz
+          tar xzf go-pmtiles_1.24.0_Linux_x86_64.tar.gz
+          sudo mv pmtiles /usr/local/bin/
+          which pmtiles
+      
+      - name: Setup Mac-style symlinked data directory
+        run: |
+          # Match Mac layout: tiles at project root, public/data symlink to fixtures
+          ln -s $(pwd)/test/fixtures/data public/data
+          ls -la public/
+      
+      - name: Build tiles with fixtures
+        run: npm run tiles:build | tee /tmp/build.log
+      
+      - name: Verify manifest
+        run: |
+          if [ ! -f tiles/current/manifest.json ]; then
+            echo "❌ manifest.json not created"
+            exit 1
+          fi
+          
+          # Check all expected regions are in manifest
+          for region in burgundy champagne alsace; do
+            if ! grep -q "\"$region\"" tiles/current/manifest.json; then
+              echo "❌ Region $region not in manifest"
+              exit 1
+            fi
+          done
+          
+          echo "✅ Manifest contains all expected regions"
+      
+      - name: Verify feature-drop check ran
+        run: |
+          # Count ids lines (should be exactly 3)
+          IDS_COUNT=$(grep -c "ids: input=" /tmp/build.log || echo "0")
+          if [ "$IDS_COUNT" != "3" ]; then
+            echo "❌ Expected 3 'ids:' lines, found $IDS_COUNT"
+            echo "Build log:"
+            cat /tmp/build.log
+            exit 1
+          fi
+          
+          echo "✅ Feature-drop check ran for all regions (3 'ids:' lines found)"
+      
+      - name: Positive test - tiny parcel preserved
+        run: |
+          rm -rf tiles
+          
+          if ! npm run tiles:build -- --regions tiny-parcel-test 2>&1 | tee /tmp/tiny-test.log; then
+            echo "❌ Tiny parcel test should pass"
+            cat /tmp/tiny-test.log
+            exit 1
+          fi
+          
+          # Verify all 3 features present (including tiny-parcel)
+          if ! grep -q "ids: input=3 z15=3" /tmp/tiny-test.log; then
+            echo "❌ Expected all 3 features preserved (including tiny-parcel)"
+            cat /tmp/tiny-test.log
+            exit 1
+          fi
+          
+          echo "✅ Tiny parcel preserved with new flags"
+      
+      - name: Positive test - sliver removal
+        run: |
+          rm -rf tiles
+          
+          if ! npm run tiles:build -- --regions sliver-test 2>&1 | tee /tmp/sliver-test.log; then
+            echo "❌ Sliver test should pass"
+            cat /tmp/sliver-test.log
+            exit 1
+          fi
+          
+          # Verify sliver was removed (2 features in, 2 out after sliver removal)
+          if ! grep -q "slivers removed: 1" /tmp/sliver-test.log; then
+            echo "❌ Expected 1 sliver removed"
+            cat /tmp/sliver-test.log
+            exit 1
+          fi
+          
+          if ! grep -q "ids: input=2 z15=2" /tmp/sliver-test.log; then
+            echo "❌ Expected 2 features after sliver removal"
+            cat /tmp/sliver-test.log
+            exit 1
+          fi
+          
+          echo "✅ Sliver removed correctly"
+      
+      - name: Negative test - only geometry for name fails
+        run: |
+          rm -rf tiles
+          
+          # Use set -o pipefail to preserve exit code through pipe
+          set -o pipefail
+          if npm run tiles:build -- --regions sliver-negative-test 2>&1 | tee /tmp/sliver-negative.log; then
+            echo "❌ Build should fail when only geometry for a name is removed"
+            cat /tmp/sliver-negative.log
+            exit 1
+          fi
+          
+          # Verify error mentions only geometry
+          if ! grep -q "only geometry for named feature" /tmp/sliver-negative.log; then
+            echo "❌ Error should mention 'only geometry for named feature'"
+            cat /tmp/sliver-negative.log
+            exit 1
+          fi
+          
+          echo "✅ Build correctly failed when only geometry would be removed"
+      
+      - name: Negative test - missing file should fail
+        run: |
+          mv public/data/france/alsace/alsace-display-2026.geojson /tmp/backup.geojson
+          
+          if npm run tiles:build 2>&1; then
+            echo "❌ Build should have failed with missing file"
+            mv /tmp/backup.geojson public/data/france/alsace/alsace-display-2026.geojson
+            exit 1
+          fi
+          
+          echo "✅ Build correctly failed with missing file"
+          mv /tmp/backup.geojson public/data/france/alsace/alsace-display-2026.geojson
+      
+      - name: Negative test - feature drop should fail
+        run: |
+          # Create a fixture with a micro parcel (~11 m²) that tippecanoe drops without protective flags
+          # This parcel is valid (>10 m², >=3 vertices), so it passes sliver filtering
+          cat > public/data/france/burgundy/burgundy-test-drop.geojson << 'EOF'
+          {
+            "type": "FeatureCollection",
+            "features": [
+              {
+                "type": "Feature",
+                "id": "micro-parcel",
+                "properties": {
+                  "name": "Micro Parcel"
+                },
+                "geometry": {
+                  "type": "Polygon",
+                  "coordinates": [[[4.95, 47.22], [4.950035, 47.22], [4.950035, 47.220035], [4.95, 47.220035], [4.95, 47.22]]]
+                }
+              },
+              {
+                "type": "Feature",
+                "id": "normal-feature",
+                "properties": {
+                  "name": "Normal Feature"
+                },
+                "geometry": {
+                  "type": "Polygon",
+                  "coordinates": [[[4.95, 47.22], [4.97, 47.22], [4.97, 47.24], [4.95, 47.24], [4.95, 47.22]]]
+                }
+              }
+            ]
+          }
+          EOF
+          
+          mv public/data/france/burgundy/burgundy-display-exclusive-2026.geojson /tmp/backup-burgundy.geojson
+          mv public/data/france/burgundy/burgundy-test-drop.geojson public/data/france/burgundy/burgundy-display-exclusive-2026.geojson
+          
+          # Temporarily remove both protective flags to prove drop check fires
+          sed -i "s/'--no-tiny-polygon-reduction-at-maximum-zoom',//" scripts/build-tiles.mjs
+          sed -i "s/'--no-feature-limit',//" scripts/build-tiles.mjs
+          
+          # Use set -o pipefail to preserve exit code through pipe
+          set -o pipefail
+          if npm run tiles:build 2>&1 | tee /tmp/drop-test.log; then
+            echo "❌ Build should have failed when features were dropped"
+            cat /tmp/drop-test.log
+            git restore scripts/build-tiles.mjs
+            mv /tmp/backup-burgundy.geojson public/data/france/burgundy/burgundy-display-exclusive-2026.geojson
+            exit 1
+          fi
+          
+          # Verify the error message mentions dropped features
+          if ! grep -q "FEATURES DROPPED" /tmp/drop-test.log; then
+            echo "❌ Error message should mention 'FEATURES DROPPED'"
+            cat /tmp/drop-test.log
+            git restore scripts/build-tiles.mjs
+            mv /tmp/backup-burgundy.geojson public/data/france/burgundy/burgundy-display-exclusive-2026.geojson
+            exit 1
+          fi
+          
+          # Verify it reports input=2 but z15=1 (micro dropped)
+          if ! grep -q "ids: input=2 z15=1" /tmp/drop-test.log; then
+            echo "❌ Expected input=2 z15=1 showing micro feature dropped"
+            grep "ids:" /tmp/drop-test.log || echo "No ids line found"
+            git restore scripts/build-tiles.mjs
+            mv /tmp/backup-burgundy.geojson public/data/france/burgundy/burgundy-display-exclusive-2026.geojson
+            exit 1
+          fi
+          
+          echo "✅ Build correctly failed when features were dropped"
+          git restore scripts/build-tiles.mjs
+          mv /tmp/backup-burgundy.geojson public/data/france/burgundy/burgundy-display-exclusive-2026.geojson
+  
+  smoke-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install tippecanoe
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tippecanoe
+      
+      - name: Install pmtiles CLI
+        run: |
+          cd /tmp
+          wget https://github.com/protomaps/go-pmtiles/releases/download/v1.24.0/go-pmtiles_1.24.0_Linux_x86_64.tar.gz
+          tar xzf go-pmtiles_1.24.0_Linux_x86_64.tar.gz
+          sudo mv pmtiles /usr/local/bin/
+          which pmtiles
+      
+      - name: Install Chrome
+        run: |
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          google-chrome --version
+      
+      - name: Setup Mac-style symlinked data directory
+        run: |
+          # Match Mac layout: tiles at project root, public/data symlink to fixtures
+          ln -s $(pwd)/test/fixtures/data public/data
+          ls -la public/
+      
+      - name: Build tiles with fixtures
+        run: npm run tiles:build
+      
+      - name: Run smoke test
+        run: npm run smoke:tiles
+      
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-screenshots
+          path: tiles/.smoke-screenshots/
+          if-no-files-found: ignore
+  
+  smoke-test-macos:
+    runs-on: macos-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      
+      - name: Install dependencies (clean, no cache)
+        run: npm ci --cache ~/.npm
+      
+      - name: Install tippecanoe
+        run: brew install tippecanoe
+      
+      - name: Install pmtiles CLI
+        run: |
+          cd /tmp
+          wget https://github.com/protomaps/go-pmtiles/releases/download/v1.24.0/go-pmtiles-1.24.0_Darwin_arm64.zip
+          unzip go-pmtiles-1.24.0_Darwin_arm64.zip
+          sudo mv pmtiles /usr/local/bin/
+          pmtiles version
+      
+      - name: Verify Chrome
+        run: |
+          ls -la "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+          "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --version
+      
+      - name: Setup Mac-style symlinked data directory
+        run: |
+          # Match Mac layout: tiles at project root, public/data symlink to fixtures
+          ln -s $(pwd)/test/fixtures/data public/data
+          ls -la public/
+      
+      - name: Build tiles with fixtures
+        run: npm run tiles:build
+      
+      - name: Run smoke test
+        run: npm run smoke:tiles
+      
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-screenshots-macos
+          path: tiles/.smoke-screenshots/
+          if-no-files-found: ignore

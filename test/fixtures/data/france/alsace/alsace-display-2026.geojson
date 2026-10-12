@@ -1,0 +1,27 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "riesling",
+      "properties": {
+        "name": "Alsace Riesling"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[7.3, 48.0], [7.5, 48.0], [7.5, 48.3], [7.3, 48.3], [7.3, 48.0]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "gewurztraminer",
+      "properties": {
+        "name": "Alsace Gewurztraminer"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[7.4, 48.1], [7.6, 48.1], [7.6, 48.4], [7.4, 48.4], [7.4, 48.1]]]
+      }
+    }
+  ]
+}

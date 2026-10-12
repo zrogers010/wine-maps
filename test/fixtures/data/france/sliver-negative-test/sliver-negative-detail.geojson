@@ -1,0 +1,38 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "only-sliver",
+        "name": "Only Sliver"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [5.0, 47.0],
+          [5.00000001, 47.0],
+          [5.00000001, 47.00000001],
+          [5.0, 47.0]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "normal-parcel",
+        "name": "Normal Parcel"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [5.1, 47.1],
+          [5.3, 47.1],
+          [5.3, 47.3],
+          [5.1, 47.3],
+          [5.1, 47.1]
+        ]]
+      }
+    }
+  ]
+}

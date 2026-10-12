@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { area, pointOnFeature } from '@turf/turf'
 import maplibregl, {
   type ExpressionSpecification,
   type FilterSpecification,
@@ -7,8 +6,9 @@ import maplibregl, {
   type Map as MapLibreMap,
   type MapLayerMouseEvent,
 } from 'maplibre-gl'
-import type { Feature, FeatureCollection, Geometry } from 'geojson'
+import type { FeatureCollection } from 'geojson'
 import appellationData from '../data/france/burgundy/appellations.json'
+import { registerPMTilesProtocol, getPMTilesUrl, loadRegionMetadata, getSourceLayer } from '../utils/pmtiles'
 import {
   flyToBounds,
   LEGEND_PREVIEW_PADDING,
@@ -17,6 +17,11 @@ import {
 } from '../utils/camera'
 import { getFeatureCollectionBounds } from '../utils/geo'
 import { createAtlasMapStyle } from '../utils/mapStyles'
+import { attachCameraHashSync, readCameraFromHash } from '../utils/urlHash'
+import { MapLoadingVeil } from './MapLoadingVeil'
+
+// Register PMTiles protocol
+registerPMTilesProtocol(maplibregl)
 
 type SourceFeatureId = string | number
 
@@ -52,12 +57,25 @@ interface HoveredBurgundyRegion {
   id: string
   commune?: string
   insee?: string
+  cruLevel?: string
+  climat?: string
+}
+
+interface GrandCruMeta {
+  name: string
+  villageId: string
+  subregion: string
+  style: 'Red' | 'White'
+  note: string
 }
 
 const appellations = appellationData as BurgundyAppellationMetadata[]
 const burgundySourceId = 'burgundy-appellations'
 const burgundyLowZoomSourceId = 'burgundy-low-zoom-hulls'
 const burgundyLabelSourceId = 'burgundy-labels'
+const burgundyGrandCruLabelSourceId = 'burgundy-grand-cru-labels'
+const burgundyGrandCruLabelLayerId = 'burgundy-grand-cru-labels'
+const burgundyPremierCruTintLayerId = 'burgundy-premier-cru-tint'
 const burgundyLowZoomLayerId = 'burgundy-low-zoom-fill'
 const burgundyLowZoomShadeLayerId = 'burgundy-low-zoom-shade'
 const burgundyLowZoomBorderLayerId = 'burgundy-low-zoom-border'
@@ -109,6 +127,76 @@ const burgundyColors: Record<string, string> = {
   'chassagne-montrachet': '#c8b85f',
 }
 
+const grandCruMeta: Record<string, GrandCruMeta> = {
+  chambertin: { name: 'Chambertin', villageId: 'gevrey-chambertin', subregion: 'Côte de Nuits', style: 'Red', note: 'Powerful, structured flagship Grand Cru of Gevrey; "the king of wines".' },
+  'chambertin-clos-de-beze': { name: 'Chambertin-Clos de Bèze', villageId: 'gevrey-chambertin', subregion: 'Côte de Nuits', style: 'Red', note: 'Historic monastic climat; may also be labelled Chambertin.' },
+  'chapelle-chambertin': { name: 'Chapelle-Chambertin', villageId: 'gevrey-chambertin', subregion: 'Côte de Nuits', style: 'Red', note: 'Lighter, perfumed Chambertin satellite on shallow soils.' },
+  'charmes-chambertin': { name: 'Charmes-Chambertin', villageId: 'gevrey-chambertin', subregion: 'Côte de Nuits', style: 'Red', note: 'Largest Chambertin satellite; supple, accessible style.' },
+  'griotte-chambertin': { name: 'Griotte-Chambertin', villageId: 'gevrey-chambertin', subregion: 'Côte de Nuits', style: 'Red', note: 'Tiny amphitheater climat; named for cherry character.' },
+  'latricieres-chambertin': { name: 'Latricières-Chambertin', villageId: 'gevrey-chambertin', subregion: 'Côte de Nuits', style: 'Red', note: 'Cooler southern neighbor of Chambertin; finesse over power.' },
+  'mazis-chambertin': { name: 'Mazis-Chambertin', villageId: 'gevrey-chambertin', subregion: 'Côte de Nuits', style: 'Red', note: 'Northernmost Chambertin satellite; firm and savory.' },
+  'mazoyeres-chambertin': { name: 'Mazoyères-Chambertin', villageId: 'gevrey-chambertin', subregion: 'Côte de Nuits', style: 'Red', note: 'Usually sold as Charmes-Chambertin; lower-slope climat.' },
+  'ruchottes-chambertin': { name: 'Ruchottes-Chambertin', villageId: 'gevrey-chambertin', subregion: 'Côte de Nuits', style: 'Red', note: 'Small, high, rocky climat; taut mineral style.' },
+  'clos-de-la-roche': { name: 'Clos de la Roche', villageId: 'morey-saint-denis', subregion: 'Côte de Nuits', style: 'Red', note: 'Largest and firmest Morey Grand Cru; Chambertin-like depth.' },
+  'clos-saint-denis': { name: 'Clos Saint-Denis', villageId: 'morey-saint-denis', subregion: 'Côte de Nuits', style: 'Red', note: 'Silky, elegant Grand Cru that names the village.' },
+  'clos-des-lambrays': { name: 'Clos des Lambrays', villageId: 'morey-saint-denis', subregion: 'Côte de Nuits', style: 'Red', note: 'Near-monopole promoted in 1981; aromatic, stemmy elegance.' },
+  'clos-de-tart': { name: 'Clos de Tart', villageId: 'morey-saint-denis', subregion: 'Côte de Nuits', style: 'Red', note: 'Historic walled monopole held intact since 1141.' },
+  'bonnes-mares': { name: 'Bonnes-Mares', villageId: 'chambolle-musigny', subregion: 'Côte de Nuits', style: 'Red', note: 'Straddles Chambolle and Morey; sturdier of Chambolle\u2019s two Grands Crus.' },
+  musigny: { name: 'Musigny', villageId: 'chambolle-musigny', subregion: 'Côte de Nuits', style: 'Red', note: 'Silk-and-lace pinnacle of Chambolle; rare white also allowed.' },
+  'clos-de-vougeot': { name: 'Clos de Vougeot', villageId: 'vougeot', subregion: 'Côte de Nuits', style: 'Red', note: 'Famous 50 ha walled clos with ~80 owners; quality varies by parcel position.' },
+  echezeaux: { name: 'Échezeaux', villageId: 'vosne-romanee', subregion: 'Côte de Nuits', style: 'Red', note: 'Large Flagey-Échezeaux Grand Cru; perfumed, variable by producer.' },
+  'grands-echezeaux': { name: 'Grands-Échezeaux', villageId: 'vosne-romanee', subregion: 'Côte de Nuits', style: 'Red', note: 'Smaller, deeper neighbor of Échezeaux beside Clos de Vougeot.' },
+  'romanee-conti': { name: 'Romanée-Conti', villageId: 'vosne-romanee', subregion: 'Côte de Nuits', style: 'Red', note: 'DRC monopole; the most celebrated vineyard in Burgundy.' },
+  'la-tache': { name: 'La Tâche', villageId: 'vosne-romanee', subregion: 'Côte de Nuits', style: 'Red', note: 'DRC monopole; opulent, spicy Vosne power.' },
+  richebourg: { name: 'Richebourg', villageId: 'vosne-romanee', subregion: 'Côte de Nuits', style: 'Red', note: 'Rich, velvety upper-slope Grand Cru above Romanée-Conti.' },
+  'la-romanee': { name: 'La Romanée', villageId: 'vosne-romanee', subregion: 'Côte de Nuits', style: 'Red', note: 'Smallest AOC in France (~0.85 ha); Comte Liger-Belair monopole.' },
+  'la-grande-rue': { name: 'La Grande Rue', villageId: 'vosne-romanee', subregion: 'Côte de Nuits', style: 'Red', note: 'Lamarche monopole strip between La Tâche and Romanée-Conti; promoted 1992.' },
+  'romanee-saint-vivant': { name: 'Romanée-Saint-Vivant', villageId: 'vosne-romanee', subregion: 'Côte de Nuits', style: 'Red', note: 'Lower-slope Vosne Grand Cru; the most delicate and perfumed of the group.' },
+  corton: { name: 'Corton', villageId: 'aloxe-corton', subregion: 'Côte de Beaune', style: 'Red', note: 'Only red Grand Cru of the Côte de Beaune; many named climats (Clos du Roi, Bressandes…).' },
+  'corton-charlemagne': { name: 'Corton-Charlemagne', villageId: 'aloxe-corton', subregion: 'Côte de Beaune', style: 'White', note: 'Steely, powerful Chardonnay from the upper hill of Corton.' },
+  charlemagne: { name: 'Charlemagne', villageId: 'aloxe-corton', subregion: 'Côte de Beaune', style: 'White', note: 'Rarely used historic name; wines sold as Corton-Charlemagne.' },
+  montrachet: { name: 'Montrachet', villageId: 'puligny-montrachet', subregion: 'Côte de Beaune', style: 'White', note: 'The greatest dry white vineyard in the world; shared by Puligny and Chassagne.' },
+  'chevalier-montrachet': { name: 'Chevalier-Montrachet', villageId: 'puligny-montrachet', subregion: 'Côte de Beaune', style: 'White', note: 'Thin upper-slope soils above Montrachet; racy, mineral.' },
+  'batard-montrachet': { name: 'Bâtard-Montrachet', villageId: 'puligny-montrachet', subregion: 'Côte de Beaune', style: 'White', note: 'Richer, deeper-soiled Grand Cru below Montrachet.' },
+  'bienvenues-batard-montrachet': { name: 'Bienvenues-Bâtard-Montrachet', villageId: 'puligny-montrachet', subregion: 'Côte de Beaune', style: 'White', note: 'Small enclave within Bâtard on the Puligny side.' },
+  'criots-batard-montrachet': { name: 'Criots-Bâtard-Montrachet', villageId: 'chassagne-montrachet', subregion: 'Côte de Beaune', style: 'White', note: 'Smallest Montrachet Grand Cru, entirely in Chassagne.' },
+}
+
+const grandCruColors: Record<string, string> = {
+  chambertin: '#8e1e2f',
+  'chambertin-clos-de-beze': '#a32639',
+  'chapelle-chambertin': '#b23a4a',
+  'charmes-chambertin': '#c14f5e',
+  'griotte-chambertin': '#d16472',
+  'latricieres-chambertin': '#7d2438',
+  'mazis-chambertin': '#96334d',
+  'mazoyeres-chambertin': '#ad4a63',
+  'ruchottes-chambertin': '#c25a70',
+  'clos-de-la-roche': '#9c4468',
+  'clos-saint-denis': '#ae567c',
+  'clos-des-lambrays': '#c06890',
+  'clos-de-tart': '#8a3a5c',
+  'bonnes-mares': '#a4527d',
+  musigny: '#7c2d55',
+  'clos-de-vougeot': '#6d3f8f',
+  echezeaux: '#7b4fa5',
+  'grands-echezeaux': '#6a3f96',
+  'romanee-conti': '#4f2d7a',
+  'la-tache': '#5d3688',
+  richebourg: '#8659b0',
+  'la-romanee': '#9668bd',
+  'la-grande-rue': '#a678c9',
+  'romanee-saint-vivant': '#b489d4',
+  corton: '#c0562e',
+  'corton-charlemagne': '#d99a2b',
+  charlemagne: '#e3ac45',
+  montrachet: '#c99a1e',
+  'chevalier-montrachet': '#d6ab35',
+  'batard-montrachet': '#e2bc4d',
+  'bienvenues-batard-montrachet': '#ecc95f',
+  'criots-batard-montrachet': '#f0d375',
+}
+
 const legendGroups = [
   {
     title: 'Burgundy / Chablis',
@@ -137,6 +225,18 @@ const legendGroups = [
       'chassagne-montrachet',
     ],
   },
+  {
+    title: 'Grands Crus / Côte de Nuits',
+    ids: Object.keys(grandCruMeta).filter(
+      (id) => grandCruMeta[id].subregion === 'Côte de Nuits',
+    ),
+  },
+  {
+    title: 'Grands Crus / Côte de Beaune',
+    ids: Object.keys(grandCruMeta).filter(
+      (id) => grandCruMeta[id].subregion === 'Côte de Beaune',
+    ),
+  },
 ]
 
 export function BurgundyPage() {
@@ -144,17 +244,24 @@ export function BurgundyPage() {
   const mapRef = useRef<MapLibreMap | null>(null)
   const overviewBoundsRef = useRef<[[number, number], [number, number]] | null>(null)
   const lowZoomHullGeoJsonRef = useRef<FeatureCollection | null>(null)
+  const detailGeoJsonRef = useRef<FeatureCollection | null>(null)
   const hoveredFeatureIdRef = useRef<SourceFeatureId | null>(null)
   const hoveredRegionKeyRef = useRef<string | null>(null)
   const hoverLeaveTimeoutRef = useRef<number | null>(null)
+  const sourceLayerRef = useRef<string | undefined>(undefined)
   const [isReady, setIsReady] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [hoveredRegion, setHoveredRegion] = useState<HoveredBurgundyRegion | null>(null)
   const [legendHoveredId, setLegendHoveredId] = useState<string | null>(null)
   const [subregionHoveredIds, setSubregionHoveredIds] = useState<string[] | null>(null)
 
   const activeRegion = hoveredRegion ?? (legendHoveredId ? { id: legendHoveredId } : null)
+  const activeGrandCru = activeRegion ? grandCruMeta[activeRegion.id] : undefined
   const activeAppellation = activeRegion
-    ? appellations.find((appellation) => appellation.id === activeRegion.id)
+    ? appellations.find(
+        (appellation) =>
+          appellation.id === (activeGrandCru?.villageId ?? activeRegion.id),
+      )
     : null
 
   useEffect(() => {
@@ -163,16 +270,19 @@ export function BurgundyPage() {
     }
 
     let cancelled = false
+    const hashCamera = readCameraFromHash()
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: createAtlasMapStyle(),
-      center: [4.8, 47.2],
-      zoom: 8.4,
+      center: hashCamera?.center ?? [4.8, 47.2],
+      zoom: hashCamera?.zoom ?? 8.4,
       minZoom: 6.8,
       maxZoom: 14,
       attributionControl: false,
       fadeDuration: 180,
     })
+
+    attachCameraHashSync(map, '/burgundy')
 
     // Gentler wheel steps make trackpad/mouse zooming feel fluid instead of jumpy.
     map.scrollZoom.setWheelZoomRate(1 / 700)
@@ -197,36 +307,53 @@ export function BurgundyPage() {
     )
 
     map.on('load', async () => {
-      const [burgundyGeoJson, burgundyLowZoomGeoJson] = await Promise.all([
-        loadGeoJson('/data/france/burgundy/burgundy-display-exclusive-2026.geojson'),
-        loadGeoJson('/data/france/burgundy/burgundy-display-hulls-2026.geojson'),
-      ])
+      try {
+        // Load metadata and resolve tile URLs before adding sources
+        const [metadata, detailUrl, hullUrl] = await Promise.all([
+          loadRegionMetadata('burgundy'),
+          getPMTilesUrl('burgundy', 'detail'),
+          getPMTilesUrl('burgundy', 'hull'),
+        ])
+        
+        if (cancelled) {
+          return
+        }
 
-      if (cancelled) {
-        return
-      }
+        lowZoomHullGeoJsonRef.current = metadata
+        detailGeoJsonRef.current = metadata
 
-      lowZoomHullGeoJsonRef.current = burgundyLowZoomGeoJson
+        // Add PMTiles vector sources with real URLs
+        const sourceLayer = getSourceLayer('burgundy')
+        sourceLayerRef.current = sourceLayer
 
-      map.addSource(burgundySourceId, {
-        type: 'geojson',
-        data: burgundyGeoJson,
-      } satisfies GeoJSONSourceSpecification)
+        map.addSource(burgundySourceId, {
+          type: 'vector',
+          url: detailUrl,
+          promoteId: { [sourceLayer]: 'id' },
+        })
 
-      map.addSource(burgundyLowZoomSourceId, {
-        type: 'geojson',
-        data: burgundyLowZoomGeoJson,
-      } satisfies GeoJSONSourceSpecification)
+        map.addSource(burgundyLowZoomSourceId, {
+          type: 'vector',
+          url: hullUrl,
+          promoteId: { [sourceLayer]: 'id' },
+        })
 
-      map.addSource(burgundyLabelSourceId, {
-        type: 'geojson',
-        data: createLabelPoints(burgundyLowZoomGeoJson),
-      } satisfies GeoJSONSourceSpecification)
+        // Label sources use GeoJSON from metadata
+        map.addSource(burgundyGrandCruLabelSourceId, {
+          type: 'geojson',
+          data: createGrandCruLabelPoints(metadata),
+        } satisfies GeoJSONSourceSpecification)
+
+        map.addSource(burgundyLabelSourceId, {
+          type: 'geojson',
+          data: createLabelPoints(metadata),
+        } satisfies GeoJSONSourceSpecification)
 
       map.addLayer({
         id: burgundyLowZoomLayerId,
         type: 'fill',
         source: burgundyLowZoomSourceId,
+        'source-layer': sourceLayer,
         paint: {
           'fill-color': burgundyFillColorExpression(),
           'fill-opacity': [
@@ -245,6 +372,7 @@ export function BurgundyPage() {
         id: burgundyLowZoomShadeLayerId,
         type: 'fill',
         source: burgundyLowZoomSourceId,
+        'source-layer': sourceLayer,
         filter: filterNone(),
         paint: {
           'fill-color': '#1c0f12',
@@ -264,6 +392,7 @@ export function BurgundyPage() {
         id: burgundyLowZoomBorderLayerId,
         type: 'line',
         source: burgundyLowZoomSourceId,
+        'source-layer': sourceLayer,
         paint: {
           'line-color': 'rgba(96, 65, 45, 0.52)',
           'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.65, 11, 1.15],
@@ -283,6 +412,7 @@ export function BurgundyPage() {
         id: burgundyFillLayerId,
         type: 'fill',
         source: burgundySourceId,
+        'source-layer': sourceLayer,
         paint: {
           'fill-color': burgundyFillColorExpression(),
           // Fade in across the same span the hulls fade out for one smooth crossfade.
@@ -314,6 +444,7 @@ export function BurgundyPage() {
         id: burgundyAppellationShadeLayerId,
         type: 'fill',
         source: burgundySourceId,
+        'source-layer': sourceLayer,
         filter: filterNone(),
         paint: {
           'fill-color': '#1c0f12',
@@ -333,6 +464,7 @@ export function BurgundyPage() {
         id: burgundyCommuneShadeLayerId,
         type: 'fill',
         source: burgundySourceId,
+        'source-layer': sourceLayer,
         filter: filterNone(),
         paint: {
           'fill-color': '#1c0f12',
@@ -344,6 +476,7 @@ export function BurgundyPage() {
         id: burgundyCommuneLineLayerId,
         type: 'line',
         source: burgundySourceId,
+        'source-layer': sourceLayer,
         paint: {
           'line-color': 'rgba(68, 48, 36, 0.64)',
           'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.45, 11, 0.85],
@@ -363,6 +496,7 @@ export function BurgundyPage() {
         id: burgundyLineLayerId,
         type: 'line',
         source: burgundySourceId,
+        'source-layer': sourceLayer,
         paint: {
           'line-color': [
             'case',
@@ -393,6 +527,50 @@ export function BurgundyPage() {
         },
       })
 
+      // Subtle dark tint distinguishes Premier Cru eligibility parcels from
+      // plain village parcels once climat-level detail is legible.
+      map.addLayer({
+        id: burgundyPremierCruTintLayerId,
+        type: 'fill',
+        source: burgundySourceId,
+        'source-layer': sourceLayer,
+        filter: ['==', ['get', 'cruLevel'], 'premier-cru'],
+        paint: {
+          'fill-color': '#43112b',
+          'fill-opacity': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            zoomTransitionEnd,
+            0,
+            12.2,
+            0.16,
+          ],
+        },
+      })
+
+      map.addLayer({
+        id: burgundyGrandCruLabelLayerId,
+        type: 'symbol',
+        source: burgundyGrandCruLabelSourceId,
+        minzoom: 11.3,
+        layout: {
+          'text-field': ['get', 'name'],
+          'text-font': ['Noto Sans Regular'],
+          'text-size': ['interpolate', ['linear'], ['zoom'], 11.3, 9.5, 13.5, 12.5],
+          'text-letter-spacing': 0.04,
+          'text-variable-anchor': ['center', 'top', 'bottom'],
+          'text-radial-offset': 0.2,
+          'text-allow-overlap': false,
+        },
+        paint: {
+          'text-color': '#4d1024',
+          'text-halo-color': 'rgba(255, 250, 236, 0.95)',
+          'text-halo-width': 1.9,
+          'text-opacity': 0.96,
+        },
+      })
+
       map.addLayer({
         id: burgundyLabelLayerId,
         type: 'symbol',
@@ -420,23 +598,44 @@ export function BurgundyPage() {
       map.moveLayer(burgundyLowZoomShadeLayerId, burgundyLabelLayerId)
       map.moveLayer(burgundyLowZoomBorderLayerId, burgundyLabelLayerId)
 
-      map.on('mousemove', burgundyLowZoomLayerId, handleHullMouseMove)
-      map.on('mouseleave', burgundyLowZoomLayerId, handleMouseLeave)
-      map.on('mousemove', burgundyFillLayerId, handleMouseMove)
-      map.on('mouseleave', burgundyFillLayerId, handleDetailMouseLeave)
+        map.on('mousemove', burgundyLowZoomLayerId, handleHullMouseMove)
+        map.on('mouseleave', burgundyLowZoomLayerId, handleMouseLeave)
+        map.on('mousemove', burgundyFillLayerId, handleMouseMove)
+        map.on('mouseleave', burgundyFillLayerId, handleDetailMouseLeave)
 
-      const overviewBounds = getFeatureCollectionBounds(burgundyGeoJson)
-      overviewBoundsRef.current = overviewBounds
-      map.fitBounds(overviewBounds, {
-        padding: OVERVIEW_PADDING,
-        duration: 1100,
-        essential: true,
-      })
+        const overviewBounds = metadata.bbox
+          ? ([[metadata.bbox[0], metadata.bbox[1]], [metadata.bbox[2], metadata.bbox[3]]] as [[number, number], [number, number]])
+          : getFeatureCollectionBounds(metadata)
+        overviewBoundsRef.current = overviewBounds
 
-      setIsReady(true)
+        // A camera deep link takes precedence over the intro overview flight.
+        if (!hashCamera) {
+          map.fitBounds(overviewBounds, {
+            padding: OVERVIEW_PADDING,
+            duration: 1100,
+            essential: true,
+          })
+        }
+
+        setIsReady(true)
+      } catch (error) {
+        console.error('Failed to load map data:', error)
+        const isDev = import.meta.env.DEV
+        setLoadError(
+          isDev
+            ? 'Map data not found. Run `npm run tiles:build` to generate tiles.'
+            : 'Unable to load map data. Please try again later.',
+        )
+        return
+      }
     })
 
     mapRef.current = map
+
+    if (import.meta.env.DEV) {
+      // Dev-only handle for automated screenshot/interaction checks.
+      ;(window as unknown as { __wineMap?: MapLibreMap }).__wineMap = map
+    }
 
     return () => {
       cancelled = true
@@ -465,7 +664,7 @@ export function BurgundyPage() {
       map.getCanvas().style.cursor = 'pointer'
 
       if (hoveredFeatureIdRef.current !== null) {
-        setFeatureHover(map, hoveredFeatureIdRef.current, false)
+        setFeatureHover(map, hoveredFeatureIdRef.current, false, sourceLayerRef.current)
         hoveredFeatureIdRef.current = null
       }
 
@@ -500,11 +699,11 @@ export function BurgundyPage() {
 
       if (hoveredFeatureIdRef.current !== sourceFeatureId) {
         if (hoveredFeatureIdRef.current !== null) {
-          setFeatureHover(map, hoveredFeatureIdRef.current, false)
+          setFeatureHover(map, hoveredFeatureIdRef.current, false, sourceLayerRef.current)
         }
 
         hoveredFeatureIdRef.current = sourceFeatureId
-        setFeatureHover(map, sourceFeatureId, true)
+        setFeatureHover(map, sourceFeatureId, true, sourceLayerRef.current)
       }
 
       const nextRegion = getHoveredRegion(feature?.properties, id)
@@ -539,7 +738,7 @@ export function BurgundyPage() {
 
     function clearHoverState() {
       if (hoveredFeatureIdRef.current !== null) {
-        setFeatureHover(map, hoveredFeatureIdRef.current, false)
+        setFeatureHover(map, hoveredFeatureIdRef.current, false, sourceLayerRef.current)
         hoveredFeatureIdRef.current = null
       }
 
@@ -562,7 +761,13 @@ export function BurgundyPage() {
     map.setFilter(
       burgundyAppellationShadeLayerId,
       hoveredRegion
-        ? ['==', ['get', 'id'], hoveredRegion.id]
+        ? hoveredRegion.climat && hoveredRegion.cruLevel === 'premier-cru'
+          ? ([
+              'all',
+              ['==', ['get', 'id'], hoveredRegion.id],
+              ['==', ['get', 'climat'], hoveredRegion.climat],
+            ] as FilterSpecification)
+          : ['==', ['get', 'id'], hoveredRegion.id]
         : legendHoveredId
           ? ['==', ['get', 'id'], legendHoveredId]
           : filterNone(),
@@ -575,28 +780,38 @@ export function BurgundyPage() {
 
   useEffect(() => {
     const map = mapRef.current
-    const lowZoomHullGeoJson = lowZoomHullGeoJsonRef.current
+    const metadata = lowZoomHullGeoJsonRef.current
 
-    if (!map || !isReady || !lowZoomHullGeoJson || !subregionHoveredIds?.length) {
+    if (!map || !isReady || !metadata || !subregionHoveredIds?.length) {
       return
     }
 
-    const features = lowZoomHullGeoJson.features.filter(
-      (feature) =>
-        typeof feature.properties?.id === 'string' &&
-        subregionHoveredIds.includes(feature.properties.id),
+    // Find metadata features by ID to get their bboxes
+    const matchingFeatures = metadata.features.filter((feature: any) =>
+      typeof feature.properties?.id === 'string' &&
+      subregionHoveredIds.includes(feature.properties.id)
     )
 
-    if (features.length === 0) {
+    if (matchingFeatures.length === 0) {
       return
     }
+    
+    // Compute combined bbox from feature bboxes
+    const bboxes = matchingFeatures.map((f: any) => f.bbox).filter(Boolean)
+    if (bboxes.length === 0) {
+      return
+    }
+    
+    const combinedBbox = [
+      Math.min(...bboxes.map((b: number[]) => b[0])),
+      Math.min(...bboxes.map((b: number[]) => b[1])),
+      Math.max(...bboxes.map((b: number[]) => b[2])),
+      Math.max(...bboxes.map((b: number[]) => b[3])),
+    ]
 
     flyToBounds(
       map,
-      getFeatureCollectionBounds({
-        type: 'FeatureCollection',
-        features,
-      }),
+      [[combinedBbox[0], combinedBbox[1]], [combinedBbox[2], combinedBbox[3]]] as [[number, number], [number, number]],
       {
         padding: LEGEND_PREVIEW_PADDING,
         maxZoom: 10.15,
@@ -607,26 +822,45 @@ export function BurgundyPage() {
 
   useEffect(() => {
     const map = mapRef.current
-    const lowZoomHullGeoJson = lowZoomHullGeoJsonRef.current
+    const metadata = lowZoomHullGeoJsonRef.current
 
-    if (!map || !isReady || !lowZoomHullGeoJson || !legendHoveredId) {
+    if (!map || !isReady || !metadata || !legendHoveredId) {
       return
     }
 
-    const feature = lowZoomHullGeoJson.features.find(
-      (candidate) => candidate.properties?.id === legendHoveredId,
+    const matchingFeature = metadata.features.find(
+      (candidate: any) => candidate.properties?.id === legendHoveredId,
     )
 
-    if (!feature) {
+    if (!matchingFeature || !(matchingFeature as any).bbox) {
+      // Grand Crus might not have hull metadata; fall back to checking detail
+      const detailMeta = detailGeoJsonRef.current
+      const detailFeature = detailMeta?.features.find(
+        (candidate: any) => candidate.properties?.id === legendHoveredId,
+      )
+      
+      if (!detailFeature || !(detailFeature as any).bbox) {
+        return
+      }
+      
+      const bbox = (detailFeature as any).bbox
+      flyToBounds(
+        map,
+        [[bbox[0], bbox[1]], [bbox[2], bbox[3]]] as [[number, number], [number, number]],
+        {
+          padding: LEGEND_PREVIEW_PADDING,
+          maxZoom: 13.4,
+          speed: 1.5,
+        },
+      )
       return
     }
+    
+    const bbox = (matchingFeature as any).bbox
 
     flyToBounds(
       map,
-      getFeatureCollectionBounds({
-        type: 'FeatureCollection',
-        features: [feature],
-      }),
+      [[bbox[0], bbox[1]], [bbox[2], bbox[3]]] as [[number, number], [number, number]],
       {
         padding: LEGEND_PREVIEW_PADDING,
         maxZoom: 11.8,
@@ -638,7 +872,20 @@ export function BurgundyPage() {
   return (
     <div className="map-only-shell">
       <div className="map-container" ref={containerRef} />
-      <BurgundyHoverCard appellation={activeAppellation} region={activeRegion} />
+      <MapLoadingVeil isReady={isReady || loadError !== null} regionName="Burgundy" />
+      {loadError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#1a1410] text-[#d4c5b3] z-[1000]">
+          <div className="max-w-md text-center px-4">
+            <p className="text-2xl mb-3">⚠️</p>
+            <p>{loadError}</p>
+          </div>
+        </div>
+      )}
+      <BurgundyHoverCard
+        appellation={activeAppellation}
+        grandCru={activeGrandCru}
+        region={activeRegion}
+      />
       <div className="map-source-badge">
         INAO/data.gouv.fr AOC viticole parcel delimitation extract. Online data
         are informational; official plans remain with town halls or INAO.
@@ -654,24 +901,28 @@ export function BurgundyPage() {
             </h2>
             <div className="region-legend-list">
               {group.ids.map((id) => {
-                const appellation = appellations.find((candidate) => candidate.id === id)
+                const name =
+                  appellations.find((candidate) => candidate.id === id)?.name ??
+                  grandCruMeta[id]?.name
 
-                if (!appellation) {
+                if (!name) {
                   return null
                 }
 
                 return (
                   <div
                     className="region-legend-row"
-                    key={appellation.id}
-                    onMouseEnter={() => setLegendHoveredId(appellation.id)}
+                    key={id}
+                    onMouseEnter={() => setLegendHoveredId(id)}
                     onMouseLeave={() => setLegendHoveredId(null)}
                   >
                     <span
                       className="region-legend-swatch"
-                      style={{ backgroundColor: burgundyColors[appellation.id] }}
+                      style={{
+                        backgroundColor: burgundyColors[id] ?? grandCruColors[id],
+                      }}
                     />
-                    <span>{appellation.name}</span>
+                    <span>{name}</span>
                   </div>
                 )
               })}
@@ -685,9 +936,11 @@ export function BurgundyPage() {
 
 function BurgundyHoverCard({
   appellation,
+  grandCru,
   region,
 }: {
   appellation: BurgundyAppellationMetadata | null | undefined
+  grandCru: GrandCruMeta | undefined
   region: HoveredBurgundyRegion | null
 }) {
   if (!appellation || !region) {
@@ -699,12 +952,67 @@ function BurgundyHoverCard({
     )
   }
 
+  if (grandCru) {
+    return (
+      <aside className="hover-region-card">
+        <span className="hover-card-kicker">
+          Burgundy / {grandCru.subregion} / Grand Cru
+        </span>
+        <h2>{grandCru.name}</h2>
+        {region.commune ? (
+          <div className="hover-card-commune">
+            {region.commune}
+            {region.insee ? <span>{region.insee}</span> : null}
+          </div>
+        ) : null}
+        <div className="hover-card-meta">
+          <span>Grand Cru AOC</span>
+          <span>{grandCru.style === 'Red' ? 'Dry red' : 'Dry white'}</span>
+        </div>
+        <ul className="hierarchy-list">
+          <li>
+            <span>Region</span>
+            <strong>Burgundy</strong>
+          </li>
+          <li>
+            <span>Subregion</span>
+            <strong>{grandCru.subregion}</strong>
+          </li>
+          <li>
+            <span>Village</span>
+            <strong>{appellation.name}</strong>
+          </li>
+          <li>
+            <span>Grand Cru</span>
+            <strong>{grandCru.name}</strong>
+          </li>
+        </ul>
+        <dl>
+          <div>
+            <dt>Grape</dt>
+            <dd>{grandCru.style === 'Red' ? 'Pinot Noir' : 'Chardonnay'}</dd>
+          </div>
+          <div>
+            <dt>Soil characteristics</dt>
+            <dd>{appellation.terroir.keySoils.join(', ')}</dd>
+          </div>
+        </dl>
+        <p>{grandCru.note}</p>
+      </aside>
+    )
+  }
+
+  const isPremierCru = region.cruLevel === 'premier-cru'
+
   return (
     <aside className="hover-region-card">
       <span className="hover-card-kicker">
         {appellation.region} / {appellation.subregion}
       </span>
-      <h2>{appellation.name}</h2>
+      <h2>
+        {appellation.name}
+        {isPremierCru && region.climat ? ` ${region.climat}` : ''}
+      </h2>
       {region.commune ? (
         <div className="hover-card-commune">
           {region.commune}
@@ -712,7 +1020,7 @@ function BurgundyHoverCard({
         </div>
       ) : null}
       <div className="hover-card-meta">
-        <span>{appellation.aocType}</span>
+        <span>{isPremierCru ? 'Premier Cru' : appellation.aocType}</span>
         <span>{appellation.primaryStyle}</span>
       </div>
       <ul className="hierarchy-list">
@@ -732,6 +1040,12 @@ function BurgundyHoverCard({
           <span>Appellation / AOC</span>
           <strong>{appellation.name}</strong>
         </li>
+        {isPremierCru ? (
+          <li>
+            <span>Premier Cru climat</span>
+            <strong>{region.climat ?? 'Premier Cru (climat unnamed)'}</strong>
+          </li>
+        ) : null}
         {region.commune ? (
           <li>
             <span>Commune</span>
@@ -770,60 +1084,57 @@ function BurgundyHoverCard({
   )
 }
 
-async function loadGeoJson(path: string): Promise<FeatureCollection> {
-  const response = await fetch(path)
-
-  if (!response.ok) {
-    throw new Error(`Failed to load GeoJSON ${path}: ${response.status}`)
-  }
-
-  return (await response.json()) as FeatureCollection
-}
-
 function createLabelPoints(geoJson: FeatureCollection): FeatureCollection {
-  const largestFeatureById = new Map<string, Feature<Geometry>>()
-
-  for (const feature of geoJson.features) {
-    const id = getFeatureId(feature.properties)
-
-    if (!id) {
-      continue
-    }
-
-    const largestFeature = largestFeatureById.get(id)
-    if (!largestFeature || area(feature) > area(largestFeature)) {
-      largestFeatureById.set(id, feature as Feature<Geometry>)
-    }
-  }
-
+  // Metadata now includes precomputed labelPoint per feature
   return {
     type: 'FeatureCollection',
-    features: [...largestFeatureById.entries()].map(([id, feature]) => ({
-      type: 'Feature',
-      id,
-      properties: {
+    features: geoJson.features.map((feature) => {
+      const id = getFeatureId(feature.properties)
+      const labelPoint = (feature as any).labelPoint || 
+        (feature.geometry.type === 'Point' ? (feature.geometry as any).coordinates : [0, 0])
+
+      if (!id) {
+        return null as any
+      }
+
+      return {
+        type: 'Feature' as const,
         id,
-        name: getMetadataName(id),
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: pointOnFeature(feature).geometry.coordinates,
-      },
-    })),
-  }
+        properties: {
+          id,
+          name: getMetadataName(id),
+        },
+        geometry: {
+          type: 'Point' as const,
+          coordinates: labelPoint,
+        },
+      }
+    }).filter(Boolean),
+  } as FeatureCollection
 }
 
 function burgundyFillColorExpression(): ExpressionSpecification {
   return [
     'match',
     ['get', 'id'],
-    ...Object.entries(burgundyColors).flatMap(([id, color]) => [id, color]),
+    ...Object.entries({ ...burgundyColors, ...grandCruColors }).flatMap(
+      ([id, color]) => [id, color],
+    ),
     '#8c6f4f',
   ] as unknown as ExpressionSpecification
 }
 
-function setFeatureHover(map: MapLibreMap, id: SourceFeatureId, isHovered: boolean) {
-  map.setFeatureState({ source: burgundySourceId, id }, { hover: isHovered })
+function setFeatureHover(
+  map: MapLibreMap,
+  id: SourceFeatureId,
+  isHovered: boolean,
+  sourceLayer?: string,
+) {
+  if (sourceLayer) {
+    map.setFeatureState({ source: burgundySourceId, sourceLayer, id }, { hover: isHovered })
+  } else {
+    map.setFeatureState({ source: burgundySourceId, id }, { hover: isHovered })
+  }
 }
 
 function getHoveredRegion(properties: unknown, id: string): HoveredBurgundyRegion {
@@ -831,11 +1142,49 @@ function getHoveredRegion(properties: unknown, id: string): HoveredBurgundyRegio
     id,
     commune: getStringProperty(properties, 'commune'),
     insee: getStringProperty(properties, 'insee'),
+    cruLevel: getStringProperty(properties, 'cruLevel'),
+    climat: getStringProperty(properties, 'climat'),
   }
 }
 
 function hoveredRegionKey(region: HoveredBurgundyRegion) {
-  return [region.id, region.insee ?? '', region.commune ?? ''].join('|')
+  return [
+    region.id,
+    region.insee ?? '',
+    region.commune ?? '',
+    region.cruLevel ?? '',
+    region.climat ?? '',
+  ].join('|')
+}
+
+function createGrandCruLabelPoints(geoJson: FeatureCollection): FeatureCollection {
+  // Metadata now includes precomputed labelPoint per feature
+  const grandCruFeatures = geoJson.features.filter((feature) => {
+    const id = getFeatureId(feature.properties)
+    return id && id in grandCruMeta
+  })
+
+  return {
+    type: 'FeatureCollection',
+    features: grandCruFeatures.map((feature) => {
+      const id = getFeatureId(feature.properties)!
+      const labelPoint = (feature as any).labelPoint || 
+        (feature.geometry.type === 'Point' ? (feature.geometry as any).coordinates : [0, 0])
+
+      return {
+        type: 'Feature',
+        id,
+        properties: {
+          id,
+          name: grandCruMeta[id].name,
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: labelPoint,
+        },
+      }
+    }),
+  }
 }
 
 function communeShadeFilter(region: HoveredBurgundyRegion): FilterSpecification {

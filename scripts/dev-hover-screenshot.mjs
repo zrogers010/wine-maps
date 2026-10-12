@@ -1,13 +1,17 @@
 // Dev-only helper: navigate, optionally zoom/hover the map, then screenshot.
-// Usage: node scripts/dev-hover-screenshot.mjs <url> <outfile> <x> <y> [zoom] [settleMs]
+// Usage: node scripts/dev-hover-screenshot.mjs <url> <outfile> <x> <y> [zoom] [settleMs] [hoverX] [hoverY]
+// Zoom bursts target (x, y); the final hover lands on (hoverX, hoverY) if given.
 
 import { writeFileSync } from 'node:fs'
 
-const [url, outfile, xArg, yArg, zoomArg, settleArg] = process.argv.slice(2)
+const [url, outfile, xArg, yArg, zoomArg, settleArg, hoverXArg, hoverYArg] =
+  process.argv.slice(2)
 const x = Number(xArg)
 const y = Number(yArg)
 const zoom = zoomArg ? Number(zoomArg) : null
 const settleMs = Number(settleArg ?? 2200)
+const hoverX = hoverXArg ? Number(hoverXArg) : x
+const hoverY = hoverYArg ? Number(hoverYArg) : y
 
 const targets = await (await fetch('http://127.0.0.1:9222/json/list')).json()
 const page = targets.find((t) => t.type === 'page')
@@ -68,8 +72,8 @@ if (zoom !== null) {
 for (const [dx, dy] of [[-6, -6], [0, 0], [1, 1]]) {
   await send('Input.dispatchMouseEvent', {
     type: 'mouseMoved',
-    x: x + dx,
-    y: y + dy,
+    x: hoverX + dx,
+    y: hoverY + dy,
     buttons: 0,
   })
   await new Promise((resolve) => setTimeout(resolve, 220))

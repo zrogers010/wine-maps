@@ -1,0 +1,16 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "gevrey-chambertin",
+      "properties": {
+        "name": "Gevrey-Chambertin"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[4.95, 47.22], [4.97, 47.22], [4.97, 47.24], [4.95, 47.24], [4.95, 47.22]]]
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "alsace",
+      "properties": {
+        "name": "Alsace"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[7.3, 48.0], [7.7, 48.0], [7.7, 48.5], [7.3, 48.5], [7.3, 48.0]]]
+      }
+    }
+  ]
+}

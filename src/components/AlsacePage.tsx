@@ -1,7 +1,12 @@
+import maplibregl from 'maplibre-gl'
+import { registerPMTilesProtocol } from '../utils/pmtiles'
 import {
   StudyRegionMapPage,
   type StudyRegionMetadata,
 } from './StudyRegionMapPage'
+
+// Register PMTiles protocol once at module load
+registerPMTilesProtocol(maplibregl)
 
 const grandCruNames = [
   'Altenberg de Bergbieten',
@@ -269,13 +274,16 @@ export function AlsacePage() {
     <StudyRegionMapPage
       appellations={appellations}
       colors={alsaceColors}
-      detailDataPath="/data/france/alsace/alsace-display-2026.geojson"
+      detailDataPath="pmtiles://alsace-detail"
       emptyCardTitle="Alsace AOC Map"
-      hullDataPath="/data/france/alsace/alsace-display-hulls-2026.geojson"
+      hullDataPath="pmtiles://alsace-hull"
       labelMinZoom={9.15}
       legendAriaLabel="Alsace appellation legend"
       legendFitMaxZoomById={{ alsace: 7.8 }}
       legendGroups={legendGroups}
+      regionName="Alsace"
+      regionId="alsace"
+      routePath="/alsace"
       sharedGeometryIds={{ 'cremant-d-alsace': 'alsace' }}
       sourceBadge="INAO/data.gouv.fr Alsace AOC viticole parcel delimitation extract. Online data are informational; official plans remain with town halls or INAO."
     />
