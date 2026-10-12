@@ -18,6 +18,7 @@ import {
 import { getFeatureCollectionBounds } from '../utils/geo'
 import { createAtlasMapStyle } from '../utils/mapStyles'
 import { attachCameraHashSync, readCameraFromHash } from '../utils/urlHash'
+import { trackAppellationSelect } from '../utils/analytics'
 import { MapLoadingVeil } from './MapLoadingVeil'
 
 type SourceFeatureId = string | number
@@ -245,6 +246,7 @@ export function BurgundyPage() {
   const hoveredFeatureIdRef = useRef<SourceFeatureId | null>(null)
   const hoveredRegionKeyRef = useRef<string | null>(null)
   const hoverLeaveTimeoutRef = useRef<number | null>(null)
+  const lastSelectedIdRef = useRef<string | null>(null)
   const [isReady, setIsReady] = useState(false)
   const [hoveredRegion, setHoveredRegion] = useState<HoveredBurgundyRegion | null>(null)
   const [legendHoveredId, setLegendHoveredId] = useState<string | null>(null)
@@ -576,8 +578,10 @@ export function BurgundyPage() {
 
       map.on('mousemove', burgundyLowZoomLayerId, handleHullMouseMove)
       map.on('mouseleave', burgundyLowZoomLayerId, handleMouseLeave)
+      map.on('click', burgundyLowZoomLayerId, handleClick)
       map.on('mousemove', burgundyFillLayerId, handleMouseMove)
       map.on('mouseleave', burgundyFillLayerId, handleDetailMouseLeave)
+      map.on('click', burgundyFillLayerId, handleClick)
 
       const overviewBounds = getFeatureCollectionBounds(burgundyGeoJson)
       overviewBoundsRef.current = overviewBounds
@@ -698,6 +702,16 @@ export function BurgundyPage() {
       }
 
       handleMouseLeave()
+    }
+
+    function handleClick(event: MapLayerMouseEvent) {
+      const feature = event.features?.[0]
+      const id = getFeatureId(feature?.properties)
+
+      if (id && id !== lastSelectedIdRef.current) {
+        lastSelectedIdRef.current = id
+        trackAppellationSelect('burgundy', id)
+      }
     }
 
     function clearHoverState() {

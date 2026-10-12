@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { AlsacePage } from './components/AlsacePage'
 import { AppShell } from './components/AppShell'
 import { BurgundyPage } from './components/BurgundyPage'
@@ -6,6 +6,9 @@ import { ChampagnePage } from './components/ChampagnePage'
 import { Link } from './components/Link'
 import { findRegionByPath, regions, type RegionConfig } from './regions'
 import { navigate, usePathname } from './router'
+import { trackRegionView, trackPageView } from './utils/analytics'
+import { getEmailCaptureProvider } from './services/emailCapture'
+import { EmailSignupCard } from './components/EmailSignupCard'
 import type { ComponentType, ReactNode } from 'react'
 import './App.css'
 
@@ -20,6 +23,9 @@ function App() {
   const rawPathname = usePathname()
   const pathname = normalizePath(rawPathname)
   const region = findRegionByPath(pathname)
+  const lastTrackedRegionRef = useRef<string | null>(null)
+  const lastTrackedPathRef = useRef<string | null>(null)
+  const emailProvider = getEmailCaptureProvider()
   // Regions stay mounted after their first visit, so switching back is
   // instant and each map keeps its camera, hover, and loaded data.
   const [visitedRegionIds, setVisitedRegionIds] = useState<string[]>([])
@@ -35,6 +41,25 @@ function App() {
       navigate((region?.path ?? pathname) + window.location.hash, { replace: true })
     }
   }, [pathname, rawPathname, region])
+
+  useEffect(() => {
+    if (pathname !== lastTrackedPathRef.current) {
+      lastTrackedPathRef.current = pathname
+      const title = region 
+        ? `${region.name} Wine Region Map | SommelierMaps`
+        : pathname === '/'
+          ? 'Wine Region Maps | SommelierMaps'
+          : 'SommelierMaps'
+      trackPageView(pathname, title)
+    }
+
+    if (region && region.id !== lastTrackedRegionRef.current) {
+      lastTrackedRegionRef.current = region.id
+      trackRegionView(region.id)
+    } else if (!region) {
+      lastTrackedRegionRef.current = null
+    }
+  }, [region, pathname])
 
   const visitedRegions = regions.filter((candidate) =>
     visitedRegionIds.includes(candidate.id),
@@ -54,6 +79,14 @@ function App() {
       })}
       {!region && pathname === '/' ? <RegionIndexPage /> : null}
       {!region && pathname !== '/' ? <NotFoundPage /> : null}
+      {region && emailProvider ? (
+        <EmailSignupCard
+          key={region.id}
+          regionName={region.name}
+          regionSlug={region.id}
+          provider={emailProvider}
+        />
+      ) : null}
     </AppFrame>
   )
 }
