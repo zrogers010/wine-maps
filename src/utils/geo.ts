@@ -59,34 +59,6 @@ export function createVineyardParcelPlaceholders(): FeatureCollection {
   }
 }
 
-export function createHydrologyPlaceholder(): FeatureCollection {
-  return {
-    type: 'FeatureCollection',
-    features: [
-      {
-        type: 'Feature',
-        id: 'gironde-placeholder',
-        properties: {
-          name: 'Gironde estuary context',
-          placeholder: true,
-          class: 'river',
-        },
-        geometry: {
-          type: 'LineString',
-          coordinates: [
-            [-0.60, 44.90],
-            [-0.57, 45.02],
-            [-0.59, 45.14],
-            [-0.62, 45.25],
-            [-0.65, 45.38],
-            [-0.68, 45.58],
-          ],
-        },
-      },
-    ],
-  }
-}
-
 function parcel(id: string, coordinates: number[][]) {
   return {
     type: 'Feature' as const,

@@ -636,6 +636,56 @@ export function StudyRegionMapPage({
     )
   }, [isReady, legendFitMaxZoomById, legendHoveredId, sharedGeometryIds])
 
+  // Mobile easing: keep tapped feature visible above bottom sheet
+  useEffect(() => {
+    const map = mapRef.current
+    const geojson = hullGeoJsonRef.current
+
+    // Only on mobile
+    const isMobile = window.innerWidth < 769
+    if (!map || !isReady || !selectedId || !geojson || !isMobile) {
+      return
+    }
+
+    // Find the feature
+    const feature = geojson.features.find((f) => f.properties?.id === selectedId)
+    if (!feature || !feature.geometry) {
+      return
+    }
+
+    // Get the center point of the feature
+    const centerPoint = pointOnFeature(feature)
+    if (!centerPoint?.geometry?.coordinates) {
+      return
+    }
+
+    const [lng, lat] = centerPoint.geometry.coordinates
+
+    // Ease to the feature with bottom padding for the sheet
+    const sheetHeight = window.innerHeight * 0.45
+    
+    const doEase = () => {
+      if (map.isStyleLoaded() && !map.isMoving()) {
+        map.easeTo({
+          center: [lng, lat],
+          padding: {
+            top: 40,
+            bottom: sheetHeight + 140,
+            left: 40,
+            right: 40,
+          },
+          duration: 600,
+          essential: true,
+        })
+      }
+    }
+    
+    // Give burgundy/alsace extra time to settle  
+    const timer = setTimeout(doEase, 1000)
+    
+    return () => clearTimeout(timer)
+  }, [selectedId, isReady])
+
   return (
     <div className="map-only-shell">
       <div className="map-container" ref={containerRef} />

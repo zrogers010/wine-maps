@@ -23,7 +23,6 @@ import {
   OverviewControl,
 } from '../utils/camera'
 import {
-  createHydrologyPlaceholder,
   createVineyardParcelPlaceholders,
   getFeatureCollectionBounds,
 } from '../utils/geo'
@@ -63,7 +62,6 @@ const labelLayerId = 'appellation-labels'
 const chateauCircleLayerId = 'chateau-circles'
 const chateauLabelLayerId = 'chateau-labels'
 const vineyardLayerId = 'vineyards-fill'
-const hydrologyLayerId = 'hydrology-line'
 type SourceFeatureId = string | number
 const chateaux = chateauData as ChateauPoint[]
 const zoomTransitionStart = 9.80
@@ -238,11 +236,6 @@ export function MapView({
         data: createVineyardParcelPlaceholders(),
       })
 
-      map.addSource('hydrology-placeholder', {
-        type: 'geojson',
-        data: createHydrologyPlaceholder(),
-      })
-
       map.addSource(labelSourceId, {
         type: 'geojson',
         data: createLabelPoints(appellations, bordeauxGeoJson),
@@ -251,18 +244,6 @@ export function MapView({
       map.addSource(chateauSourceId, {
         type: 'geojson',
         data: createChateauPoints(),
-      })
-
-      map.addLayer({
-        id: hydrologyLayerId,
-        type: 'line',
-        source: 'hydrology-placeholder',
-        paint: {
-          'line-color': '#5ca8c8',
-          'line-opacity': 0.55,
-          'line-width': 2.2,
-          'line-blur': 0.2,
-        },
       })
 
       map.addLayer({
@@ -677,7 +658,6 @@ export function MapView({
     setLayerVisibility(map, outlineLayerId, layers.aocBoundaries)
     setLayerVisibility(map, 'appellation-hover-outline', layers.aocBoundaries)
     setLayerVisibility(map, vineyardLayerId, layers.vineyardParcels)
-    setLayerVisibility(map, hydrologyLayerId, layers.rivers)
     setLayerVisibility(map, labelLayerId, layers.studyLabels || mode === 'Study')
     setLayerVisibility(map, chateauCircleLayerId, true)
     setLayerVisibility(map, chateauLabelLayerId, true)
@@ -847,6 +827,7 @@ export function MapView({
       return
     }
 
+    // Mark as performed immediately to prevent overview from running
     hasPerformedInitialFitRef.current = true
 
     // Find the feature geometry for the selected appellation
@@ -885,17 +866,38 @@ export function MapView({
         const isMobile = window.innerWidth < 769
         const sheetHeight = isMobile ? window.innerHeight * 0.45 : 0
         
-        map.fitBounds(bounds, {
+        // Calculate camera for bounds
+        const result = map.cameraForBounds(bounds, {
           padding: {
-            top: 80,
-            bottom: isMobile ? sheetHeight + 80 : 80,
-            left: 80,
-            right: 80,
+            top: 50,
+            bottom: isMobile ? sheetHeight + 50 : 50,
+            left: 50,
+            right: 50,
           },
-          minZoom: 10,
-          maxZoom: 12,
-          duration: 1000,
+          minZoom: 10.1,
+          maxZoom: 13,
         })
+        
+        if (result && result.center) {
+          // Use jumpTo to instantly set the camera
+          map.jumpTo({
+            center: result.center,
+            zoom: result.zoom || 10.1,
+          })
+        } else {
+          // Fallback
+          map.fitBounds(bounds, {
+            padding: {
+              top: 50,
+              bottom: isMobile ? sheetHeight + 50 : 50,
+              left: 50,
+              right: 50,
+            },
+            minZoom: 10.1,
+            maxZoom: 13,
+            duration: 600,
+          })
+        }
       }
 
       // Set the feature as selected
@@ -933,17 +935,25 @@ export function MapView({
     const map = mapRef.current
     const overviewBounds = overviewBoundsRef.current
     
-    // Only fit to overview if there's no selectedId (no deep link) and no hash camera
+    // Only fit to overview if:
+    // 1. No selectedId (no deep link)
+    // 2. No hash camera
+    // 3. Haven't already performed an initial fit
     const hashCamera = readCameraFromHash()
-    if (!map || !isReady || selectedId || hashCamera || !overviewBounds) {
+    if (!map || !isReady || selectedId || hashCamera || !overviewBounds || hasPerformedInitialFitRef.current) {
       return
     }
 
-    map.fitBounds(overviewBounds, {
-      padding: OVERVIEW_PADDING,
-      duration: 1100,
-      essential: true,
-    })
+    // Wait a moment before overview, in case deep link is loading
+    const timer = setTimeout(() => {
+      map.fitBounds(overviewBounds, {
+        padding: OVERVIEW_PADDING,
+        duration: 1100,
+        essential: true,
+      })
+    }, 150)
+    
+    return () => clearTimeout(timer)
   }, [isReady, selectedId])
 
   // Ease map on mobile when feature selected to keep it visible above sheet
@@ -980,8 +990,8 @@ export function MapView({
         map.easeTo({
           center: [lng, lat],
           padding: {
-            top: 60,
-            bottom: sheetHeight + 60,
+            top: 40,
+            bottom: sheetHeight + 120,
             left: 40,
             right: 40,
           },
@@ -991,7 +1001,7 @@ export function MapView({
       }
     }
     
-    // Wait for the initial fitBounds animation to complete
+    // Give alsace more time before checking if it needs easing
     const timer = setTimeout(doEase, 1200)
     
     return () => clearTimeout(timer)
