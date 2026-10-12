@@ -78,8 +78,8 @@ export function createAtlasMapStyle(): StyleSpecification {
         source: 'openmaptiles',
         'source-layer': 'water',
         paint: {
-          'fill-color': '#c8b8a0',
-          'fill-opacity': 0.6,
+          'fill-color': '#b8a890',
+          'fill-opacity': 0.7,
         },
       },
       {
@@ -90,9 +90,9 @@ export function createAtlasMapStyle(): StyleSpecification {
         minzoom: 8,
         filter: ['in', ['get', 'class'], ['literal', ['river', 'canal']]],
         paint: {
-          'line-color': '#b8a890',
-          'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.8, 12, 2.5],
-          'line-opacity': 0.5,
+          'line-color': '#a89880',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1, 12, 3],
+          'line-opacity': 0.6,
         },
       },
       {
@@ -141,10 +141,10 @@ export function createAtlasMapStyle(): StyleSpecification {
           'text-max-width': 8,
         },
         paint: {
-          'text-color': '#8a7864',
-          'text-halo-color': 'rgba(241, 229, 207, 0.9)',
-          'text-halo-width': 1.5,
-          'text-opacity': 0.65,
+          'text-color': '#6d5d50',
+          'text-halo-color': 'rgba(241, 229, 207, 0.95)',
+          'text-halo-width': 1.8,
+          'text-opacity': 0.75,
         },
       },
     ],

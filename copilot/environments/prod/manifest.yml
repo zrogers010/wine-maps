@@ -1,6 +1,3 @@
-name: prod
-type: Environment
-
 # Environment configuration for prod
 # This configures the ALB and HTTPS certificates for the production environment
 
@@ -13,7 +10,7 @@ http:
       # - www.sommeliermaps.com
       # - sommeliermaps.com
       # Use DNS validation (CNAME records in DigitalOcean)
-      - arn:aws:acm:us-east-1:486638851283:certificate/a325891d-be31-4b11-8c36-575b40c13cbe
+      - arn:aws:acm:us-east-1:486638851283:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 
 # After creating the certificate:
 # 1. Request or import certificate in ACM (us-east-1)
