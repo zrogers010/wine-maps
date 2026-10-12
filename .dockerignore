@@ -1,0 +1,80 @@
+# Node modules (will be installed fresh in the container)
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build output (will be created during Docker build)
+dist
+dist-ssr
+
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Development files
+.env
+.env.local
+.env.*.local
+*.local
+
+# Large raw data files (gitignored, not needed for build)
+# Note: If these are required for the build, you'll need to include them
+data/raw/
+public/data/
+
+# Geospatial source files (gitignored)
+src/data/**/*.geojson
+src/data/**/*.topojson
+src/data/**/*.geojsonl
+src/data/**/*.geojson.gz
+*.shp
+*.shp.xml
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.qpj
+*.sbn
+*.sbx
+*.gpkg
+*.sqlite
+*.sqlite3
+*.db
+*.mbtiles
+*.pmtiles
+*.fgb
+*.tif
+*.tiff
+*.kml
+*.kmz
+*.zip
+
+# Editor and IDE files
+.vscode
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+
+# Documentation
+README.md
+HOSTING.md
+*.md
+
+# Screenshot scratch
+.tmp-map-screens/
+
+# CI/CD
+.github/
+
+# AWS Copilot files (not needed in image)
+copilot/
+
+# Desktop screenshots
+*.png
