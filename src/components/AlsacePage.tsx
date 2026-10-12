@@ -163,17 +163,6 @@ const appellations: StudyRegionMetadata[] = [
   })),
 ]
 
-const grandCruPalette = [
-  '#d85f73',
-  '#f2a65a',
-  '#f3df73',
-  '#9bc66b',
-  '#64b6ac',
-  '#6a9edb',
-  '#9b6bd3',
-  '#d7839a',
-]
-
 const northernGrandCruNames = [
   'Steinklotz',
   'Altenberg de Bergbieten',
@@ -235,38 +224,49 @@ const southernGrandCruNames = [
 ]
 
 const alsaceColors = Object.fromEntries(
-  appellations.map((appellation, index) => [
-    appellation.id,
-    appellation.id === 'alsace'
-      ? '#d9d96a'
-      : appellation.id === 'cremant-d-alsace'
-        ? '#8fc7d8'
-        : grandCruPalette[index % grandCruPalette.length],
-  ]),
+  appellations.map((appellation) => {
+    if (appellation.id === 'alsace') {
+      return [appellation.id, '#b8c4a4']
+    }
+    if (appellation.id === 'cremant-d-alsace') {
+      return [appellation.id, '#9aa89c']
+    }
+    // Grand Crus: assign different colors based on north/central/south with varied hues
+    const grandCruName = appellation.name.replace('Alsace Grand Cru ', '')
+    if (northernGrandCruNames.includes(grandCruName)) {
+      return [appellation.id, '#a8b098'] // sage green
+    }
+    if (centralGrandCruNames.includes(grandCruName)) {
+      return [appellation.id, '#b8a88c'] // warm beige
+    }
+    // Southern Grand Crus
+    return [appellation.id, '#98907c'] // taupe-gray
+  }),
 )
 
 const legendGroups = [
   {
-    title: 'Alsace / Regional',
+    title: 'Regional',
     ids: ['alsace', 'cremant-d-alsace'],
   },
   {
-    title: 'Alsace / Northern Grand Cru',
+    title: 'Northern Grand Cru',
     ids: grandCruIds(northernGrandCruNames),
   },
   {
-    title: 'Alsace / Central Grand Cru',
+    title: 'Central Grand Cru',
     ids: grandCruIds(centralGrandCruNames),
   },
   {
-    title: 'Alsace / Southern Grand Cru',
+    title: 'Southern Grand Cru',
     ids: grandCruIds(southernGrandCruNames),
   },
 ]
 
-export function AlsacePage() {
+export function AlsacePage({ initialSelectedId }: { initialSelectedId?: string } = {}) {
   return (
     <StudyRegionMapPage
+      initialSelectedId={initialSelectedId}
       appellations={appellations}
       colors={alsaceColors}
       detailDataPath="/data/france/alsace/alsace-display-2026.geojson"

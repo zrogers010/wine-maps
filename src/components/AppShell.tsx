@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect, useRef } from 'react'
 import appellationData from '../data/france/bordeaux/appellations.json'
 import type {
   AppellationId,
@@ -9,13 +9,14 @@ import type {
 import { APPELLATION_COLORS } from '../utils/mapStyles'
 import { trackAppellationSelect } from '../utils/analytics'
 import { MapView } from './MapView'
+import { MapErrorBoundary } from './MapErrorBoundary'
 
 const appellations = appellationData as AppellationMetadata[]
 const hiddenMapIds: AppellationId[] = ['graves-superieures']
 
 const regionLegendGroups: Array<{ title: string; ids: AppellationId[] }> = [
   {
-    title: 'Bordeaux / Médoc',
+    title: 'Médoc',
     ids: [
       'medoc',
       'haut-medoc',
@@ -28,7 +29,7 @@ const regionLegendGroups: Array<{ title: string; ids: AppellationId[] }> = [
     ],
   },
   {
-    title: 'Bordeaux / Entre-Deux-Mers',
+    title: 'Entre-Deux-Mers',
     ids: [
       'entre-deux-mers',
       'entre-deux-mers-haut-benauge',
@@ -42,7 +43,7 @@ const regionLegendGroups: Array<{ title: string; ids: AppellationId[] }> = [
     ],
   },
   {
-    title: 'Bordeaux / Right Bank',
+    title: 'Right Bank',
     ids: [
       'saint-emilion',
       'pomerol',
@@ -56,7 +57,7 @@ const regionLegendGroups: Array<{ title: string; ids: AppellationId[] }> = [
     ],
   },
   {
-    title: 'Bordeaux / Graves & Sauternes',
+    title: 'Graves & Sauternes',
     ids: [
       'pessac-leognan',
       'graves',
@@ -80,31 +81,47 @@ export function AppShell({ initialSelectedId }: { initialSelectedId?: Appellatio
   const [selectedId, setSelectedId] = useState<AppellationId | null>(initialSelectedId || null)
   const [legendHoveredId, setLegendHoveredId] = useState<AppellationId | null>(null)
   const [subregionHoveredIds, setSubregionHoveredIds] = useState<AppellationId[] | null>(null)
+  const hasUserInteractedRef = useRef(false)
   const layers = defaultLayers
   const mode: ExperienceMode = 'Explore'
   const filteredIds = appellations
     .map((appellation) => appellation.id)
     .filter((id) => !hiddenMapIds.includes(id))
 
-  const handleSelectAppellation = useCallback((id: AppellationId) => {
-    if (id !== selectedId) {
-      trackAppellationSelect('bordeaux', id)
+  // Sync initialSelectedId prop changes to state (for deep linking) only if user hasn't interacted
+  useEffect(() => {
+    if (initialSelectedId !== undefined && initialSelectedId !== selectedId && !hasUserInteractedRef.current) {
+      queueMicrotask(() => {
+        setSelectedId(initialSelectedId)
+      })
     }
-    setSelectedId(id)
+  }, [initialSelectedId, selectedId])
+
+  const handleSelectAppellation = useCallback((id: AppellationId | null) => {
+    hasUserInteractedRef.current = true
+    if (id !== selectedId) {
+      if (id) {
+        trackAppellationSelect('bordeaux', id)
+      }
+      setSelectedId(id)
+    }
   }, [selectedId])
 
   return (
     <div className="map-only-shell">
-      <MapView
-        appellations={appellations}
-        filteredAppellationIds={filteredIds}
-        layers={layers}
-        mode={mode}
-        selectedId={selectedId}
-        legendHoveredId={legendHoveredId}
-        subregionHoveredIds={subregionHoveredIds}
-        onSelectAppellation={handleSelectAppellation}
-      />
+      <MapErrorBoundary>
+        <MapView
+          appellations={appellations}
+          filteredAppellationIds={filteredIds}
+          layers={layers}
+          mode={mode}
+          selectedId={selectedId}
+          deepLinkId={initialSelectedId ?? null}
+          legendHoveredId={legendHoveredId}
+          subregionHoveredIds={subregionHoveredIds}
+          onSelectAppellation={handleSelectAppellation}
+        />
+      </MapErrorBoundary>
       <div className="map-source-badge">
         INAO/data.gouv.fr AOC viticole parcel delimitation extract. Online data
         are informational; official plans remain with town halls or INAO.

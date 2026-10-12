@@ -6,6 +6,7 @@ import maplibregl, {
   type GeoJSONSourceSpecification,
   type Map as MapLibreMap,
   type MapLayerMouseEvent,
+  type MapMouseEvent,
 } from 'maplibre-gl'
 import type { Feature, FeatureCollection, Geometry } from 'geojson'
 import {
@@ -19,6 +20,15 @@ import { createAtlasMapStyle } from '../utils/mapStyles'
 import { attachCameraHashSync, readCameraFromHash } from '../utils/urlHash'
 import { trackAppellationSelect } from '../utils/analytics'
 import { MapLoadingVeil } from './MapLoadingVeil'
+import {
+  addSelectedOutlineLayers,
+  boundsForIds,
+  exposeMapForTests,
+  fitSelection,
+  keepAboveSheet,
+  pickAppellationAt,
+  setSelectedOutline,
+} from '../utils/selection'
 
 type SourceFeatureId = string | number
 
@@ -59,6 +69,8 @@ interface HoveredRegion {
 }
 
 interface StudyRegionMapPageProps {
+  /** Appellation from the URL (/<region>/<id>/); framed once on load. */
+  initialSelectedId?: string
   appellations: StudyRegionMetadata[]
   colors: Record<string, string>
   detailDataPath: string
@@ -84,6 +96,7 @@ export function StudyRegionMapPage({
   detailDataPath,
   emptyCardTitle,
   hullDataPath,
+  initialSelectedId,
   legendAriaLabel,
   legendFitMaxZoomById = {},
   legendGroups,
@@ -117,10 +130,18 @@ export function StudyRegionMapPage({
   const lastSelectedIdRef = useRef<string | null>(null)
   const [isReady, setIsReady] = useState(false)
   const [hoveredRegion, setHoveredRegion] = useState<HoveredRegion | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null)
+  // Geometry ids to frame for a deep link (some appellations share another's geometry).
+  const deepLinkGeometryIdsRef = useRef<string[]>(
+    initialSelectedId
+      ? [initialSelectedId, sharedGeometryIds[initialSelectedId]].filter((id): id is string => Boolean(id))
+      : [],
+  )
   const [legendHoveredId, setLegendHoveredId] = useState<string | null>(null)
   const [subregionHoveredIds, setSubregionHoveredIds] = useState<string[] | null>(null)
 
-  const activeRegion = hoveredRegion ?? (legendHoveredId ? { id: legendHoveredId } : null)
+  const selectedRegion = selectedId ? { id: selectedId } : null
+  const activeRegion = hoveredRegion ?? selectedRegion ?? (legendHoveredId ? { id: legendHoveredId } : null)
   const activeAppellation = activeRegion
     ? appellations.find((appellation) => appellation.id === activeRegion.id)
     : null
@@ -135,8 +156,8 @@ export function StudyRegionMapPage({
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: createAtlasMapStyle(),
-      center: hashCamera?.center ?? [4.25, 48.85],
-      zoom: hashCamera?.zoom ?? 8,
+      center: hashCamera?.center ?? [7.25, 48.75],
+      zoom: hashCamera?.zoom ?? 8.8,
       minZoom: 6.5,
       maxZoom: 14,
       attributionControl: false,
@@ -145,10 +166,7 @@ export function StudyRegionMapPage({
 
     attachCameraHashSync(map, routePath)
 
-    if (import.meta.env.DEV) {
-      // Dev-only handle for automated screenshot/interaction checks.
-      ;(window as unknown as { __wineMap?: MapLibreMap }).__wineMap = map
-    }
+    exposeMapForTests(map)
 
     // Gentler wheel steps make trackpad/mouse zooming feel fluid instead of jumpy.
     map.scrollZoom.setWheelZoomRate(1 / 700)
@@ -167,7 +185,6 @@ export function StudyRegionMapPage({
     map.addControl(
       new maplibregl.AttributionControl({
         compact: true,
-        customAttribution: 'SommelierMaps dev data',
       }),
       'bottom-right',
     )
@@ -379,16 +396,26 @@ export function StudyRegionMapPage({
 
       map.on('mousemove', hullLayerId, handleHullMouseMove)
       map.on('mouseleave', hullLayerId, handleMouseLeave)
-      map.on('click', hullLayerId, handleClick)
       map.on('mousemove', detailFillLayerId, handleMouseMove)
       map.on('mouseleave', detailFillLayerId, handleDetailMouseLeave)
-      map.on('click', detailFillLayerId, handleClick)
+      map.on('click', handleClick)
+
+      addSelectedOutlineLayers(map, detailSourceId, sourcePrefix)
+      map.moveLayer(`${sourcePrefix}-selection-halo`, labelLayerId)
+      map.moveLayer(`${sourcePrefix}-selected-outline`, labelLayerId)
 
       const overviewBounds = getFeatureCollectionBounds(detailGeoJson)
       overviewBoundsRef.current = overviewBounds
 
-      // A camera deep link takes precedence over the intro overview flight.
-      if (!hashCamera) {
+      const deepLinkBounds = deepLinkGeometryIdsRef.current.length
+        ? boundsForIds([detailGeoJson, hullGeoJson], deepLinkGeometryIdsRef.current)
+        : null
+
+      if (deepLinkBounds) {
+        // /<region>/<id>/: frame the appellation once the card has been laid out.
+        requestAnimationFrame(() => fitSelection(map, deepLinkBounds))
+      } else if (!hashCamera) {
+        // A camera deep link takes precedence over the intro overview flight.
         map.fitBounds(overviewBounds, {
           padding: OVERVIEW_PADDING,
           duration: 1100,
@@ -495,15 +522,20 @@ export function StudyRegionMapPage({
       handleMouseLeave()
     }
 
-    function handleClick(event: MapLayerMouseEvent) {
-      const feature = event.features?.[0]
-      const id = getFeatureId(feature?.properties)
+    // Select the topmost appellation rendered under the pointer; never zoom.
+    function handleClick(event: MapMouseEvent) {
+      const id = pickAppellationAt(map, event.point, [detailFillLayerId, hullLayerId])
 
-      if (id && id !== lastSelectedIdRef.current) {
-        lastSelectedIdRef.current = id
-        const regionSlug = routePath.replace('/', '')
-        trackAppellationSelect(regionSlug, id)
+      if (!id) {
+        return
       }
+
+      if (id !== lastSelectedIdRef.current) {
+        lastSelectedIdRef.current = id
+        trackAppellationSelect(routePath.replace('/', ''), id)
+      }
+      setSelectedId(id)
+      keepAboveSheet(map, event.lngLat)
     }
 
     function clearHoverState() {
@@ -535,6 +567,7 @@ export function StudyRegionMapPage({
     labelMinZoom,
     labelSourceId,
     routePath,
+    sourcePrefix,
   ])
 
   useEffect(() => {
@@ -634,6 +667,20 @@ export function StudyRegionMapPage({
     )
   }, [isReady, legendFitMaxZoomById, legendHoveredId, sharedGeometryIds])
 
+  useEffect(() => {
+    const map = mapRef.current
+
+    if (!map || !isReady) {
+      return
+    }
+
+    setSelectedOutline(
+      map,
+      sourcePrefix,
+      selectedId ? (sharedGeometryIds[selectedId] ?? selectedId) : null,
+    )
+  }, [isReady, selectedId, sharedGeometryIds, sourcePrefix])
+
   return (
     <div className="map-only-shell">
       <div className="map-container" ref={containerRef} />
@@ -642,6 +689,11 @@ export function StudyRegionMapPage({
         appellation={activeAppellation}
         emptyCardTitle={emptyCardTitle}
         region={activeRegion}
+        onClose={() => {
+          lastSelectedIdRef.current = null
+          setSelectedId(null)
+          setHoveredRegion(null)
+        }}
       />
       <div className="map-source-badge">{sourceBadge}</div>
       <aside className="region-legend" aria-label={legendAriaLabel}>
@@ -688,22 +740,39 @@ function StudyHoverCard({
   appellation,
   emptyCardTitle,
   region,
+  onClose,
 }: {
   appellation: StudyRegionMetadata | null | undefined
   emptyCardTitle: string
   region: HoveredRegion | null
+  onClose?: () => void
 }) {
+  const isMobileOpen = Boolean(region)
+
+  const handleClose = () => {
+    if (onClose) {
+      onClose()
+    }
+  }
+
   if (!appellation || !region) {
     return (
       <aside className="hover-region-card is-empty">
         <span className="hover-card-kicker">{emptyCardTitle}</span>
-        <strong>Hover the map or legend to explore an appellation</strong>
+        <strong>Tap or hover the map or legend to explore an appellation</strong>
       </aside>
     )
   }
 
   return (
-    <aside className="hover-region-card">
+    <aside className={`hover-region-card${isMobileOpen ? ' mobile-open' : ''}`}>
+      <button 
+        className="mobile-close-button"
+        onClick={handleClose}
+        aria-label="Close"
+      >
+        ×
+      </button>
       <span className="hover-card-kicker">
         {appellation.region} / {appellation.subregion}
       </span>
@@ -780,13 +849,26 @@ function StudyHoverCard({
 }
 
 async function loadGeoJson(path: string): Promise<FeatureCollection> {
-  const response = await fetch(path)
+  try {
+    const response = await fetch(path)
 
-  if (!response.ok) {
-    throw new Error(`Failed to load GeoJSON ${path}: ${response.status}`)
+    if (!response.ok) {
+      console.warn(`GeoJSON file not available: ${path}`)
+      // Return empty FeatureCollection if file not found
+      return {
+        type: 'FeatureCollection',
+        features: [],
+      }
+    }
+
+    return (await response.json()) as FeatureCollection
+  } catch (error) {
+    console.warn(`Error loading GeoJSON from ${path}:`, error)
+    return {
+      type: 'FeatureCollection',
+      features: [],
+    }
   }
-
-  return (await response.json()) as FeatureCollection
 }
 
 function createLabelPoints(

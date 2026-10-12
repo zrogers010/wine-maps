@@ -6,6 +6,7 @@ import maplibregl, {
   type GeoJSONSourceSpecification,
   type Map as MapLibreMap,
   type MapLayerMouseEvent,
+  type MapMouseEvent,
 } from 'maplibre-gl'
 import type { Feature, FeatureCollection, Geometry } from 'geojson'
 import appellationData from '../data/france/burgundy/appellations.json'
@@ -20,6 +21,15 @@ import { createAtlasMapStyle } from '../utils/mapStyles'
 import { attachCameraHashSync, readCameraFromHash } from '../utils/urlHash'
 import { trackAppellationSelect } from '../utils/analytics'
 import { MapLoadingVeil } from './MapLoadingVeil'
+import {
+  addSelectedOutlineLayers,
+  boundsForIds,
+  exposeMapForTests,
+  fitSelection,
+  keepAboveSheet,
+  pickAppellationAt,
+  setSelectedOutline,
+} from '../utils/selection'
 
 type SourceFeatureId = string | number
 
@@ -107,22 +117,27 @@ const burgundyIds = [
 ]
 
 const burgundyColors: Record<string, string> = {
-  'petit-chablis': '#c7d98b',
-  chablis: '#8fc7d8',
-  'chablis-grand-cru': '#4b9bb8',
-  'gevrey-chambertin': '#b84f6f',
-  'morey-saint-denis': '#c7637f',
-  'chambolle-musigny': '#d7839a',
-  vougeot: '#b66bd8',
-  'vosne-romanee': '#8f5cc7',
-  'nuits-saint-georges': '#7b4aa6',
-  'aloxe-corton': '#d97757',
-  beaune: '#e0a653',
-  pommard: '#c84c4c',
-  volnay: '#e47d9a',
-  meursault: '#e7c75f',
-  'puligny-montrachet': '#d9df70',
-  'chassagne-montrachet': '#c8b85f',
+  // Chablis - cool mineral tones
+  'petit-chablis': '#b8c4a8',
+  chablis: '#9ab0a4',
+  'chablis-grand-cru': '#7a9289',
+  
+  // Côte de Nuits villages - earthy burgundy tones
+  'gevrey-chambertin': '#9d7582',
+  'morey-saint-denis': '#a8828f',
+  'chambolle-musigny': '#b58fa0',
+  vougeot: '#8d6c78',
+  'vosne-romanee': '#a17d8d',
+  'nuits-saint-georges': '#9a7786',
+  
+  // Côte de Beaune villages - warmer earth tones
+  'aloxe-corton': '#a88d7a',
+  beaune: '#b39682',
+  pommard: '#9d7f6d',
+  volnay: '#aa8975',
+  meursault: '#c8a88c',
+  'puligny-montrachet': '#d4b498',
+  'chassagne-montrachet': '#bfa285',
 }
 
 const grandCruMeta: Record<string, GrandCruMeta> = {
@@ -161,47 +176,56 @@ const grandCruMeta: Record<string, GrandCruMeta> = {
 }
 
 const grandCruColors: Record<string, string> = {
-  chambertin: '#8e1e2f',
-  'chambertin-clos-de-beze': '#a32639',
-  'chapelle-chambertin': '#b23a4a',
-  'charmes-chambertin': '#c14f5e',
-  'griotte-chambertin': '#d16472',
-  'latricieres-chambertin': '#7d2438',
-  'mazis-chambertin': '#96334d',
-  'mazoyeres-chambertin': '#ad4a63',
-  'ruchottes-chambertin': '#c25a70',
-  'clos-de-la-roche': '#9c4468',
-  'clos-saint-denis': '#ae567c',
-  'clos-des-lambrays': '#c06890',
-  'clos-de-tart': '#8a3a5c',
-  'bonnes-mares': '#a4527d',
-  musigny: '#7c2d55',
-  'clos-de-vougeot': '#6d3f8f',
-  echezeaux: '#7b4fa5',
-  'grands-echezeaux': '#6a3f96',
-  'romanee-conti': '#4f2d7a',
-  'la-tache': '#5d3688',
-  richebourg: '#8659b0',
-  'la-romanee': '#9668bd',
-  'la-grande-rue': '#a678c9',
-  'romanee-saint-vivant': '#b489d4',
-  corton: '#c0562e',
-  'corton-charlemagne': '#d99a2b',
-  charlemagne: '#e3ac45',
-  montrachet: '#c99a1e',
-  'chevalier-montrachet': '#d6ab35',
-  'batard-montrachet': '#e2bc4d',
-  'bienvenues-batard-montrachet': '#ecc95f',
-  'criots-batard-montrachet': '#f0d375',
+  // Gevrey Chambertin group - deep burgundy reds
+  chambertin: '#8b4e5f',
+  'chambertin-clos-de-beze': '#944f5e',
+  'chapelle-chambertin': '#9d5563',
+  'charmes-chambertin': '#a65a68',
+  'griotte-chambertin': '#995265',
+  'latricieres-chambertin': '#8a4b5d',
+  'mazis-chambertin': '#924d60',
+  'mazoyeres-chambertin': '#a65a68',
+  'ruchottes-chambertin': '#8c4d5f',
+  
+  // Morey group - purple-reds
+  'clos-de-la-roche': '#7a4f6b',
+  'clos-saint-denis': '#845873',
+  'clos-des-lambrays': '#8e5f7a',
+  'clos-de-tart': '#7d526e',
+  
+  // Chambolle/Vougeot/Vosne group - rose-mauves
+  'bonnes-mares': '#a97286',
+  musigny: '#b5808f',
+  'clos-de-vougeot': '#9c6a7c',
+  echezeaux: '#a87385',
+  'grands-echezeaux': '#9f6d7e',
+  'romanee-conti': '#a67588',
+  'la-tache': '#9e6f80',
+  richebourg: '#b17a8c',
+  'la-romanee': '#a87487',
+  'la-grande-rue': '#a47185',
+  'romanee-saint-vivant': '#ad788a',
+  
+  // Beaune reds - warm terracotta
+  corton: '#a87562',
+  
+  // Beaune whites - golden beiges
+  'corton-charlemagne': '#c4a07a',
+  charlemagne: '#cca882',
+  montrachet: '#d4b28a',
+  'chevalier-montrachet': '#d8b68f',
+  'batard-montrachet': '#dcba93',
+  'bienvenues-batard-montrachet': '#e0be97',
+  'criots-batard-montrachet': '#dbb990',
 }
 
 const legendGroups = [
   {
-    title: 'Burgundy / Chablis',
+    title: 'Chablis',
     ids: ['petit-chablis', 'chablis', 'chablis-grand-cru'],
   },
   {
-    title: 'Burgundy / Côte de Nuits',
+    title: 'Côte de Nuits',
     ids: [
       'gevrey-chambertin',
       'morey-saint-denis',
@@ -212,7 +236,7 @@ const legendGroups = [
     ],
   },
   {
-    title: 'Burgundy / Côte de Beaune',
+    title: 'Côte de Beaune',
     ids: [
       'aloxe-corton',
       'beaune',
@@ -237,7 +261,7 @@ const legendGroups = [
   },
 ]
 
-export function BurgundyPage() {
+export function BurgundyPage({ initialSelectedId }: { initialSelectedId?: string } = {}) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const overviewBoundsRef = useRef<[[number, number], [number, number]] | null>(null)
@@ -249,10 +273,13 @@ export function BurgundyPage() {
   const lastSelectedIdRef = useRef<string | null>(null)
   const [isReady, setIsReady] = useState(false)
   const [hoveredRegion, setHoveredRegion] = useState<HoveredBurgundyRegion | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null)
+  const deepLinkIdRef = useRef<string | null>(initialSelectedId ?? null)
   const [legendHoveredId, setLegendHoveredId] = useState<string | null>(null)
   const [subregionHoveredIds, setSubregionHoveredIds] = useState<string[] | null>(null)
 
-  const activeRegion = hoveredRegion ?? (legendHoveredId ? { id: legendHoveredId } : null)
+  const selectedRegion = selectedId ? { id: selectedId } : null
+  const activeRegion = hoveredRegion ?? selectedRegion ?? (legendHoveredId ? { id: legendHoveredId } : null)
   const activeGrandCru = activeRegion ? grandCruMeta[activeRegion.id] : undefined
   const activeAppellation = activeRegion
     ? appellations.find(
@@ -271,8 +298,8 @@ export function BurgundyPage() {
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: createAtlasMapStyle(),
-      center: hashCamera?.center ?? [4.8, 47.2],
-      zoom: hashCamera?.zoom ?? 8.4,
+      center: hashCamera?.center ?? [4.87, 46.98],
+      zoom: hashCamera?.zoom ?? 9.2,
       minZoom: 6.8,
       maxZoom: 14,
       attributionControl: false,
@@ -298,7 +325,6 @@ export function BurgundyPage() {
     map.addControl(
       new maplibregl.AttributionControl({
         compact: true,
-        customAttribution: 'SommelierMaps dev data',
       }),
       'bottom-right',
     )
@@ -578,16 +604,38 @@ export function BurgundyPage() {
 
       map.on('mousemove', burgundyLowZoomLayerId, handleHullMouseMove)
       map.on('mouseleave', burgundyLowZoomLayerId, handleMouseLeave)
-      map.on('click', burgundyLowZoomLayerId, handleClick)
       map.on('mousemove', burgundyFillLayerId, handleMouseMove)
       map.on('mouseleave', burgundyFillLayerId, handleDetailMouseLeave)
-      map.on('click', burgundyFillLayerId, handleClick)
+      map.on('click', handleClick)
+
+      // Persistent selection outline: village hulls at low zoom, parcels once zoomed in.
+      const hullIds = burgundyLowZoomGeoJson.features
+        .map((feature) => feature.properties?.id)
+        .filter((id): id is string => typeof id === 'string')
+      addSelectedOutlineLayers(map, burgundyLowZoomSourceId, 'burgundy-hull', [
+        'interpolate', ['linear'], ['zoom'], zoomTransitionStart, 1, zoomTransitionEnd, 0,
+      ])
+      addSelectedOutlineLayers(map, burgundySourceId, 'burgundy', [
+        'interpolate', ['linear'], ['zoom'],
+        zoomTransitionStart, ['case', ['in', ['get', 'id'], ['literal', hullIds]], 0, 1],
+        zoomTransitionEnd, 1,
+      ])
+      for (const layerId of ['burgundy-hull-selection-halo', 'burgundy-hull-selected-outline', 'burgundy-selection-halo', 'burgundy-selected-outline']) {
+        map.moveLayer(layerId, burgundyLabelLayerId)
+      }
 
       const overviewBounds = getFeatureCollectionBounds(burgundyGeoJson)
       overviewBoundsRef.current = overviewBounds
 
-      // A camera deep link takes precedence over the intro overview flight.
-      if (!hashCamera) {
+      const deepLinkBounds = deepLinkIdRef.current
+        ? boundsForIds([burgundyGeoJson, burgundyLowZoomGeoJson], [deepLinkIdRef.current])
+        : null
+
+      if (deepLinkBounds) {
+        // /burgundy/<id>/: frame the appellation once the card has been laid out.
+        requestAnimationFrame(() => fitSelection(map, deepLinkBounds))
+      } else if (!hashCamera) {
+        // A camera deep link takes precedence over the intro overview flight.
         map.fitBounds(overviewBounds, {
           padding: OVERVIEW_PADDING,
           duration: 1100,
@@ -600,10 +648,7 @@ export function BurgundyPage() {
 
     mapRef.current = map
 
-    if (import.meta.env.DEV) {
-      // Dev-only handle for automated screenshot/interaction checks.
-      ;(window as unknown as { __wineMap?: MapLibreMap }).__wineMap = map
-    }
+    exposeMapForTests(map)
 
     return () => {
       cancelled = true
@@ -704,14 +749,20 @@ export function BurgundyPage() {
       handleMouseLeave()
     }
 
-    function handleClick(event: MapLayerMouseEvent) {
-      const feature = event.features?.[0]
-      const id = getFeatureId(feature?.properties)
+    // Select the topmost appellation rendered under the pointer; never zoom.
+    function handleClick(event: MapMouseEvent) {
+      const id = pickAppellationAt(map, event.point, [burgundyFillLayerId, burgundyLowZoomLayerId])
 
-      if (id && id !== lastSelectedIdRef.current) {
+      if (!id) {
+        return
+      }
+
+      if (id !== lastSelectedIdRef.current) {
         lastSelectedIdRef.current = id
         trackAppellationSelect('burgundy', id)
       }
+      setSelectedId(id)
+      keepAboveSheet(map, event.lngLat)
     }
 
     function clearHoverState() {
@@ -724,6 +775,17 @@ export function BurgundyPage() {
       setHoveredRegion(null)
     }
   }, [])
+
+  useEffect(() => {
+    const map = mapRef.current
+
+    if (!map || !isReady) {
+      return
+    }
+
+    setSelectedOutline(map, 'burgundy-hull', selectedId)
+    setSelectedOutline(map, 'burgundy', selectedId)
+  }, [isReady, selectedId])
 
   useEffect(() => {
     const map = mapRef.current
@@ -833,12 +895,20 @@ export function BurgundyPage() {
         appellation={activeAppellation}
         grandCru={activeGrandCru}
         region={activeRegion}
+        onClose={() => {
+          lastSelectedIdRef.current = null
+          setSelectedId(null)
+          setHoveredRegion(null)
+        }}
       />
       <div className="map-source-badge">
         INAO/data.gouv.fr AOC viticole parcel delimitation extract. Online data
         are informational; official plans remain with town halls or INAO.
       </div>
-      <aside className="region-legend" aria-label="Burgundy appellation legend">
+      <aside 
+        className={`region-legend${selectedId ? ' is-hidden' : ''}`} 
+        aria-label="Burgundy appellation legend"
+      >
         {legendGroups.map((group) => (
           <section className="region-legend-group" key={group.title}>
             <h2
@@ -886,23 +956,40 @@ function BurgundyHoverCard({
   appellation,
   grandCru,
   region,
+  onClose,
 }: {
   appellation: BurgundyAppellationMetadata | null | undefined
   grandCru: GrandCruMeta | undefined
   region: HoveredBurgundyRegion | null
+  onClose?: () => void
 }) {
+  const isMobileOpen = Boolean(region)
+
+  const handleClose = () => {
+    if (onClose) {
+      onClose()
+    }
+  }
+
   if (!appellation || !region) {
     return (
       <aside className="hover-region-card is-empty">
         <span className="hover-card-kicker">Burgundy AOC Map</span>
-        <strong>Hover the map or legend to explore an appellation</strong>
+        <strong>Tap or hover the map or legend to explore an appellation</strong>
       </aside>
     )
   }
 
   if (grandCru) {
     return (
-      <aside className="hover-region-card">
+      <aside className={`hover-region-card${isMobileOpen ? ' mobile-open' : ''}`}>
+        <button 
+          className="mobile-close-button"
+          onClick={handleClose}
+          aria-label="Close"
+        >
+          ×
+        </button>
         <span className="hover-card-kicker">
           Burgundy / {grandCru.subregion} / Grand Cru
         </span>
@@ -953,7 +1040,14 @@ function BurgundyHoverCard({
   const isPremierCru = region.cruLevel === 'premier-cru'
 
   return (
-    <aside className="hover-region-card">
+    <aside className={`hover-region-card${isMobileOpen ? ' mobile-open' : ''}`}>
+      <button 
+        className="mobile-close-button"
+        onClick={handleClose}
+        aria-label="Close"
+      >
+        ×
+      </button>
       <span className="hover-card-kicker">
         {appellation.region} / {appellation.subregion}
       </span>
@@ -1033,13 +1127,25 @@ function BurgundyHoverCard({
 }
 
 async function loadGeoJson(path: string): Promise<FeatureCollection> {
-  const response = await fetch(path)
+  try {
+    const response = await fetch(path)
 
-  if (!response.ok) {
-    throw new Error(`Failed to load GeoJSON ${path}: ${response.status}`)
+    if (!response.ok) {
+      console.warn(`GeoJSON file not available: ${path}`)
+      return {
+        type: 'FeatureCollection',
+        features: [],
+      }
+    }
+
+    return (await response.json()) as FeatureCollection
+  } catch (error) {
+    console.warn(`Error loading GeoJSON from ${path}:`, error)
+    return {
+      type: 'FeatureCollection',
+      features: [],
+    }
   }
-
-  return (await response.json()) as FeatureCollection
 }
 
 function createLabelPoints(geoJson: FeatureCollection): FeatureCollection {

@@ -7,21 +7,23 @@ import {
 const appellations = appellationData as StudyRegionMetadata[]
 
 const champagneColors: Record<string, string> = {
-  champagne: '#f2c94c',
-  'coteaux-champenois': '#e8a857',
-  'rose-des-riceys': '#d85f73',
+  // Distinct muted tones for each appellation
+  champagne: '#d4c4a8',
+  'coteaux-champenois': '#b89485',
+  'rose-des-riceys': '#a87876',
 }
 
 const legendGroups = [
   {
-    title: 'Champagne / AOC',
+    title: 'Appellations',
     ids: ['champagne', 'coteaux-champenois', 'rose-des-riceys'],
   },
 ]
 
-export function ChampagnePage() {
+export function ChampagnePage({ initialSelectedId }: { initialSelectedId?: string } = {}) {
   return (
     <StudyRegionMapPage
+      initialSelectedId={initialSelectedId}
       appellations={appellations}
       colors={champagneColors}
       detailDataPath="/data/france/champagne/champagne-opendatawine-display-2026.geojson"

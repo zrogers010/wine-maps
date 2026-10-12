@@ -11,6 +11,7 @@ import type { AppellationId } from './types/wine'
 import { trackRegionView, trackPageView } from './utils/analytics'
 import { getEmailCaptureProvider } from './services/emailCapture'
 import { EmailSignupCard } from './components/EmailSignupCard'
+import { regionSVGs } from './generated/regionSVGs'
 import type { ComponentType, ReactNode } from 'react'
 import './App.css'
 
@@ -150,12 +151,20 @@ function RegionIndexPage() {
           Master wine geography with interactive maps of the world's most important
           wine regions. Built specifically for WSET Level 2 and Level 3 students.
         </p>
-        <p>
-          Explore appellation boundaries from INAO data. Hover any parcel to study
-          the hierarchy, grapes, soils, and exam cues behind it. Learn the geography
-          that matters for your wine exams.
-        </p>
       </section>
+
+      {countries.map((country) => (
+        <section className="region-index-country" key={country}>
+          <h2>{country}</h2>
+          <div className="region-card-grid">
+            {regions
+              .filter((region) => region.country === country)
+              .map((region) => (
+                <RegionCard key={region.id} region={region} />
+              ))}
+          </div>
+        </section>
+      ))}
 
       <section className="wset-explainer">
         <h2>Why SommelierMaps?</h2>
@@ -174,19 +183,6 @@ function RegionIndexPage() {
         </p>
       </section>
 
-      {countries.map((country) => (
-        <section className="region-index-country" key={country}>
-          <h2>{country}</h2>
-          <div className="region-card-grid">
-            {regions
-              .filter((region) => region.country === country)
-              .map((region) => (
-                <RegionCard key={region.id} region={region} />
-              ))}
-          </div>
-        </section>
-      ))}
-
       <section className="inao-attribution">
         <p>
           <small>
@@ -200,11 +196,13 @@ function RegionIndexPage() {
 }
 
 function RegionCard({ region }: { region: RegionConfig }) {
+  const regionSVG = regionSVGs[region.id] || `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="50" cy="50" r="35" fill="none" stroke="currentColor" stroke-width="2" opacity="0.3" />
+  </svg>`
+
   return (
     <Link className="region-card" href={region.path}>
-      <span className="region-card-media">
-        <img alt={`${region.name} appellation map`} loading="lazy" src={region.thumbnail} />
-      </span>
+      <span className="region-card-media" dangerouslySetInnerHTML={{ __html: regionSVG }} />
       <span className="region-card-body">
         <strong>{region.name}</strong>
         <span>{region.hook}</span>

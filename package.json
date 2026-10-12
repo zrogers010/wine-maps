@@ -20,7 +20,8 @@
     "data:extract-medoc": "node scripts/extract-inao-medoc.mjs && npm run data:build-exclusive",
     "data:probe-champagne-official": "node scripts/probe-champagne-official-data.mjs",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:acceptance": "node tests/acceptance/acceptance.mjs"
   },
   "dependencies": {
     "@turf/turf": "^7.3.5",

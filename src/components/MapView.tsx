@@ -1,11 +1,21 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { area, booleanPointInPolygon, point, pointOnFeature } from '@turf/turf'
+import {
+  addSelectedOutlineLayers,
+  boundsForIds,
+  exposeMapForTests,
+  fitSelection,
+  keepAboveSheet,
+  pickAppellationAt,
+  setSelectedOutline,
+} from '../utils/selection'
 import maplibregl, {
   type ExpressionSpecification,
   type FilterSpecification,
   type GeoJSONSourceSpecification,
   type Map,
   type MapLayerMouseEvent,
+  type MapMouseEvent,
 } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import chateauData from '../data/france/bordeaux/chateaux.json'
@@ -23,7 +33,6 @@ import {
   OverviewControl,
 } from '../utils/camera'
 import {
-  createHydrologyPlaceholder,
   createVineyardParcelPlaceholders,
   getFeatureCollectionBounds,
 } from '../utils/geo'
@@ -44,7 +53,9 @@ interface MapViewProps {
   layers: LayerState
   mode: ExperienceMode
   selectedId: AppellationId | null
-  onSelectAppellation: (id: AppellationId) => void
+  /** Appellation from the URL (/bordeaux/<id>/); framed once when the map is ready. */
+  deepLinkId?: AppellationId | null
+  onSelectAppellation: (id: AppellationId | null) => void
 }
 
 const appellationSourceId = 'appellations'
@@ -63,7 +74,6 @@ const labelLayerId = 'appellation-labels'
 const chateauCircleLayerId = 'chateau-circles'
 const chateauLabelLayerId = 'chateau-labels'
 const vineyardLayerId = 'vineyards-fill'
-const hydrologyLayerId = 'hydrology-line'
 type SourceFeatureId = string | number
 const chateaux = chateauData as ChateauPoint[]
 const zoomTransitionStart = 9.80
@@ -118,6 +128,8 @@ type ChateauWithCommune = ChateauPoint & {
   insee?: string
 }
 
+const BORDEAUX_DETAIL_URL = '/data/france/bordeaux/bordeaux-display-exclusive-2026.geojson'
+
 export function MapView({
   appellations,
   filteredAppellationIds,
@@ -125,19 +137,25 @@ export function MapView({
   subregionHoveredIds,
   layers,
   mode,
+  selectedId,
+  deepLinkId = null,
   onSelectAppellation,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<Map | null>(null)
   const overviewBoundsRef = useRef<[[number, number], [number, number]] | null>(null)
   const lowZoomHullGeoJsonRef = useRef<FeatureCollection | null>(null)
+  const bordeauxGeoJsonRef = useRef<FeatureCollection | null>(null)
   const hoveredFeatureIdRef = useRef<SourceFeatureId | null>(null)
   const hoveredRegionKeyRef = useRef<string | null>(null)
   const hoverLeaveTimeoutRef = useRef<number | null>(null)
+  const hasPerformedInitialFitRef = useRef(false)
   const [isReady, setIsReady] = useState(false)
   const [hoveredRegion, setHoveredRegion] = useState<HoveredRegion | null>(null)
   const [chateauxWithCommune, setChateauxWithCommune] = useState<ChateauWithCommune[]>(chateaux)
-  const activeRegion = hoveredRegion ?? (legendHoveredId ? { id: legendHoveredId } : null)
+  const activeRegion = hoveredRegion ?? 
+    (legendHoveredId ? { id: legendHoveredId } : null) ??
+    (selectedId ? { id: selectedId } : null)
 
   const hoveredAppellation = activeRegion
     ? appellations.find((appellation) => appellation.id === activeRegion.id)
@@ -174,10 +192,7 @@ export function MapView({
 
     attachCameraHashSync(map, '/bordeaux')
 
-    if (import.meta.env.DEV) {
-      // Dev-only handle for automated screenshot/interaction checks.
-      ;(window as unknown as { __wineMap?: maplibregl.Map }).__wineMap = map
-    }
+    exposeMapForTests(map)
 
     // Gentler wheel steps make trackpad/mouse zooming feel fluid instead of jumpy.
     map.scrollZoom.setWheelZoomRate(1 / 700)
@@ -194,13 +209,13 @@ export function MapView({
       'bottom-left',
     )
     map.addControl(
-      new maplibregl.AttributionControl({ compact: true, customAttribution: 'SommelierMaps dev data' }),
+      new maplibregl.AttributionControl({ compact: true }),
       'bottom-right',
     )
 
     map.on('load', async () => {
       const [bordeauxGeoJson, lowZoomHullGeoJson] = await Promise.all([
-        loadBordeauxGeoJson('/data/france/bordeaux/bordeaux-display-exclusive-2026.geojson'),
+        loadBordeauxGeoJson(BORDEAUX_DETAIL_URL),
         loadBordeauxGeoJson('/data/france/bordeaux/bordeaux-display-cadillac-dissolve-trial-2026.geojson'),
       ])
 
@@ -208,12 +223,19 @@ export function MapView({
         return
       }
 
-      setChateauxWithCommune(attachCommuneToChateaux(chateaux, bordeauxGeoJson))
+      // Point-in-polygon over ~12 MB of parcels is not needed for first paint.
+      window.setTimeout(() => {
+        if (!cancelled) setChateauxWithCommune(attachCommuneToChateaux(chateaux, bordeauxGeoJson))
+      }, 1500)
       lowZoomHullGeoJsonRef.current = lowZoomHullGeoJson
+      bordeauxGeoJsonRef.current = bordeauxGeoJson
 
       map.addSource(appellationSourceId, {
         type: 'geojson',
-        data: bordeauxGeoJson,
+        // Pass the URL so the worker fetches (HTTP-cached) and parses it itself,
+        // instead of structured-cloning a 12 MB object off the main thread.
+        data: BORDEAUX_DETAIL_URL,
+        tolerance: 0.5,
       } satisfies GeoJSONSourceSpecification)
 
       map.addSource(lowZoomHullSourceId, {
@@ -232,11 +254,6 @@ export function MapView({
         data: createVineyardParcelPlaceholders(),
       })
 
-      map.addSource('hydrology-placeholder', {
-        type: 'geojson',
-        data: createHydrologyPlaceholder(),
-      })
-
       map.addSource(labelSourceId, {
         type: 'geojson',
         data: createLabelPoints(appellations, bordeauxGeoJson),
@@ -245,18 +262,6 @@ export function MapView({
       map.addSource(chateauSourceId, {
         type: 'geojson',
         data: createChateauPoints(),
-      })
-
-      map.addLayer({
-        id: hydrologyLayerId,
-        type: 'line',
-        source: 'hydrology-placeholder',
-        paint: {
-          'line-color': '#5ca8c8',
-          'line-opacity': 0.55,
-          'line-width': 2.2,
-          'line-blur': 0.2,
-        },
       })
 
       map.addLayer({
@@ -395,17 +400,14 @@ export function MapView({
         source: appellationSourceId,
         filter: filterNone(),
         paint: {
-          'fill-color': '#1c0f12',
-          // Zoom must be the top-level expression; the per-feature case moves
-          // into the stop outputs.
+          'fill-color': 'rgba(255, 255, 255, 0.5)',
           'fill-opacity': [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            zoomTransitionStart,
-            ['case', ['in', ['get', 'id'], ['literal', lowZoomHullIds]], 0, 0.1],
-            zoomTransitionEnd,
-            0.1,
+            'case',
+            ['boolean', ['feature-state', 'hover'], false],
+            0,
+            ['boolean', ['feature-state', 'selected'], false],
+            0,
+            1,
           ],
         },
       })
@@ -427,14 +429,14 @@ export function MapView({
         source: appellationSourceId,
         paint: {
           'line-color': 'rgba(68, 48, 36, 0.64)',
-          'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.45, 11, 0.85],
+          'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.45, 13, 0.85],
           'line-opacity': [
             'interpolate',
             ['linear'],
             ['zoom'],
-            zoomTransitionStart,
-            ['case', ['in', ['get', 'id'], ['literal', lowZoomHullIds]], 0, 0.34],
-            zoomTransitionEnd,
+            10.8,
+            0,
+            11.2,
             0.34,
           ],
         },
@@ -445,47 +447,22 @@ export function MapView({
         type: 'line',
         source: appellationSourceId,
         paint: {
-          'line-color': [
-            'case',
-            ['boolean', ['feature-state', 'selected'], false],
-            '#261318',
-            ['boolean', ['feature-state', 'hover'], false],
-            '#261318',
-            'rgba(255, 255, 255, 0.32)',
-          ],
-          'line-width': [
-            'case',
-            ['boolean', ['feature-state', 'selected'], false],
-            3,
-            ['boolean', ['feature-state', 'hover'], false],
-            2.4,
-            0.35,
-          ],
-          'line-opacity': [
-            'interpolate',
-            ['linear'],
-            ['zoom'],
-            zoomTransitionStart,
-            [
-              'case',
-              ['in', ['get', 'id'], ['literal', lowZoomHullIds]],
-              0,
-              ['boolean', ['feature-state', 'selected'], false],
-              0.95,
-              ['boolean', ['feature-state', 'hover'], false],
-              0.9,
-              0.36,
-            ],
-            zoomTransitionEnd,
-            [
-              'case',
-              ['boolean', ['feature-state', 'selected'], false],
-              0.95,
-              ['boolean', ['feature-state', 'hover'], false],
-              0.9,
-              0.36,
-            ],
-          ],
+          'line-color': 'rgba(255, 255, 255, 0.25)',
+          'line-width': 0.3,
+          'line-opacity': 0.3,
+        },
+      })
+
+      // Hover/selected outline layer (on top)
+      map.addLayer({
+        id: 'appellation-hover-outline',
+        type: 'line',
+        source: appellationSourceId,
+        filter: filterNone(),
+        paint: {
+          'line-color': '#a01845',
+          'line-width': 3.5,
+          'line-opacity': 1,
         },
       })
 
@@ -546,28 +523,22 @@ export function MapView({
       })
 
       map.moveLayer(labelLayerId)
+      map.moveLayer('appellation-hover-outline')
       map.moveLayer(lowZoomHullLayerId, labelLayerId)
       map.moveLayer(lowZoomHullShadeLayerId, labelLayerId)
       map.moveLayer(lowZoomHullBorderLayerId, labelLayerId)
 
       map.on('mousemove', lowZoomHullLayerId, handleHullMouseMove)
       map.on('mouseleave', lowZoomHullLayerId, handleMouseLeave)
-      map.on('click', lowZoomHullLayerId, handleClick)
       map.on('mousemove', fillLayerId, handleMouseMove)
       map.on('mouseleave', fillLayerId, handleDetailMouseLeave)
-      map.on('click', fillLayerId, handleClick)
+      addSelectedOutlineLayers(map, appellationSourceId, 'appellation')
+      map.moveLayer('appellation-selection-halo', labelLayerId)
+      map.moveLayer('appellation-selected-outline', labelLayerId)
+      map.on('click', handleClick)
 
       const overviewBounds = getFeatureCollectionBounds(bordeauxGeoJson)
       overviewBoundsRef.current = overviewBounds
-
-      // A camera deep link takes precedence over the intro overview flight.
-      if (!hashCamera) {
-        map.fitBounds(overviewBounds, {
-          padding: OVERVIEW_PADDING,
-          duration: 1100,
-          essential: true,
-        })
-      }
 
       setIsReady(true)
     })
@@ -661,11 +632,17 @@ export function MapView({
       handleMouseLeave()
     }
 
-    function handleClick(event: MapLayerMouseEvent) {
-      const id = getFeatureId(event.features?.[0]?.properties)
+    // One click handler for the whole map: select the topmost appellation
+    // actually rendered under the pointer. The camera never zooms on click;
+    // on mobile it only pans enough to keep the feature above the sheet.
+    function handleClick(event: MapMouseEvent) {
+      const id = getFeatureId({
+        id: pickAppellationAt(map, event.point, [fillLayerId, lowZoomHullLayerId]),
+      })
 
       if (id) {
         onSelectAppellation(id)
+        keepAboveSheet(map, event.lngLat)
       }
     }
 
@@ -689,16 +666,14 @@ export function MapView({
       hoveredRegionKeyRef.current = null
       setHoveredRegion(null)
     }
-  }, [appellations, onSelectAppellation])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appellations]) // onSelectAppellation doesn't need to be a dep - it's captured in closure
 
-  useEffect(() => {
-    const map = mapRef.current
-
-    if (!map || !isReady) {
+  const applyLayerSettings = useCallback((map: Map, layers: LayerState, mode: ExperienceMode) => {
+    if (!map.isStyleLoaded()) {
       return
     }
 
-    setLayerVisibility(map, 'osm-raster', layers.roadsBasemap)
     setLayerVisibility(map, lowZoomHullLayerId, layers.aocBoundaries)
     setLayerVisibility(map, lowZoomHullShadeLayerId, layers.aocBoundaries)
     setLayerVisibility(map, lowZoomHullBorderLayerId, layers.aocBoundaries)
@@ -707,27 +682,124 @@ export function MapView({
     setLayerVisibility(map, hoverCommuneShadeLayerId, layers.aocBoundaries)
     setLayerVisibility(map, communeBorderLayerId, layers.aocBoundaries)
     setLayerVisibility(map, outlineLayerId, layers.aocBoundaries)
+    setLayerVisibility(map, 'appellation-hover-outline', layers.aocBoundaries)
     setLayerVisibility(map, vineyardLayerId, layers.vineyardParcels)
-    setLayerVisibility(map, hydrologyLayerId, layers.rivers)
     setLayerVisibility(map, labelLayerId, layers.studyLabels || mode === 'Study')
     setLayerVisibility(map, chateauCircleLayerId, true)
     setLayerVisibility(map, chateauLabelLayerId, true)
-    map.setPaintProperty(
-      lowZoomHullLayerId,
-      'fill-color',
-      appellationFillColorExpression(layers.grapeEmphasis),
-    )
-    map.setPaintProperty(
-      lowZoomHullShadeLayerId,
-      'fill-color',
-      '#1c0f12',
-    )
-    map.setPaintProperty(
-      fillLayerId,
-      'fill-color',
-      detailedAppellationFillColorExpression(layers.grapeEmphasis),
-    )
-  }, [isReady, layers, mode])
+
+    if (map.getLayer(lowZoomHullLayerId)) {
+      map.setPaintProperty(
+        lowZoomHullLayerId,
+        'fill-color',
+        appellationFillColorExpression(layers.grapeEmphasis),
+      )
+    }
+    if (map.getLayer(lowZoomHullShadeLayerId)) {
+      map.setPaintProperty(
+        lowZoomHullShadeLayerId,
+        'fill-color',
+        '#1c0f12',
+      )
+    }
+    if (map.getLayer(fillLayerId)) {
+      map.setPaintProperty(
+        fillLayerId,
+        'fill-color',
+        detailedAppellationFillColorExpression(layers.grapeEmphasis),
+      )
+    }
+  }, [])
+
+  const applyFilters = useCallback((
+    map: Map,
+    filteredAppellationIds: AppellationId[],
+    hoveredRegion: HoveredRegion | null,
+    legendHoveredId: AppellationId | null,
+    selectedId: AppellationId | null,
+  ) => {
+    // Every setter below is guarded by getLayer(), so this is safe while tiles
+    // are still loading (isStyleLoaded() is false during the deep-link fit).
+
+    const filter: FilterSpecification =
+      filteredAppellationIds.length > 0
+        ? ['in', ['get', 'id'], ['literal', filteredAppellationIds]]
+        : ['==', ['get', 'id'], '__none__']
+
+    if (map.getLayer(fillLayerId)) {
+      map.setFilter(fillLayerId, filter)
+    }
+    if (map.getLayer(lowZoomHullLayerId)) {
+      map.setFilter(
+        lowZoomHullLayerId,
+        lowZoomRenderedHullIds.some((id) => filteredAppellationIds.includes(id))
+          ? [
+              'in',
+              ['get', 'id'],
+              [
+                'literal',
+                lowZoomRenderedHullIds.filter((id) => filteredAppellationIds.includes(id)),
+              ],
+            ]
+          : filterNone(),
+      )
+    }
+    if (map.getLayer(lowZoomHullShadeLayerId)) {
+      map.setFilter(
+        lowZoomHullShadeLayerId,
+        lowZoomHullShadeFilter(hoveredRegion, legendHoveredId, filteredAppellationIds),
+      )
+    }
+    if (map.getLayer(lowZoomHullBorderLayerId)) {
+      map.setFilter(
+        lowZoomHullBorderLayerId,
+        lowZoomRenderedHullIds.some((id) => filteredAppellationIds.includes(id))
+          ? [
+              'in',
+              ['get', 'id'],
+              [
+                'literal',
+                lowZoomRenderedHullIds.filter((id) => filteredAppellationIds.includes(id)),
+              ],
+            ]
+          : filterNone(),
+      )
+    }
+    if (map.getLayer(hoverAppellationShadeLayerId)) {
+      map.setFilter(
+        hoverAppellationShadeLayerId,
+        hoveredRegion || legendHoveredId
+          ? ['in', ['get', 'id'], ['literal', filteredAppellationIds]]
+          : filterNone(),
+      )
+    }
+    if (map.getLayer('appellation-hover-outline')) {
+      map.setFilter(
+        'appellation-hover-outline',
+        hoveredRegion
+          ? ['==', ['get', 'id'], hoveredRegion.id]
+          : legendHoveredId
+            ? ['==', ['get', 'id'], legendHoveredId]
+            : filterNone(),
+      )
+    }
+    setSelectedOutline(map, 'appellation', selectedId)
+    if (map.getLayer(hoverCommuneShadeLayerId)) {
+      map.setFilter(
+        hoverCommuneShadeLayerId,
+        hoveredRegion ? communeShadeFilter(hoveredRegion) : filterNone(),
+      )
+    }
+    if (map.getLayer(communeBorderLayerId)) {
+      map.setFilter(communeBorderLayerId, filter)
+    }
+    if (map.getLayer(outlineLayerId)) {
+      map.setFilter(outlineLayerId, filter)
+    }
+    if (map.getLayer(labelLayerId)) {
+      map.setFilter(labelLayerId, filter)
+    }
+  }, [])
 
   useEffect(() => {
     const map = mapRef.current
@@ -736,58 +808,57 @@ export function MapView({
       return
     }
 
-    const filter: FilterSpecification =
-      filteredAppellationIds.length > 0
-        ? ['in', ['get', 'id'], ['literal', filteredAppellationIds]]
-        : ['==', ['get', 'id'], '__none__']
+    if (!map.isStyleLoaded()) {
+      const handler = () => {
+        applyLayerSettings(map, layers, mode)
+      }
+      map.once('idle', handler)
+      return () => {
+        map.off('idle', handler)
+      }
+    }
 
-    map.setFilter(fillLayerId, filter)
-    map.setFilter(
-      lowZoomHullLayerId,
-      lowZoomRenderedHullIds.some((id) => filteredAppellationIds.includes(id))
-        ? [
-            'in',
-            ['get', 'id'],
-            [
-              'literal',
-              lowZoomRenderedHullIds.filter((id) => filteredAppellationIds.includes(id)),
-            ],
-          ]
-        : filterNone(),
-    )
-    map.setFilter(
-      lowZoomHullShadeLayerId,
-      lowZoomHullShadeFilter(hoveredRegion, legendHoveredId, filteredAppellationIds),
-    )
-    map.setFilter(
-      lowZoomHullBorderLayerId,
-      lowZoomRenderedHullIds.some((id) => filteredAppellationIds.includes(id))
-        ? [
-            'in',
-            ['get', 'id'],
-            [
-              'literal',
-              lowZoomRenderedHullIds.filter((id) => filteredAppellationIds.includes(id)),
-            ],
-          ]
-        : filterNone(),
-    )
-    map.setFilter(
-      hoverAppellationShadeLayerId,
-      hoveredRegion
-        ? ['==', ['get', 'id'], hoveredRegion.id]
-        : legendHoveredId
-          ? ['==', ['get', 'id'], legendHoveredId]
-          : filterNone(),
-    )
-    map.setFilter(
-      hoverCommuneShadeLayerId,
-      hoveredRegion ? communeShadeFilter(hoveredRegion) : filterNone(),
-    )
-    map.setFilter(communeBorderLayerId, filter)
-    map.setFilter(outlineLayerId, filter)
-    map.setFilter(labelLayerId, filter)
-  }, [filteredAppellationIds, hoveredRegion, isReady, legendHoveredId])
+    applyLayerSettings(map, layers, mode)
+  }, [isReady, layers, mode, applyLayerSettings])
+
+  useEffect(() => {
+    const map = mapRef.current
+
+    if (!map || !isReady) {
+      return
+    }
+
+    applyFilters(map, filteredAppellationIds, hoveredRegion, legendHoveredId, selectedId)
+  }, [filteredAppellationIds, hoveredRegion, isReady, legendHoveredId, selectedId, applyFilters])
+
+  // Deep link (/bordeaux/<id>/): frame every parcel of the appellation once,
+  // padded for the detail panel (desktop) or bottom sheet (mobile).
+  useEffect(() => {
+    const map = mapRef.current
+
+    if (hasPerformedInitialFitRef.current || !map || !isReady) {
+      return
+    }
+
+    hasPerformedInitialFitRef.current = true
+    const bounds = deepLinkId
+      ? boundsForIds([bordeauxGeoJsonRef.current, lowZoomHullGeoJsonRef.current], [deepLinkId])
+      : null
+
+    if (bounds) {
+      // Wait a frame so the panel/sheet is laid out before measuring padding.
+      const frame = requestAnimationFrame(() => fitSelection(map, bounds))
+      return () => cancelAnimationFrame(frame)
+    }
+
+    if (!readCameraFromHash() && overviewBoundsRef.current) {
+      map.fitBounds(overviewBoundsRef.current, {
+        padding: OVERVIEW_PADDING,
+        duration: 1100,
+        essential: true,
+      })
+    }
+  }, [deepLinkId, isReady])
 
   useEffect(() => {
     const map = mapRef.current
@@ -864,6 +935,7 @@ export function MapView({
         chateaux={hoveredChateaux}
           relatedAppellations={relatedAppellations}
         region={activeRegion}
+        onClose={() => onSelectAppellation(null)}
       />
     </>
   )
@@ -951,7 +1023,9 @@ function createLabelPoints(
 ): FeatureCollection {
   return {
     type: 'FeatureCollection',
-    features: appellations.map((appellation) => {
+    features: appellations
+      .filter((appellation) => appellation.id !== 'graves-superieures')
+      .map((appellation) => {
       const anchor = getAppellationLabelAnchor(appellation.id, medocGeoJson)
 
       return {
@@ -1242,6 +1316,7 @@ interface HoverRegionCardProps {
   chateaux: ChateauPoint[]
   relatedAppellations: AppellationMetadata[]
   region: HoveredRegion | null
+  onClose?: () => void
 }
 
 function HoverRegionCard({
@@ -1249,12 +1324,21 @@ function HoverRegionCard({
   chateaux: notableChateaux,
   relatedAppellations,
   region,
+  onClose,
 }: HoverRegionCardProps) {
+  const isMobileOpen = Boolean(region)
+
+  const handleClose = () => {
+    if (onClose) {
+      onClose()
+    }
+  }
+
   if (!appellation || !region) {
     return (
       <aside className="hover-region-card is-empty">
         <span className="hover-card-kicker">Bordeaux AOC Map</span>
-        <strong>Hover the map or legend to explore an appellation</strong>
+        <strong>Tap or hover the map or legend to explore an appellation</strong>
       </aside>
     )
   }
@@ -1263,7 +1347,14 @@ function HoverRegionCard({
     relatedAppellations.length > 1 ? relatedAppellations : [appellation]
 
   return (
-    <aside className="hover-region-card">
+    <aside className={`hover-region-card${isMobileOpen ? ' mobile-open' : ''}`}>
+      <button 
+        className="mobile-close-button"
+        onClick={handleClose}
+        aria-label="Close"
+      >
+        ×
+      </button>
       <span className="hover-card-kicker">
         {appellation.region} / {appellation.subregion}
       </span>
