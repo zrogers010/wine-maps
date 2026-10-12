@@ -195,11 +195,23 @@ function RegionIndexPage() {
 }
 
 function RegionCard({ region }: { region: RegionConfig }) {
+  const regionSVG = (
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="35" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.3" />
+      <path
+        d="M30,50 Q35,35 50,35 T70,50 Q65,65 50,65 T30,50"
+        fill="currentColor"
+        opacity="0.2"
+      />
+      <text x="50" y="55" textAnchor="middle" fontSize="12" fill="currentColor" opacity="0.4">
+        {region.name.slice(0, 3).toUpperCase()}
+      </text>
+    </svg>
+  )
+
   return (
     <Link className="region-card" href={region.path}>
-      <span className="region-card-media">
-        <img alt={`${region.name} appellation map`} loading="lazy" src={region.thumbnail} />
-      </span>
+      <span className="region-card-media">{regionSVG}</span>
       <span className="region-card-body">
         <strong>{region.name}</strong>
         <span>{region.hook}</span>

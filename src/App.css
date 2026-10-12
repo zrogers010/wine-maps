@@ -119,8 +119,20 @@
 
 .region-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 1200px) {
+  .region-card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .region-card-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .region-card {
@@ -143,23 +155,25 @@
 }
 
 .region-card-media {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   aspect-ratio: 16 / 10;
   overflow: hidden;
   border-bottom: 1px solid rgba(111, 22, 39, 0.12);
-  background: #ead9bd;
+  background: linear-gradient(135deg, #ead9bd 0%, #f5e8d0 100%);
 }
 
-.region-card-media img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 400ms ease;
+.region-card-media svg {
+  width: 60%;
+  height: 60%;
+  opacity: 0.5;
+  transition: opacity 400ms ease, transform 400ms ease;
 }
 
-.region-card:hover .region-card-media img {
-  transform: scale(1.035);
+.region-card:hover .region-card-media svg {
+  opacity: 0.65;
+  transform: scale(1.05);
 }
 
 .region-card-body {
@@ -1324,6 +1338,13 @@
   transform: translateY(0);
 }
 
+/* Hide mobile close button on desktop */
+@media (min-width: 769px) {
+  .mobile-close-button {
+    display: none;
+  }
+}
+
 /* Mobile Responsive Styles */
 @media (max-width: 768px) {
   /* Make legend collapsible on mobile */
@@ -1365,6 +1386,12 @@
     max-height: 70vh;
     border-radius: 20px 20px 0 0;
     padding: 8px 16px 16px;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+  }
+
+  .hover-region-card:not(.is-empty).mobile-open {
+    transform: translateY(0);
   }
 
   .hover-region-card:not(.is-empty)::before {
@@ -1375,6 +1402,27 @@
     margin: 0 auto 12px;
     border-radius: 2px;
     background: rgba(111, 22, 39, 0.25);
+  }
+
+  .mobile-close-button {
+    display: block;
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(111, 22, 39, 0.1);
+    color: #5a1022;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 10;
+  }
+
+  .mobile-close-button:hover {
+    background: rgba(111, 22, 39, 0.2);
   }
 
   /* Adjust map source badge for mobile */

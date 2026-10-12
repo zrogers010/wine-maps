@@ -163,17 +163,6 @@ const appellations: StudyRegionMetadata[] = [
   })),
 ]
 
-const grandCruPalette = [
-  '#d85f73',
-  '#f2a65a',
-  '#f3df73',
-  '#9bc66b',
-  '#64b6ac',
-  '#6a9edb',
-  '#9b6bd3',
-  '#d7839a',
-]
-
 const northernGrandCruNames = [
   'Steinklotz',
   'Altenberg de Bergbieten',
@@ -235,13 +224,13 @@ const southernGrandCruNames = [
 ]
 
 const alsaceColors = Object.fromEntries(
-  appellations.map((appellation, index) => [
+  appellations.map((appellation) => [
     appellation.id,
     appellation.id === 'alsace'
-      ? '#d9d96a'
+      ? '#c9b896'
       : appellation.id === 'cremant-d-alsace'
-        ? '#8fc7d8'
-        : grandCruPalette[index % grandCruPalette.length],
+        ? '#b8a88a'
+        : '#9a8a6d',
   ]),
 )
 

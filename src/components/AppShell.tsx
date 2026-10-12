@@ -87,11 +87,13 @@ export function AppShell({ initialSelectedId }: { initialSelectedId?: Appellatio
     .map((appellation) => appellation.id)
     .filter((id) => !hiddenMapIds.includes(id))
 
-  const handleSelectAppellation = useCallback((id: AppellationId) => {
+  const handleSelectAppellation = useCallback((id: AppellationId | null) => {
     if (id !== selectedId) {
-      trackAppellationSelect('bordeaux', id)
+      if (id) {
+        trackAppellationSelect('bordeaux', id)
+      }
+      setSelectedId(id)
     }
-    setSelectedId(id)
   }, [selectedId])
 
   return (

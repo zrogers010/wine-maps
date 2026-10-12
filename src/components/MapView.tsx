@@ -44,7 +44,7 @@ interface MapViewProps {
   layers: LayerState
   mode: ExperienceMode
   selectedId: AppellationId | null
-  onSelectAppellation: (id: AppellationId) => void
+  onSelectAppellation: (id: AppellationId | null) => void
 }
 
 const appellationSourceId = 'appellations'
@@ -968,6 +968,7 @@ export function MapView({
         chateaux={hoveredChateaux}
           relatedAppellations={relatedAppellations}
         region={activeRegion}
+        onClose={() => onSelectAppellation(null)}
       />
     </>
   )
@@ -1055,7 +1056,9 @@ function createLabelPoints(
 ): FeatureCollection {
   return {
     type: 'FeatureCollection',
-    features: appellations.map((appellation) => {
+    features: appellations
+      .filter((appellation) => appellation.id !== 'graves-superieures')
+      .map((appellation) => {
       const anchor = getAppellationLabelAnchor(appellation.id, medocGeoJson)
 
       return {
@@ -1346,6 +1349,7 @@ interface HoverRegionCardProps {
   chateaux: ChateauPoint[]
   relatedAppellations: AppellationMetadata[]
   region: HoveredRegion | null
+  onClose?: () => void
 }
 
 function HoverRegionCard({
@@ -1353,7 +1357,16 @@ function HoverRegionCard({
   chateaux: notableChateaux,
   relatedAppellations,
   region,
+  onClose,
 }: HoverRegionCardProps) {
+  const isMobileOpen = Boolean(region)
+
+  const handleClose = () => {
+    if (onClose) {
+      onClose()
+    }
+  }
+
   if (!appellation || !region) {
     return (
       <aside className="hover-region-card is-empty">
@@ -1367,7 +1380,14 @@ function HoverRegionCard({
     relatedAppellations.length > 1 ? relatedAppellations : [appellation]
 
   return (
-    <aside className="hover-region-card">
+    <aside className={`hover-region-card${isMobileOpen ? ' mobile-open' : ''}`}>
+      <button 
+        className="mobile-close-button"
+        onClick={handleClose}
+        aria-label="Close"
+      >
+        ×
+      </button>
       <span className="hover-card-kicker">
         {appellation.region} / {appellation.subregion}
       </span>
