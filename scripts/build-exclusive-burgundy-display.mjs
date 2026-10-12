@@ -12,6 +12,41 @@ import {
 const sourcePath = 'public/data/france/burgundy/burgundy-inao-aoc-2026.geojson'
 const outputPath = 'public/data/france/burgundy/burgundy-display-exclusive-2026.geojson'
 
+const grandCruIds = [
+  'chambertin',
+  'chambertin-clos-de-beze',
+  'chapelle-chambertin',
+  'charmes-chambertin',
+  'griotte-chambertin',
+  'latricieres-chambertin',
+  'mazis-chambertin',
+  'mazoyeres-chambertin',
+  'ruchottes-chambertin',
+  'clos-de-la-roche',
+  'clos-saint-denis',
+  'clos-des-lambrays',
+  'clos-de-tart',
+  'bonnes-mares',
+  'musigny',
+  'clos-de-vougeot',
+  'echezeaux',
+  'grands-echezeaux',
+  'romanee-conti',
+  'la-tache',
+  'richebourg',
+  'la-romanee',
+  'la-grande-rue',
+  'romanee-saint-vivant',
+  'corton',
+  'corton-charlemagne',
+  'charlemagne',
+  'montrachet',
+  'chevalier-montrachet',
+  'batard-montrachet',
+  'bienvenues-batard-montrachet',
+  'criots-batard-montrachet',
+]
+
 const priorityById = new Map([
   ['petit-chablis', 1],
   ['chablis', 2],
@@ -29,6 +64,8 @@ const priorityById = new Map([
   ['meursault', 3],
   ['puligny-montrachet', 3],
   ['chassagne-montrachet', 3],
+  // Côte d'Or Grand Cru AOCs win overlaps against village eligibility areas.
+  ...grandCruIds.map((id) => [id, 5]),
 ])
 
 const source = JSON.parse(await fs.readFile(sourcePath, 'utf-8'))

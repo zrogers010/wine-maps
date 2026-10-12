@@ -33,6 +33,8 @@ import {
   createAtlasMapStyle,
 } from '../utils/mapStyles'
 import type { Feature, FeatureCollection, Geometry, MultiPolygon, Polygon } from 'geojson'
+import { attachCameraHashSync, readCameraFromHash } from '../utils/urlHash'
+import { MapLoadingVeil } from './MapLoadingVeil'
 
 interface MapViewProps {
   appellations: AppellationMetadata[]
@@ -158,16 +160,24 @@ export function MapView({
 
     let cancelled = false
 
+    const hashCamera = readCameraFromHash()
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: createAtlasMapStyle(),
-      center: [-0.76, 45.18],
-      zoom: 9.4,
+      center: hashCamera?.center ?? [-0.76, 45.18],
+      zoom: hashCamera?.zoom ?? 9.4,
       minZoom: 7.6,
       maxZoom: 13.5,
       attributionControl: false,
       fadeDuration: 180,
     })
+
+    attachCameraHashSync(map, '/bordeaux')
+
+    if (import.meta.env.DEV) {
+      // Dev-only handle for automated screenshot/interaction checks.
+      ;(window as unknown as { __wineMap?: maplibregl.Map }).__wineMap = map
+    }
 
     // Gentler wheel steps make trackpad/mouse zooming feel fluid instead of jumpy.
     map.scrollZoom.setWheelZoomRate(1 / 700)
@@ -549,11 +559,15 @@ export function MapView({
 
       const overviewBounds = getFeatureCollectionBounds(bordeauxGeoJson)
       overviewBoundsRef.current = overviewBounds
-      map.fitBounds(overviewBounds, {
-        padding: OVERVIEW_PADDING,
-        duration: 1100,
-        essential: true,
-      })
+
+      // A camera deep link takes precedence over the intro overview flight.
+      if (!hashCamera) {
+        map.fitBounds(overviewBounds, {
+          padding: OVERVIEW_PADDING,
+          duration: 1100,
+          essential: true,
+        })
+      }
 
       setIsReady(true)
     })
@@ -844,6 +858,7 @@ export function MapView({
   return (
     <>
       <div className="map-container" ref={containerRef} />
+      <MapLoadingVeil isReady={isReady} regionName="Bordeaux" />
       <HoverRegionCard
         appellation={hoveredAppellation}
         chateaux={hoveredChateaux}

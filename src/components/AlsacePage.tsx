@@ -276,6 +276,8 @@ export function AlsacePage() {
       legendAriaLabel="Alsace appellation legend"
       legendFitMaxZoomById={{ alsace: 7.8 }}
       legendGroups={legendGroups}
+      regionName="Alsace"
+      routePath="/alsace"
       sharedGeometryIds={{ 'cremant-d-alsace': 'alsace' }}
       sourceBadge="INAO/data.gouv.fr Alsace AOC viticole parcel delimitation extract. Online data are informational; official plans remain with town halls or INAO."
     />

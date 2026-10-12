@@ -51,3 +51,6 @@ src/data/**/*.geojson.gz
 *.njsproj
 *.sln
 *.sw?
+
+# Local screenshot scratch
+.tmp-map-screens/

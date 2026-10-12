@@ -16,6 +16,8 @@ import {
 } from '../utils/camera'
 import { getFeatureCollectionBounds } from '../utils/geo'
 import { createAtlasMapStyle } from '../utils/mapStyles'
+import { attachCameraHashSync, readCameraFromHash } from '../utils/urlHash'
+import { MapLoadingVeil } from './MapLoadingVeil'
 
 type SourceFeatureId = string | number
 
@@ -65,6 +67,8 @@ interface StudyRegionMapPageProps {
   legendGroups: LegendGroup[]
   legendFitMaxZoomById?: Record<string, number>
   labelMinZoom?: number
+  regionName: string
+  routePath: string
   sharedGeometryIds?: Record<string, string>
   sourceBadge: string
 }
@@ -83,6 +87,8 @@ export function StudyRegionMapPage({
   legendFitMaxZoomById = {},
   legendGroups,
   labelMinZoom = 0,
+  regionName,
+  routePath,
   sharedGeometryIds = {},
   sourceBadge,
 }: StudyRegionMapPageProps) {
@@ -123,16 +129,24 @@ export function StudyRegionMapPage({
     }
 
     let cancelled = false
+    const hashCamera = readCameraFromHash()
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: createAtlasMapStyle(),
-      center: [4.25, 48.85],
-      zoom: 8,
+      center: hashCamera?.center ?? [4.25, 48.85],
+      zoom: hashCamera?.zoom ?? 8,
       minZoom: 6.5,
       maxZoom: 14,
       attributionControl: false,
       fadeDuration: 180,
     })
+
+    attachCameraHashSync(map, routePath)
+
+    if (import.meta.env.DEV) {
+      // Dev-only handle for automated screenshot/interaction checks.
+      ;(window as unknown as { __wineMap?: MapLibreMap }).__wineMap = map
+    }
 
     // Gentler wheel steps make trackpad/mouse zooming feel fluid instead of jumpy.
     map.scrollZoom.setWheelZoomRate(1 / 700)
@@ -368,11 +382,15 @@ export function StudyRegionMapPage({
 
       const overviewBounds = getFeatureCollectionBounds(detailGeoJson)
       overviewBoundsRef.current = overviewBounds
-      map.fitBounds(overviewBounds, {
-        padding: OVERVIEW_PADDING,
-        duration: 1100,
-        essential: true,
-      })
+
+      // A camera deep link takes precedence over the intro overview flight.
+      if (!hashCamera) {
+        map.fitBounds(overviewBounds, {
+          padding: OVERVIEW_PADDING,
+          duration: 1100,
+          essential: true,
+        })
+      }
 
       setIsReady(true)
     })
@@ -501,6 +519,7 @@ export function StudyRegionMapPage({
     labelLayerId,
     labelMinZoom,
     labelSourceId,
+    routePath,
   ])
 
   useEffect(() => {
@@ -603,6 +622,7 @@ export function StudyRegionMapPage({
   return (
     <div className="map-only-shell">
       <div className="map-container" ref={containerRef} />
+      <MapLoadingVeil isReady={isReady} regionName={regionName} />
       <StudyHoverCard
         appellation={activeAppellation}
         emptyCardTitle={emptyCardTitle}
