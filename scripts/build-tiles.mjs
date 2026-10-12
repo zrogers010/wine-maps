@@ -50,6 +50,14 @@ const REGION_CONFIG = {
     detail: 'tiny-parcel-detail.geojson',
     hull: 'tiny-parcel-hulls.geojson',
   },
+  'sliver-test': {
+    detail: 'sliver-detail.geojson',
+    hull: 'sliver-hulls.geojson',
+  },
+  'sliver-negative-test': {
+    detail: 'sliver-negative-detail.geojson',
+    hull: 'sliver-negative-hulls.geojson',
+  },
 }
 
 // Parse arguments
@@ -57,6 +65,7 @@ let sizeBudgetMB = 5
 let metadataBudgetKB = 300
 let regions = 'burgundy,champagne,alsace'  // Default: exclude Bordeaux
 let dataDir = process.env.DATA_DIR || 'public/data/france'
+let minAreaM2 = 10  // Minimum area for valid polygons (m²)
 
 for (let i = 2; i < process.argv.length; i++) {
   if (process.argv[i] === '--size-budget-mb') {
@@ -67,12 +76,15 @@ for (let i = 2; i < process.argv.length; i++) {
     regions = process.argv[++i]
   } else if (process.argv[i] === '--data-dir') {
     dataDir = process.argv[++i]
+  } else if (process.argv[i] === '--min-area-m2') {
+    minAreaM2 = parseFloat(process.argv[++i])
   }
 }
 
 console.log('==> Building PMTiles for wine regions')
 console.log(`Region budget: ${sizeBudgetMB} MB`)
 console.log(`Metadata budget: ${metadataBudgetKB} KB`)
+console.log(`Min polygon area: ${minAreaM2} m²`)
 console.log(`Regions: ${regions}`)
 console.log(`Data dir: ${dataDir}`)
 console.log('')
@@ -164,6 +176,103 @@ for (const region of regionArray) {
     id: undefined,
   }))
   
+  // Filter degenerate polygons (< minAreaM2)
+  const removedSlivers = []
+  const featuresByName = new Map()  // Track features by name to catch disappearing names
+  
+  // First pass: collect all names
+  for (const feature of detailGeoJSON.features) {
+    const name = feature.properties.name || feature.properties.id
+    if (name) {
+      if (!featuresByName.has(name)) {
+        featuresByName.set(name, [])
+      }
+      featuresByName.get(name).push(feature)
+    }
+  }
+  
+  // Second pass: filter degenerate geometry
+  const filteredFeatures = []
+  for (const feature of detailGeoJSON.features) {
+    if (!feature.geometry || feature.geometry.type !== 'Polygon') {
+      filteredFeatures.push(feature)
+      continue
+    }
+    
+    let hasValidGeometry = false
+    const rings = feature.geometry.coordinates
+    const validRings = []
+    
+    for (const ring of rings) {
+      // Check distinct vertices
+      const uniqueCoords = new Set(ring.map(c => `${c[0]},${c[1]}`))
+      if (uniqueCoords.size < 3) {
+        const areaM2 = 0
+        removedSlivers.push({
+          id: feature.properties.id,
+          name: feature.properties.name,
+          area: areaM2,
+          reason: 'fewer than 3 distinct vertices'
+        })
+        continue
+      }
+      
+      // Check area
+      const ringPoly = turf.polygon([ring])
+      const areaM2 = turf.area(ringPoly)
+      
+      if (areaM2 < minAreaM2) {
+        removedSlivers.push({
+          id: feature.properties.id,
+          name: feature.properties.name,
+          area: areaM2,
+          reason: `${areaM2.toFixed(2)} m² < ${minAreaM2} m²`
+        })
+      } else {
+        validRings.push(ring)
+        hasValidGeometry = true
+      }
+    }
+    
+    if (hasValidGeometry) {
+      filteredFeatures.push({
+        ...feature,
+        geometry: {
+          type: 'Polygon',
+          coordinates: validRings
+        }
+      })
+    } else {
+      // Feature completely removed - check if it's the only geometry for its name
+      const name = feature.properties.name || feature.properties.id
+      if (name && featuresByName.has(name)) {
+        const siblings = featuresByName.get(name)
+        if (siblings.length === 1 && siblings[0] === feature) {
+          // This is the only feature for this name - fail
+          console.error(`  ❌ ERROR: Would remove only geometry for named feature`)
+          console.error(`     Name: "${name}"`)
+          console.error(`     ID: ${feature.properties.id}`)
+          console.error(`     Area: ${removedSlivers[removedSlivers.length - 1]?.area.toFixed(4) || 'unknown'} m²`)
+          console.error('')
+          console.error(`  This named climat would disappear. Fix upstream or adjust --min-area-m2.`)
+          process.exit(1)
+        }
+      }
+    }
+  }
+  
+  detailGeoJSON.features = filteredFeatures
+  
+  if (removedSlivers.length > 0) {
+    console.log(`  slivers removed: ${removedSlivers.length}`)
+    removedSlivers.slice(0, 5).forEach(s => {
+      console.log(`    ${s.id || 'unknown'}: ${s.reason}`)
+    })
+    if (removedSlivers.length > 5) {
+      console.log(`    ... and ${removedSlivers.length - 5} more`)
+    }
+  }
+  
   const hullGeoJSON = JSON.parse(readFileSync(hullPath, 'utf8'))
   hullGeoJSON.features = hullGeoJSON.features.map(f => ({
     ...f,
@@ -189,7 +298,7 @@ for (const region of regionArray) {
   writeFileSync(tempDetailSeqPath, detailSeq)
   writeFileSync(tempHullSeqPath, hullSeq)
   
-  const detailInputCount = detailGeoJSON.features.length
+  const detailInputCount = detailGeoJSON.features.length  // After sliver removal
   
   // Build detail tiles to mbtiles first (for verification)
   const tempMbtilesPath = join(tempDir, `${region}-detail.mbtiles`)

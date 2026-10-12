@@ -58,3 +58,4 @@ tiles/
 # Local screenshot scratch
 .tmp-map-screens/
 tiles/.smoke-screenshots/
+/public/data

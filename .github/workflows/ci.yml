@@ -118,6 +118,52 @@ jobs:
           
           echo "✅ Tiny parcel preserved with new flags"
       
+      - name: Positive test - sliver removal
+        run: |
+          rm -rf tiles
+          
+          if ! npm run tiles:build -- --regions sliver-test 2>&1 | tee /tmp/sliver-test.log; then
+            echo "❌ Sliver test should pass"
+            cat /tmp/sliver-test.log
+            exit 1
+          fi
+          
+          # Verify sliver was removed (2 features in, 2 out after sliver removal)
+          if ! grep -q "slivers removed: 1" /tmp/sliver-test.log; then
+            echo "❌ Expected 1 sliver removed"
+            cat /tmp/sliver-test.log
+            exit 1
+          fi
+          
+          if ! grep -q "ids: input=2 z15=2" /tmp/sliver-test.log; then
+            echo "❌ Expected 2 features after sliver removal"
+            cat /tmp/sliver-test.log
+            exit 1
+          fi
+          
+          echo "✅ Sliver removed correctly"
+      
+      - name: Negative test - only geometry for name fails
+        run: |
+          rm -rf tiles
+          
+          # Use set -o pipefail to preserve exit code through pipe
+          set -o pipefail
+          if npm run tiles:build -- --regions sliver-negative-test 2>&1 | tee /tmp/sliver-negative.log; then
+            echo "❌ Build should fail when only geometry for a name is removed"
+            cat /tmp/sliver-negative.log
+            exit 1
+          fi
+          
+          # Verify error mentions only geometry
+          if ! grep -q "only geometry for named feature" /tmp/sliver-negative.log; then
+            echo "❌ Error should mention 'only geometry for named feature'"
+            cat /tmp/sliver-negative.log
+            exit 1
+          fi
+          
+          echo "✅ Build correctly failed when only geometry would be removed"
+      
       - name: Negative test - missing file should fail
         run: |
           mv public/data/france/alsace/alsace-display-2026.geojson /tmp/backup.geojson
@@ -240,5 +286,56 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: smoke-test-screenshots
+          path: tiles/.smoke-screenshots/
+          if-no-files-found: ignore
+  
+  smoke-test-macos:
+    runs-on: macos-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      
+      - name: Install dependencies (clean, no cache)
+        run: npm ci --cache ~/.npm
+      
+      - name: Install tippecanoe
+        run: brew install tippecanoe
+      
+      - name: Install pmtiles CLI
+        run: |
+          cd /tmp
+          wget https://github.com/protomaps/go-pmtiles/releases/download/v1.24.0/go-pmtiles_1.24.0_Darwin_arm64.tar.gz
+          tar xzf go-pmtiles_1.24.0_Darwin_arm64.tar.gz
+          sudo mv pmtiles /usr/local/bin/
+          which pmtiles
+      
+      - name: Verify Chrome
+        run: |
+          ls -la "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+          "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --version
+      
+      - name: Setup Mac-style symlinked data directory
+        run: |
+          # Match Mac layout: tiles at project root, public/data symlink to fixtures
+          ln -s $(pwd)/test/fixtures/data public/data
+          ls -la public/
+      
+      - name: Build tiles with fixtures
+        run: npm run tiles:build
+      
+      - name: Run smoke test
+        run: npm run smoke:tiles
+      
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-screenshots-macos
           path: tiles/.smoke-screenshots/
           if-no-files-found: ignore

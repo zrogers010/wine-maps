@@ -174,10 +174,8 @@ export function MapView({
 
     attachCameraHashSync(map, '/bordeaux')
 
-    if (import.meta.env.DEV) {
-      // Dev-only handle for automated screenshot/interaction checks.
-      ;(window as unknown as { __wineMap?: maplibregl.Map }).__wineMap = map
-    }
+    // Expose map globally for automated testing and debugging
+    ;(window as unknown as { __wineMap?: maplibregl.Map }).__wineMap = map
 
     // Gentler wheel steps make trackpad/mouse zooming feel fluid instead of jumpy.
     map.scrollZoom.setWheelZoomRate(1 / 700)

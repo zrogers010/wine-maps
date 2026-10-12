@@ -111,8 +111,9 @@ console.log('Dev server ready')
 console.log('')
 
 let failed = false
-const consoleErrors = []
-const failedRequests = []
+const allConsoleMessages = []
+const allNetworkFailures = []
+const allExceptions = []
 
 try {
   // Connect to Chrome CDP
@@ -137,28 +138,58 @@ try {
             pending.delete(id)
             reject(new Error(`Timeout: ${method}`))
           }
-        }, 10000)
+        }, 15000)
       })
+    }
+    
+    // Poll helper
+    async function pollFor(testFn, timeout = 30000, interval = 500) {
+      const start = Date.now()
+      while (Date.now() - start < timeout) {
+        const result = await testFn()
+        if (result) return result
+        await new Promise(resolve => setTimeout(resolve, interval))
+      }
+      throw new Error(`Poll timeout after ${timeout}ms`)
     }
 
     ws.addEventListener('message', (event) => {
       const message = JSON.parse(event.data)
       
-      // Capture console errors
+      // Capture all console messages (error and warn)
       if (message.method === 'Runtime.consoleAPICalled') {
-        if (message.params.type === 'error') {
-          const text = message.params.args.map(a => a.value || '').join(' ')
-          if (text.includes('tile') || text.includes('manifest') || text.includes('pmtiles')) {
-            consoleErrors.push(text)
-          }
+        if (message.params.type === 'error' || message.params.type === 'warning') {
+          const text = message.params.args.map(a => a.value || a.description || '').join(' ')
+          allConsoleMessages.push({ type: message.params.type, text })
         }
       }
       
-      // Capture failed network requests
+      // Capture runtime exceptions
+      if (message.method === 'Runtime.exceptionThrown') {
+        const exception = message.params.exceptionDetails
+        const text = exception.exception?.description || exception.text || 'Unknown exception'
+        allExceptions.push(text)
+      }
+      
+      // Capture log entries
+      if (message.method === 'Log.entryAdded') {
+        const entry = message.params.entry
+        if (entry.level === 'error' || entry.level === 'warning') {
+          allConsoleMessages.push({ type: entry.level, text: entry.text })
+        }
+      }
+      
+      // Capture all network failures and 4xx/5xx responses
+      if (message.method === 'Network.loadingFailed') {
+        const url = message.params.documentURL || 'unknown'
+        const errorText = message.params.errorText || 'Network error'
+        allNetworkFailures.push({ url, error: errorText })
+      }
+      
       if (message.method === 'Network.responseReceived') {
         const response = message.params.response
-        if (response.status >= 400 && response.url.includes('/tiles/')) {
-          failedRequests.push({ url: response.url, status: response.status })
+        if (response.status >= 400) {
+          allNetworkFailures.push({ url: response.url, status: response.status })
         }
       }
       
@@ -176,9 +207,11 @@ try {
       setTimeout(reject, 5000)
     })
 
+    // Enable all CDP domains BEFORE navigation
     await send('Page.enable')
     await send('Runtime.enable')
     await send('Console.enable')
+    await send('Log.enable')
     await send('Network.enable')
     await send('Emulation.setDeviceMetricsOverride', {
       width: 1440,
@@ -192,6 +225,13 @@ try {
     
     console.log(`Base URL: ${baseUrl}`)
     console.log(`Manifest: ${manifestUrl}`)
+    console.log('')
+    
+    // Warm up: request root page and wait for Vite to settle (dependency pre-bundling)
+    console.log('Warming up dev server...')
+    await send('Page.navigate', { url: baseUrl })
+    await new Promise(resolve => setTimeout(resolve, 3000))  // Wait for initial bundling
+    console.log('Warmup complete')
     console.log('')
 
     // Load test metadata for all EXPECTED regions
@@ -272,31 +312,60 @@ try {
     // Run tests for each region
     for (const testCase of testCases) {
       console.log(`Testing ${testCase.region}...`)
-      consoleErrors.length = 0  // Reset for this region
-      failedRequests.length = 0  // Reset for this region
+      const regionErrors = []
+      const regionFailures = []
       
       // Navigate to region page
-      await send('Page.navigate', { url: `http://localhost:${DEV_SERVER_PORT}${testCase.path}` })
+      await send('Page.navigate', { url: `${baseUrl}${testCase.path}` })
       
-      // Wait for initial load
-      await new Promise((resolve) => setTimeout(resolve, 8000))
+      // Poll for map to load (30s timeout)
+      let mapLoaded = false
+      try {
+        await pollFor(async () => {
+          const { result } = await send('Runtime.evaluate', {
+            expression: 'window.__wineMap ? "loaded" : null',
+          })
+          return result.value === 'loaded'
+        }, 30000, 500)
+        mapLoaded = true
+      } catch (err) {
+        console.error(`  ❌ Map did not load: ${err.message}`)
+      }
       
-      // Check if map loaded
-      const { result: mapCheck } = await send('Runtime.evaluate', {
-        expression: 'window.__wineMap ? "loaded" : "not found"',
-      })
-      
-      if (mapCheck.value !== 'loaded') {
-        console.error(`  ❌ Map did not load`)
+      if (!mapLoaded) {
+        // Dump diagnostics
+        const { result: bodyLength } = await send('Runtime.evaluate', {
+          expression: 'document.body ? document.body.innerHTML.length : 0',
+        })
+        const { result: pageTitle } = await send('Runtime.evaluate', {
+          expression: 'document.title || "no title"',
+        })
         
-        // Log diagnostics
-        if (failedRequests.length > 0) {
+        console.error(`  Page title: "${pageTitle.value}"`)
+        console.error(`  Body HTML length: ${bodyLength.value}`)
+        
+        // Collect errors and failures since navigation
+        const recentErrors = allConsoleMessages.filter(m => !regionErrors.includes(m))
+        const recentFailures = allNetworkFailures.filter(f => !regionFailures.includes(f))
+        const recentExceptions = allExceptions.slice(regionErrors.length)
+        
+        if (recentFailures.length > 0) {
           console.error(`  Failed network requests:`)
-          failedRequests.forEach(r => console.error(`    ${r.url} -> ${r.status}`))
+          recentFailures.forEach(r => {
+            if (r.status) {
+              console.error(`    ${r.url} -> ${r.status}`)
+            } else {
+              console.error(`    ${r.url} -> ${r.error}`)
+            }
+          })
         }
-        if (consoleErrors.length > 0) {
-          console.error(`  Console errors:`)
-          consoleErrors.forEach(e => console.error(`    ${e}`))
+        if (recentErrors.length > 0) {
+          console.error(`  Console messages:`)
+          recentErrors.forEach(e => console.error(`    [${e.type}] ${e.text}`))
+        }
+        if (recentExceptions.length > 0) {
+          console.error(`  Exceptions:`)
+          recentExceptions.forEach(e => console.error(`    ${e}`))
         }
         
         // Save failure screenshot
@@ -311,8 +380,17 @@ try {
       
       console.log(`  ✓ Map loaded`)
       
-      // Wait for tiles to settle
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      // Poll for map idle
+      try {
+        await pollFor(async () => {
+          const { result } = await send('Runtime.evaluate', {
+            expression: 'window.__wineMap && window.__wineMap.loaded() && !window.__wineMap.isMoving() ? "idle" : null',
+          })
+          return result.value === 'idle'
+        }, 10000, 300)
+      } catch {
+        // Non-critical, continue anyway
+      }
       
       // Query for the test feature
       const { result: featureCheck } = await send('Runtime.evaluate', {

@@ -65,11 +65,19 @@ The script **fails closed**:
 **Build process**:
 1. Converts GeoJSON to GeoJSONSeq (newline-delimited)
 2. Copies `feature.id` to `properties.id`, strips top-level `id` (avoids tippecanoe warnings)
-3. Runs tippecanoe to create mbtiles (detail and hull separately)
-4. **Decodes detail tiles at max zoom (15)** using `tippecanoe-decode` to verify no features dropped
-5. Converts mbtiles to pmtiles using `pmtiles convert`
-6. Generates lightweight metadata JSON with centroids and bboxes (Node + turf)
-7. Validates size budgets and writes manifest
+3. **Filters degenerate polygons** from input before tiling:
+   - Removes polygon parts with fewer than 3 distinct vertices
+   - Removes polygon parts with area < 10 m² (configurable via `--min-area-m2`)
+   - Logs every removed sliver with ID and area
+   - **Fails if filtering would remove the only geometry for a named feature** (prevents silent climat disappearance)
+   - Excluded slivers don't count in the `input=N` side of the `ids:` comparison
+4. Runs tippecanoe to create mbtiles (detail and hull separately)
+5. **Decodes detail tiles at max zoom (15)** using `tippecanoe-decode` to verify no features dropped
+6. Converts mbtiles to pmtiles using `pmtiles convert`
+7. Generates lightweight metadata JSON with centroids and bboxes (Node + turf)
+8. Validates size budgets and writes manifest
+
+Degenerate polygons (slivers) come from subtraction operations in `scripts/build-exclusive-burgundy-display.mjs` and similar upstream scripts. These scripts now **filter slivers at the source** after subtraction to prevent them from reaching the PMTiles build. The build-time filter serves as a safety net.
 
 ### Run Smoke Test
 
