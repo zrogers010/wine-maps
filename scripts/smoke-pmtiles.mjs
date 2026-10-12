@@ -507,9 +507,9 @@ try {
       console.log(`  ✓ Screenshot saved`)
       
       // Check for console errors
-      if (consoleErrors.length > 0) {
+      if (allConsoleMessages.filter(m => m.type === 'error').length > 0) {
         console.error(`  ❌ Console errors detected:`)
-        consoleErrors.forEach(err => console.error(`     ${err}`))
+        allConsoleMessages.filter(m => m.type === 'error').forEach(err => console.error(`     ${err.text}`))
         failed = true
       }
       

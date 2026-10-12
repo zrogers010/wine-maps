@@ -179,20 +179,21 @@ jobs:
       
       - name: Negative test - feature drop should fail
         run: |
-          # Create a degenerate sliver polygon that tippecanoe will drop even with --no-tiny-polygon-reduction
+          # Create a fixture with a micro parcel (~11 m²) that tippecanoe drops without protective flags
+          # This parcel is valid (>10 m², >=3 vertices), so it passes sliver filtering
           cat > public/data/france/burgundy/burgundy-test-drop.geojson << 'EOF'
           {
             "type": "FeatureCollection",
             "features": [
               {
                 "type": "Feature",
-                "id": "should-drop",
+                "id": "micro-parcel",
                 "properties": {
-                  "name": "Degenerate Sliver"
+                  "name": "Micro Parcel"
                 },
                 "geometry": {
                   "type": "Polygon",
-                  "coordinates": [[[4.95, 47.22], [4.9500001, 47.22], [4.9500001, 47.2200001], [4.95, 47.2200001], [4.95, 47.22]]]
+                  "coordinates": [[[4.95, 47.22], [4.950035, 47.22], [4.950035, 47.220035], [4.95, 47.220035], [4.95, 47.22]]]
                 }
               },
               {
@@ -213,11 +214,16 @@ jobs:
           mv public/data/france/burgundy/burgundy-display-exclusive-2026.geojson /tmp/backup-burgundy.geojson
           mv public/data/france/burgundy/burgundy-test-drop.geojson public/data/france/burgundy/burgundy-display-exclusive-2026.geojson
           
+          # Temporarily remove both protective flags to prove drop check fires
+          sed -i "s/'--no-tiny-polygon-reduction-at-maximum-zoom',//" scripts/build-tiles.mjs
+          sed -i "s/'--no-feature-limit',//" scripts/build-tiles.mjs
+          
           # Use set -o pipefail to preserve exit code through pipe
           set -o pipefail
           if npm run tiles:build 2>&1 | tee /tmp/drop-test.log; then
             echo "❌ Build should have failed when features were dropped"
             cat /tmp/drop-test.log
+            git restore scripts/build-tiles.mjs
             mv /tmp/backup-burgundy.geojson public/data/france/burgundy/burgundy-display-exclusive-2026.geojson
             exit 1
           fi
@@ -226,11 +232,22 @@ jobs:
           if ! grep -q "FEATURES DROPPED" /tmp/drop-test.log; then
             echo "❌ Error message should mention 'FEATURES DROPPED'"
             cat /tmp/drop-test.log
+            git restore scripts/build-tiles.mjs
+            mv /tmp/backup-burgundy.geojson public/data/france/burgundy/burgundy-display-exclusive-2026.geojson
+            exit 1
+          fi
+          
+          # Verify it reports input=2 but z15=1 (micro dropped)
+          if ! grep -q "ids: input=2 z15=1" /tmp/drop-test.log; then
+            echo "❌ Expected input=2 z15=1 showing micro feature dropped"
+            grep "ids:" /tmp/drop-test.log || echo "No ids line found"
+            git restore scripts/build-tiles.mjs
             mv /tmp/backup-burgundy.geojson public/data/france/burgundy/burgundy-display-exclusive-2026.geojson
             exit 1
           fi
           
           echo "✅ Build correctly failed when features were dropped"
+          git restore scripts/build-tiles.mjs
           mv /tmp/backup-burgundy.geojson public/data/france/burgundy/burgundy-display-exclusive-2026.geojson
   
   smoke-test:
@@ -310,10 +327,10 @@ jobs:
       - name: Install pmtiles CLI
         run: |
           cd /tmp
-          wget https://github.com/protomaps/go-pmtiles/releases/download/v1.24.0/go-pmtiles_1.24.0_Darwin_arm64.tar.gz
-          tar xzf go-pmtiles_1.24.0_Darwin_arm64.tar.gz
+          wget https://github.com/protomaps/go-pmtiles/releases/download/v1.24.0/go-pmtiles-1.24.0_Darwin_arm64.zip
+          unzip go-pmtiles-1.24.0_Darwin_arm64.zip
           sudo mv pmtiles /usr/local/bin/
-          which pmtiles
+          pmtiles version
       
       - name: Verify Chrome
         run: |

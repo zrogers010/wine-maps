@@ -308,8 +308,8 @@ for (const region of regionArray) {
     '-z15', '-Z11',
     '-r1',
     '-l', region,
-    '--no-tiny-polygon-reduction-at-maximum-zoom',
-    '--no-feature-limit',
+    
+    
     '--coalesce-densest-as-needed',
     '--detect-shared-borders',
     '--no-simplification-of-shared-nodes',
