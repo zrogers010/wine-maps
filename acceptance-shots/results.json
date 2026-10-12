@@ -1,7 +1,22 @@
 {
   "base": "http://localhost:4173",
-  "when": "2026-10-12T20:12:07.775Z",
+  "when": "2026-10-12T20:14:16.459Z",
   "results": [
+    {
+      "id": "f",
+      "name": "window.__wineMap undefined without ?test=1",
+      "pass": true,
+      "detail": "typeof=undefined"
+    },
+    {
+      "id": "g",
+      "name": "waterway/hydro lines through Médoc are rivers only (initial)",
+      "pass": true,
+      "detail": {
+        "total": 0,
+        "bad": []
+      }
+    },
     {
       "id": "a",
       "name": "outline layer filter/rendered features include pauillac after mouse-away",
@@ -26,6 +41,15 @@
         "sampled": 5,
         "hits": 0,
         "ratio": 0
+      }
+    },
+    {
+      "id": "g",
+      "name": "waterway/hydro lines through Médoc are rivers only (after selecting Pauillac)",
+      "pass": true,
+      "detail": {
+        "total": 15,
+        "bad": []
       }
     },
     {
@@ -67,6 +91,17 @@
       }
     },
     {
+      "id": "d",
+      "name": "mobile deep link: × closes sheet",
+      "pass": true,
+      "detail": {
+        "before": {
+          "top": 464
+        },
+        "after": null
+      }
+    },
+    {
       "id": "c",
       "name": "mobile bordeaux: tapped graves stays above sheet",
       "pass": true,
@@ -81,6 +116,11 @@
         },
         "sheetTop": 464
       }
+    },
+    {
+      "id": "d",
+      "name": "mobile bordeaux: × closes sheet",
+      "pass": true
     },
     {
       "id": "c",
@@ -99,6 +139,11 @@
       }
     },
     {
+      "id": "d",
+      "name": "mobile burgundy: × closes sheet",
+      "pass": true
+    },
+    {
       "id": "c",
       "name": "mobile champagne: tapped champagne stays above sheet",
       "pass": false,
@@ -115,6 +160,11 @@
       }
     },
     {
+      "id": "d",
+      "name": "mobile champagne: × closes sheet",
+      "pass": true
+    },
+    {
       "id": "c",
       "name": "mobile alsace: tapped alsace stays above sheet",
       "pass": false,
@@ -129,6 +179,11 @@
         },
         "sheetTop": 464
       }
+    },
+    {
+      "id": "d",
+      "name": "mobile alsace: × closes sheet",
+      "pass": true
     },
     {
       "id": "h",
@@ -169,6 +224,12 @@
         "h": 150,
         "coverage": 0.013
       }
+    },
+    {
+      "id": "e",
+      "name": "no pageerrors / console errors on any page",
+      "pass": true,
+      "detail": []
     }
   ]
 }

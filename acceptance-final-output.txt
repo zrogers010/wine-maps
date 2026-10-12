@@ -1,0 +1,23 @@
+PASS (f) window.__wineMap undefined without ?test=1 :: typeof=undefined
+PASS (g) waterway/hydro lines through Médoc are rivers only (initial) :: {"total":0,"bad":[]}
+FAIL (a) outline layer filter/rendered features include pauillac after mouse-away :: [{"id":"appellation-hover-outline","filter":"[\"==\",[\"get\",\"id\"],\"saint-julien\"]","color":"#a01845","rendered":["saint-julien"]}]
+FAIL (a) burgundy outline pixels on Pauillac boundary (>=25% of boundary samples) :: {"color":"#a01845","sampled":5,"hits":0,"ratio":0}
+PASS (g) waterway/hydro lines through Médoc are rivers only (after selecting Pauillac) :: {"total":15,"bad":[]}
+FAIL (b) desktop /bordeaux/pauillac/ zoom>=10 and Pauillac bbox inside viewport :: {"zoom":9.4,"bboxPx":[734,399,763,440],"canvas":[1440,866],"inside":true}
+FAIL (b) mobile /bordeaux/pauillac/ zoom>=10 and Pauillac bbox inside viewport :: {"zoom":9.4,"bboxPx":[181,195,209,236],"canvas":[390,810],"inside":true}
+PASS (d) mobile deep link: × closes sheet :: {"before":{"top":464},"after":null}
+PASS (c) mobile bordeaux: tapped graves stays above sheet :: {"tappedAt":[183,658],"afterTap":{"x":126,"y":381},"sheetTop":464}
+PASS (d) mobile bordeaux: × closes sheet
+FAIL (c) mobile burgundy: tapped chassagne-montrachet stays above sheet :: {"tappedAt":[315,610],"afterTap":{"x":315,"y":610},"sheetTop":464}
+PASS (d) mobile burgundy: × closes sheet
+FAIL (c) mobile champagne: tapped champagne stays above sheet :: {"tappedAt":[75,670],"afterTap":{"x":75,"y":670},"sheetTop":464}
+PASS (d) mobile champagne: × closes sheet
+FAIL (c) mobile alsace: tapped alsace stays above sheet :: {"tappedAt":[93,718],"afterTap":{"x":93,"y":718},"sheetTop":464}
+PASS (d) mobile alsace: × closes sheet
+FAIL (h) home thumbnail "Bordeaux" non-background coverage > 15% :: {"w":238,"h":150,"coverage":0.034}
+FAIL (h) home thumbnail "Burgundy" non-background coverage > 15% :: {"w":238,"h":150,"coverage":0.013}
+FAIL (h) home thumbnail "Champagne" non-background coverage > 15% :: {"w":238,"h":150,"coverage":0.087}
+FAIL (h) home thumbnail "Alsace" non-background coverage > 15% :: {"w":238,"h":150,"coverage":0.013}
+PASS (e) no pageerrors / console errors on any page :: []
+
+10/21 checks passed. Screenshots + results.json in /workspace/acceptance-shots
