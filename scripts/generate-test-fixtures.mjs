@@ -6,11 +6,12 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 // Approximate bounding boxes for key Bordeaux appellations (lon, lat)
+// Non-overlapping regions for testing
 const appellationBounds = {
-  'pauillac': [-0.75, 45.17, -0.71, 45.21],
-  'medoc': [-0.95, 45.30, -0.70, 45.60],
-  'haut-medoc': [-0.95, 44.95, -0.65, 45.30],
-  'saint-estephe': [-0.78, 45.25, -0.74, 45.29],
+  'pauillac': [-0.745, 45.175, -0.715, 45.205],
+  'medoc': [-0.95, 45.40, -0.85, 45.60],
+  'haut-medoc': [-0.78, 45.25, -0.75, 45.28], // Moved away from Pauillac
+  'saint-estephe': [-0.78, 45.30, -0.74, 45.34],
   'saint-julien': [-0.745, 45.12, -0.71, 45.16],
   'margaux': [-0.70, 44.98, -0.66, 45.04],
   'moulis-en-medoc': [-0.82, 45.03, -0.76, 45.08],

@@ -1,0 +1,174 @@
+{
+  "base": "http://localhost:4173",
+  "when": "2026-10-12T20:12:07.775Z",
+  "results": [
+    {
+      "id": "a",
+      "name": "outline layer filter/rendered features include pauillac after mouse-away",
+      "pass": false,
+      "detail": [
+        {
+          "id": "appellation-hover-outline",
+          "filter": "[\"==\",[\"get\",\"id\"],\"saint-julien\"]",
+          "color": "#a01845",
+          "rendered": [
+            "saint-julien"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "a",
+      "name": "burgundy outline pixels on Pauillac boundary (>=25% of boundary samples)",
+      "pass": false,
+      "detail": {
+        "color": "#a01845",
+        "sampled": 5,
+        "hits": 0,
+        "ratio": 0
+      }
+    },
+    {
+      "id": "b",
+      "name": "desktop /bordeaux/pauillac/ zoom>=10 and Pauillac bbox inside viewport",
+      "pass": false,
+      "detail": {
+        "zoom": 9.4,
+        "bboxPx": [
+          734,
+          399,
+          763,
+          440
+        ],
+        "canvas": [
+          1440,
+          866
+        ],
+        "inside": true
+      }
+    },
+    {
+      "id": "b",
+      "name": "mobile /bordeaux/pauillac/ zoom>=10 and Pauillac bbox inside viewport",
+      "pass": false,
+      "detail": {
+        "zoom": 9.4,
+        "bboxPx": [
+          181,
+          195,
+          209,
+          236
+        ],
+        "canvas": [
+          390,
+          810
+        ],
+        "inside": true
+      }
+    },
+    {
+      "id": "c",
+      "name": "mobile bordeaux: tapped graves stays above sheet",
+      "pass": true,
+      "detail": {
+        "tappedAt": [
+          183,
+          658
+        ],
+        "afterTap": {
+          "x": 126,
+          "y": 381
+        },
+        "sheetTop": 464
+      }
+    },
+    {
+      "id": "c",
+      "name": "mobile burgundy: tapped chassagne-montrachet stays above sheet",
+      "pass": false,
+      "detail": {
+        "tappedAt": [
+          315,
+          610
+        ],
+        "afterTap": {
+          "x": 315,
+          "y": 610
+        },
+        "sheetTop": 464
+      }
+    },
+    {
+      "id": "c",
+      "name": "mobile champagne: tapped champagne stays above sheet",
+      "pass": false,
+      "detail": {
+        "tappedAt": [
+          75,
+          670
+        ],
+        "afterTap": {
+          "x": 75,
+          "y": 670
+        },
+        "sheetTop": 464
+      }
+    },
+    {
+      "id": "c",
+      "name": "mobile alsace: tapped alsace stays above sheet",
+      "pass": false,
+      "detail": {
+        "tappedAt": [
+          93,
+          718
+        ],
+        "afterTap": {
+          "x": 93,
+          "y": 718
+        },
+        "sheetTop": 464
+      }
+    },
+    {
+      "id": "h",
+      "name": "home thumbnail \"Bordeaux\" non-background coverage > 15%",
+      "pass": false,
+      "detail": {
+        "w": 238,
+        "h": 150,
+        "coverage": 0.034
+      }
+    },
+    {
+      "id": "h",
+      "name": "home thumbnail \"Burgundy\" non-background coverage > 15%",
+      "pass": false,
+      "detail": {
+        "w": 238,
+        "h": 150,
+        "coverage": 0.013
+      }
+    },
+    {
+      "id": "h",
+      "name": "home thumbnail \"Champagne\" non-background coverage > 15%",
+      "pass": false,
+      "detail": {
+        "w": 238,
+        "h": 150,
+        "coverage": 0.087
+      }
+    },
+    {
+      "id": "h",
+      "name": "home thumbnail \"Alsace\" non-background coverage > 15%",
+      "pass": false,
+      "detail": {
+        "w": 238,
+        "h": 150,
+        "coverage": 0.013
+      }
+    }
+  ]
+}

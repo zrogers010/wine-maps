@@ -539,15 +539,6 @@ export function MapView({
       const overviewBounds = getFeatureCollectionBounds(bordeauxGeoJson)
       overviewBoundsRef.current = overviewBounds
 
-      // A camera deep link takes precedence over the intro overview flight.
-      if (!hashCamera) {
-        map.fitBounds(overviewBounds, {
-          padding: OVERVIEW_PADDING,
-          duration: 1100,
-          essential: true,
-        })
-      }
-
       setIsReady(true)
     })
 
@@ -937,11 +928,26 @@ export function MapView({
     performFitAndSelect()
   }, [selectedId, isReady])
 
+  // Overview fitBounds - only when there's no deep link
+  useEffect(() => {
+    const map = mapRef.current
+    const overviewBounds = overviewBoundsRef.current
+    
+    // Only fit to overview if there's no selectedId (no deep link) and no hash camera
+    const hashCamera = readCameraFromHash()
+    if (!map || !isReady || selectedId || hashCamera || !overviewBounds) {
+      return
+    }
+
+    map.fitBounds(overviewBounds, {
+      padding: OVERVIEW_PADDING,
+      duration: 1100,
+      essential: true,
+    })
+  }, [isReady, selectedId])
+
   // Ease map on mobile when feature selected to keep it visible above sheet
   useEffect(() => {
-    // Temporarily disabled to debug test issue
-    return
-    /*
     const map = mapRef.current
     const geojson = bordeauxGeoJsonRef.current
 
@@ -989,7 +995,6 @@ export function MapView({
     const timer = setTimeout(doEase, 1200)
     
     return () => clearTimeout(timer)
-    */
   }, [selectedId, isReady])
 
   useEffect(() => {
