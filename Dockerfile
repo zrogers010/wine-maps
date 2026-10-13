@@ -17,6 +17,7 @@ COPY . .
 # Build argument for optional Google Analytics
 ARG VITE_GA_MEASUREMENT_ID
 ENV VITE_GA_MEASUREMENT_ID=${VITE_GA_MEASUREMENT_ID}
+ENV VITE_GA4_ID=${VITE_GA_MEASUREMENT_ID}
 
 # Build the app (includes prerendering)
 RUN npm run build
