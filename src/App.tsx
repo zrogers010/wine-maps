@@ -1,8 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
-import { AlsacePage } from './components/AlsacePage'
-import { AppShell } from './components/AppShell'
-import { BurgundyPage } from './components/BurgundyPage'
-import { ChampagnePage } from './components/ChampagnePage'
+import { lazy, Suspense, useEffect, useState, useRef } from 'react'
 import { Link } from './components/Link'
 import { findRegionByPath, regions, type RegionConfig } from './regions'
 import { navigate, usePathname } from './router'
@@ -11,15 +7,18 @@ import type { AppellationId } from './types/wine'
 import { trackRegionView, trackPageView } from './utils/analytics'
 import { getEmailCaptureProvider } from './services/emailCapture'
 import { EmailSignupCard } from './components/EmailSignupCard'
-import { regionSVGs } from './generated/regionSVGs'
 import type { ComponentType, ReactNode } from 'react'
 import './App.css'
 
-const regionComponents: Record<string, ComponentType<{ initialSelectedId?: AppellationId }>> = {
-  bordeaux: AppShell,
-  burgundy: BurgundyPage as ComponentType<{ initialSelectedId?: AppellationId }>,
-  champagne: ChampagnePage as ComponentType<{ initialSelectedId?: AppellationId }>,
-  alsace: AlsacePage as ComponentType<{ initialSelectedId?: AppellationId }>,
+type RegionComponentType = ComponentType<{ initialSelectedId?: AppellationId }>
+
+// Each region (and MapLibre/turf) is its own chunk, so the home page and the
+// first map route only download and evaluate what they render.
+const regionComponents: Record<string, RegionComponentType> = {
+  bordeaux: lazy(() => import('./components/AppShell').then((m) => ({ default: m.AppShell as RegionComponentType }))),
+  burgundy: lazy(() => import('./components/BurgundyPage').then((m) => ({ default: m.BurgundyPage as RegionComponentType }))),
+  champagne: lazy(() => import('./components/ChampagnePage').then((m) => ({ default: m.ChampagnePage as RegionComponentType }))),
+  alsace: lazy(() => import('./components/AlsacePage').then((m) => ({ default: m.AlsacePage as RegionComponentType }))),
 }
 
 function App() {
@@ -48,13 +47,13 @@ function App() {
     // Check for canonical redirects (aliases)
     const canonicalPath = getCanonicalRedirect(pathname)
     if (canonicalPath) {
-      navigate(canonicalPath + window.location.hash, { replace: true })
+      navigate(canonicalPath + window.location.search + window.location.hash, { replace: true })
       return
     }
 
     // Normalize trailing slashes
     if (rawPathname !== pathname) {
-      navigate(pathname + window.location.hash, { replace: true })
+      navigate(pathname + window.location.search + window.location.hash, { replace: true })
     }
   }, [pathname, rawPathname])
 
@@ -91,7 +90,9 @@ function App() {
 
         return (
           <div key={candidate.id} hidden={!isActive}>
-            <RegionComponent initialSelectedId={selectedId} />
+            <Suspense fallback={<div className="region-loading" aria-busy="true" />}>
+              <RegionComponent initialSelectedId={selectedId} />
+            </Suspense>
           </div>
         )
       })}
@@ -195,10 +196,35 @@ function RegionIndexPage() {
   )
 }
 
+// Thumbnails are static, build-generated SVGs (public/thumbnails, see
+// scripts/generate-region-svgs.mjs). They are fetched from our own origin and
+// inlined so they inherit page styling; nothing user-controlled reaches them.
+const thumbnailCache = new Map<string, Promise<string>>()
+
+function loadThumbnail(regionId: string) {
+  let pending = thumbnailCache.get(regionId)
+  if (!pending) {
+    pending = fetch(`/thumbnails/${regionId}.svg`)
+      .then((response) => (response.ok ? response.text() : ''))
+      .then((text) => (text.trimStart().startsWith('<svg') ? text : ''))
+      .catch(() => '')
+    thumbnailCache.set(regionId, pending)
+  }
+  return pending
+}
+
 function RegionCard({ region }: { region: RegionConfig }) {
-  const regionSVG = regionSVGs[region.id] || `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="50" cy="50" r="35" fill="none" stroke="currentColor" stroke-width="2" opacity="0.3" />
-  </svg>`
+  const [regionSVG, setRegionSVG] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    void loadThumbnail(region.id).then((svg) => {
+      if (!cancelled) setRegionSVG(svg)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [region.id])
 
   return (
     <Link className="region-card" href={region.path}>

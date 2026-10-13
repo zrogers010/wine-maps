@@ -116,28 +116,31 @@ const burgundyIds = [
   'chassagne-montrachet',
 ]
 
+// Classification-led palette (like Bordeaux's subregion families):
+//  - Chablis: cool slate-sage, deepening Petit Chablis → Chablis → Grand Cru
+//  - Côte de Nuits villages: rose / plum, alternating light-dark along the slope
+//  - Côte de Beaune red villages: terracotta; white villages: golden straw
+//  - Premier Cru parcels: the village hue, one step deeper (see premierCruColor)
+//  - Grand Crus: saturated garnet (Nuits), brick (Corton) and old gold (whites)
 const burgundyColors: Record<string, string> = {
-  // Chablis - cool mineral tones
-  'petit-chablis': '#b8c4a8',
-  chablis: '#9ab0a4',
-  'chablis-grand-cru': '#7a9289',
-  
-  // Côte de Nuits villages - earthy burgundy tones
-  'gevrey-chambertin': '#9d7582',
-  'morey-saint-denis': '#a8828f',
-  'chambolle-musigny': '#b58fa0',
-  vougeot: '#8d6c78',
-  'vosne-romanee': '#a17d8d',
-  'nuits-saint-georges': '#9a7786',
-  
-  // Côte de Beaune villages - warmer earth tones
-  'aloxe-corton': '#a88d7a',
-  beaune: '#b39682',
-  pommard: '#9d7f6d',
-  volnay: '#aa8975',
-  meursault: '#c8a88c',
-  'puligny-montrachet': '#d4b498',
-  'chassagne-montrachet': '#bfa285',
+  'petit-chablis': '#cfd8c4',
+  chablis: '#a6bfb2',
+  'chablis-grand-cru': '#5b8478',
+
+  'gevrey-chambertin': '#c69aa6',
+  'morey-saint-denis': '#b48597',
+  'chambolle-musigny': '#d6b0bd',
+  vougeot: '#b07f91',
+  'vosne-romanee': '#cfa1b2',
+  'nuits-saint-georges': '#b58a98',
+
+  'aloxe-corton': '#d0a184',
+  beaune: '#c38d70',
+  pommard: '#b67c63',
+  volnay: '#d6aa8f',
+  meursault: '#e0c487',
+  'puligny-montrachet': '#ead39b',
+  'chassagne-montrachet': '#d8b673',
 }
 
 const grandCruMeta: Record<string, GrandCruMeta> = {
@@ -176,48 +179,49 @@ const grandCruMeta: Record<string, GrandCruMeta> = {
 }
 
 const grandCruColors: Record<string, string> = {
-  // Gevrey Chambertin group - deep burgundy reds
-  chambertin: '#8b4e5f',
-  'chambertin-clos-de-beze': '#944f5e',
-  'chapelle-chambertin': '#9d5563',
-  'charmes-chambertin': '#a65a68',
-  'griotte-chambertin': '#995265',
-  'latricieres-chambertin': '#8a4b5d',
-  'mazis-chambertin': '#924d60',
-  'mazoyeres-chambertin': '#a65a68',
-  'ruchottes-chambertin': '#8c4d5f',
-  
-  // Morey group - purple-reds
-  'clos-de-la-roche': '#7a4f6b',
-  'clos-saint-denis': '#845873',
-  'clos-des-lambrays': '#8e5f7a',
-  'clos-de-tart': '#7d526e',
-  
-  // Chambolle/Vougeot/Vosne group - rose-mauves
-  'bonnes-mares': '#a97286',
-  musigny: '#b5808f',
-  'clos-de-vougeot': '#9c6a7c',
-  echezeaux: '#a87385',
-  'grands-echezeaux': '#9f6d7e',
-  'romanee-conti': '#a67588',
-  'la-tache': '#9e6f80',
-  richebourg: '#b17a8c',
-  'la-romanee': '#a87487',
-  'la-grande-rue': '#a47185',
-  'romanee-saint-vivant': '#ad788a',
-  
-  // Beaune reds - warm terracotta
-  corton: '#a87562',
-  
-  // Beaune whites - golden beiges
-  'corton-charlemagne': '#c4a07a',
-  charlemagne: '#cca882',
-  montrachet: '#d4b28a',
-  'chevalier-montrachet': '#d8b68f',
-  'batard-montrachet': '#dcba93',
-  'bienvenues-batard-montrachet': '#e0be97',
-  'criots-batard-montrachet': '#dbb990',
+  // Gevrey – deep garnet
+  chambertin: '#6f1f36',
+  'chambertin-clos-de-beze': '#7c2640',
+  'chapelle-chambertin': '#86304a',
+  'charmes-chambertin': '#7a2a43',
+  'griotte-chambertin': '#8e3550',
+  'latricieres-chambertin': '#73233b',
+  'mazis-chambertin': '#843047',
+  'mazoyeres-chambertin': '#7a2a43',
+  'ruchottes-chambertin': '#8a3249',
+
+  // Morey – black-cherry purple
+  'clos-de-la-roche': '#5e2546',
+  'clos-saint-denis': '#6d2e54',
+  'clos-des-lambrays': '#7a3660',
+  'clos-de-tart': '#672a4e',
+
+  // Chambolle / Vougeot / Vosne – ruby
+  'bonnes-mares': '#8f2f4c',
+  musigny: '#a03b58',
+  'clos-de-vougeot': '#7f2944',
+  echezeaux: '#9a3855',
+  'grands-echezeaux': '#88304b',
+  'romanee-conti': '#6a1730',
+  'la-tache': '#7c2039',
+  richebourg: '#922d4b',
+  'la-romanee': '#a3425e',
+  'la-grande-rue': '#86283f',
+  'romanee-saint-vivant': '#9b3a56',
+
+  // Corton – brick red
+  corton: '#93402f',
+
+  // White Grand Crus – old gold
+  'corton-charlemagne': '#b98a2c',
+  charlemagne: '#c49634',
+  montrachet: '#a87a1f',
+  'chevalier-montrachet': '#bf902f',
+  'batard-montrachet': '#b3852a',
+  'bienvenues-batard-montrachet': '#c99e3e',
+  'criots-batard-montrachet': '#d1a84a',
 }
+
 
 const legendGroups = [
   {
@@ -1181,14 +1185,32 @@ function createLabelPoints(geoJson: FeatureCollection): FeatureCollection {
   }
 }
 
+function premierCruColor(hex: string) {
+  // One step deeper and slightly warmer than the village tone.
+  const n = Number.parseInt(hex.slice(1), 16)
+  const channel = (shift: number, k: number) => Math.round(((n >> shift) & 255) * k)
+  const r = channel(16, 0.84)
+  const g = channel(8, 0.78)
+  const b = channel(0, 0.8)
+  return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`
+}
+
 function burgundyFillColorExpression(): ExpressionSpecification {
-  return [
+  const all = { ...burgundyColors, ...grandCruColors }
+  const byId = (colors: Record<string, string>) => [
     'match',
     ['get', 'id'],
-    ...Object.entries({ ...burgundyColors, ...grandCruColors }).flatMap(
-      ([id, color]) => [id, color],
-    ),
-    '#8c6f4f',
+    ...Object.entries(colors).flatMap(([id, color]) => [id, color]),
+    '#b49a7c',
+  ]
+  const premier = Object.fromEntries(
+    Object.entries(burgundyColors).map(([id, color]) => [id, premierCruColor(color)]),
+  )
+  return [
+    'case',
+    ['==', ['get', 'cruLevel'], 'premier-cru'],
+    byId(premier),
+    byId(all),
   ] as unknown as ExpressionSpecification
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { area, booleanPointInPolygon, point, pointOnFeature } from '@turf/turf'
+import { area, bbox, booleanPointInPolygon, point, pointOnFeature } from '@turf/turf'
 import {
   addSelectedOutlineLayers,
   boundsForIds,
@@ -17,7 +17,6 @@ import maplibregl, {
   type MapLayerMouseEvent,
   type MapMouseEvent,
 } from 'maplibre-gl'
-import 'maplibre-gl/dist/maplibre-gl.css'
 import chateauData from '../data/france/bordeaux/chateaux.json'
 import type {
   AppellationId,
@@ -224,9 +223,14 @@ export function MapView({
       }
 
       // Point-in-polygon over ~12 MB of parcels is not needed for first paint.
-      window.setTimeout(() => {
+      const runLookup = () => {
         if (!cancelled) setChateauxWithCommune(attachCommuneToChateaux(chateaux, bordeauxGeoJson))
-      }, 1500)
+      }
+      if (typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(runLookup, { timeout: 4000 })
+      } else {
+        setTimeout(runLookup, 1500)
+      }
       lowZoomHullGeoJsonRef.current = lowZoomHullGeoJson
       bordeauxGeoJsonRef.current = bordeauxGeoJson
 
@@ -1202,15 +1206,26 @@ function attachCommuneToChateaux(
   chateauPoints: ChateauPoint[],
   medocGeoJson: FeatureCollection,
 ): ChateauWithCommune[] {
+  // Index candidate parcels by appellation with a cheap bbox prefilter, so the
+  // point-in-polygon test only runs on the few parcels that can contain a point.
+  const byAppellation = new globalThis.Map<string, { feature: Feature<Polygon | MultiPolygon>; box: number[] }[]>()
+  for (const feature of medocGeoJson.features) {
+    const id = feature.properties?.id
+    if (typeof id !== 'string' || !isPolygonFeature(feature)) continue
+    if (!chateauPoints.some((chateau) => chateau.appellationId === id)) continue
+    const list = byAppellation.get(id) ?? []
+    list.push({ feature, box: bbox(feature) })
+    byAppellation.set(id, list)
+  }
+
   return chateauPoints.map((chateau) => {
+    const [x, y] = chateau.coordinates
     const chateauPoint = point(chateau.coordinates)
-    const containingFeature = medocGeoJson.features.find((feature) => {
-      return (
-        feature.properties?.id === chateau.appellationId &&
-        isPolygonFeature(feature) &&
-        booleanPointInPolygon(chateauPoint, feature)
-      )
-    })
+    const containingFeature = (byAppellation.get(chateau.appellationId) ?? []).find(
+      ({ feature, box }) =>
+        x >= box[0] && x <= box[2] && y >= box[1] && y <= box[3] &&
+        booleanPointInPolygon(chateauPoint, feature),
+    )?.feature
 
     return {
       ...chateau,
