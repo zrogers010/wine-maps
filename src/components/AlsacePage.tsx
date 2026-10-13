@@ -223,24 +223,31 @@ const southernGrandCruNames = [
   'Rangen',
 ]
 
+// Regional AOCs stay pale so the 51 Grand Crus read as jewels on top of
+// them; each Grand Cru group has its own hue family (north teal, centre amber,
+// south russet), alternating three shades so neighbouring crus separate.
+const grandCruShades: Record<'north' | 'central' | 'south', string[]> = {
+  north: ['#4c7c74', '#5f8f84', '#3f6b66'],
+  central: ['#b9862f', '#c99a45', '#a5752a'],
+  south: ['#a4553f', '#b6674c', '#8f4836'],
+}
+
 const alsaceColors = Object.fromEntries(
   appellations.map((appellation) => {
     if (appellation.id === 'alsace') {
-      return [appellation.id, '#b8c4a4']
+      return [appellation.id, '#cfd8ae']
     }
     if (appellation.id === 'cremant-d-alsace') {
-      return [appellation.id, '#9aa89c']
+      return [appellation.id, '#bcc8cc']
     }
-    // Grand Crus: assign different colors based on north/central/south with varied hues
     const grandCruName = appellation.name.replace('Alsace Grand Cru ', '')
-    if (northernGrandCruNames.includes(grandCruName)) {
-      return [appellation.id, '#a8b098'] // sage green
-    }
-    if (centralGrandCruNames.includes(grandCruName)) {
-      return [appellation.id, '#b8a88c'] // warm beige
-    }
-    // Southern Grand Crus
-    return [appellation.id, '#98907c'] // taupe-gray
+    const [group, names] = northernGrandCruNames.includes(grandCruName)
+      ? (['north', northernGrandCruNames] as const)
+      : centralGrandCruNames.includes(grandCruName)
+        ? (['central', centralGrandCruNames] as const)
+        : (['south', southernGrandCruNames] as const)
+    const shades = grandCruShades[group]
+    return [appellation.id, shades[Math.max(0, names.indexOf(grandCruName)) % shades.length]]
   }),
 )
 

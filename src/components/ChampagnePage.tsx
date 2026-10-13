@@ -7,10 +7,11 @@ import {
 const appellations = appellationData as StudyRegionMetadata[]
 
 const champagneColors: Record<string, string> = {
-  // Distinct muted tones for each appellation
-  champagne: '#d4c4a8',
-  'coteaux-champenois': '#b89485',
-  'rose-des-riceys': '#a87876',
+  // Chalk-and-gold: sparkling Champagne in a pale-gold straw, still red
+  // Coteaux Champenois in pinot garnet, Rosé des Riceys in its own rosé.
+  champagne: '#d7bc72',
+  'coteaux-champenois': '#9b4f55',
+  'rose-des-riceys': '#cf7f8c',
 }
 
 const legendGroups = [

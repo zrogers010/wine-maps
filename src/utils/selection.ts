@@ -150,11 +150,15 @@ export function selectionPadding(map: MapLibreMap): PaddingOptions {
   }
 }
 
+export const DEEP_LINK_MAX_ZOOM = 12
+
 /** Frame a feature's bounds with a real fitBounds, leaving room for overlays. */
 export function fitSelection(map: MapLibreMap, bounds: LngLatBoundsLike, animate = true) {
   map.fitBounds(bounds, {
     padding: selectionPadding(map),
-    maxZoom: 13,
+    // Cap so tiny climats/grand crus keep their neighbours in view instead of
+    // filling the screen; large communes (Pauillac) still frame fully.
+    maxZoom: DEEP_LINK_MAX_ZOOM,
     duration: animate ? 900 : 0,
     essential: true,
   })
